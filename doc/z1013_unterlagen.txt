@@ -1,0 +1,1361 @@
+#------------------------------------------------------------------------------
+# Monitorkommandos
+#------------------------------------------------------------------------------
+
+die wichtigsten Unterschiede A2 <-> 2.02
+- kein H- und A- und F-Kommandos
+- andere Adressen Windows-Speicher
+- andere INKEY-Routine und auch INCH-Routine!
+- KDO mit RST-Aufrufen programmiert, damit Verschiebung aller Routinen des Monitors!
+
+Der A2-Monitor hat eine Repeat-Funktion bei INCH, während der 2.02-Monitor 
+wartet, bis die Taste losgelassen und erneut gedrückt wurde.
+
+-- grundlegende Kommandos --
+
+- J sadr (Jump) 
+    Es wird ein Programm ab der Startadresse aktiviert, eine 
+    eventuell eingegebene Haltepunktadresse wird nicht be- 
+    achtet, die Inhalte der CPU-Register sind undefiniert. 
+
+- L aadr eadr (Load from Cassette) 
+    Ein mit dem S-Kommando ausgegebener Speicherbereich kann 
+    mit diesem Kommando wieder geladen werden. Dabei werden 
+    die ankommenden Byte ab der Anfangsadresse bis zur End- 
+    adresse im Speicher plaziert. Diese Adressen muessen nicht 
+    mit denen des S-Kommandos identisch sein, wichtig ist nur 
+    die Uebereinstimmung der Byteanzahl. Waehrend des Lesens 
+    wird mittels der aufgezeichneten Pruefsumme die Richtig- 
+    keit der ankommenden Daten kontrolliert. Stimmen errech- 
+    nete und vom Band gelesene Pruefsumme nicht ueberein, 
+    wird eine Fehlermeldung ausgegeben: CS<aerr. Der fehler- 
+    hafte Bereich unterhalb der Adresse aerr muss dann manuell 
+    kontrolliert werden. Moeglicherweise ist auch nur die 
+    Pruefsumme falsch gelesen worden. Reicht die Anzahl der ein- 
+    gelesenen Bytes nicht aus, den Speicher bis zur Endadresse 
+    zu fuellen, bleibt das Programm in der Eingabe haengen, 
+    der Monitor kann nur wieder mit der Reset-Taste erreicht werden. 
+
+- S aadr eadr (Save to Cassette) 
+    Der Speicherbereich von Adresse aadr bis zur Adresse eadr 
+    wird ueber das Magnetbandinterface auf Magnetband ausge- 
+    geben. Nach einem etwa 1,5 Sekunden langen Kennton werden 
+    die Daten in Bloecken zu 32 Byte mit einer anschliessenden 
+    Prüfsumme pro Block ausgegeben. 
+
+- W aaaa eeee (Window) 
+    Dieses Kommando realisiert eine Fensterfunktion, innerhalb 
+    dessen die Rollfunktion des Bildschirms erhalten bleibt. 
+    Ausserhalb dieses Fensters wird die Bildschirmausgabe als 
+    Standbild realisiert. Der Anfang des Fensters wird mit dem 
+    Parameter aaaa, dessen Ende mit eeee festgelegt. Der klein- 
+    ste realisierbare Fensterausschnitt besteht aus zwei Zeilen. 
+    Sollen nur die letzten beiden Zeilen rollen, sind als Para- 
+    meter die Angaben aaaa=EFC0 und eeee=EFFF+1=F000 notwendig. 
+    Der volle Bereich wird durch die Parameter aaaa=EC00 und 
+    eeee=EFFF=F000 eingestellt. Der Bildschirm wird nicht ge- 
+    loescht, der Kursor wird an den Anfang des Fensters positio- 
+    niert. 
+
+-- Speicheroperationen --
+
+- M aadr (Modify) 
+    Es ist moeglich, mit diesem Kommando einen Speicherbereich 
+    ab der angegebenen Anfangsadresse byteweise anzuzeigen und 
+    gegebenenfalls zu veraendern. Es erfolgt die Ausgabe der 
+    aktuellen Adresse und des Inhaltes des zugehoerigen Bytes. 
+    Anschliessend wird mit dem Zeichen "#" zur Eingabe aufge- 
+    fordert. Soll der alte Inhalt beibehalten werden, ist nur 
+    die Enter-Taste zu betaetigen, ansonsten wird vorher eine 
+    hexadezimale Zahl eingegeben. Es koennen auch mehrere Byte- 
+    inhalte, durch Leerzeichen voneinander getrennt, eingegeben 
+    werden. 
+
+    Nach Betaetigung der Enter-Taste wird die aktuelle Adresse 
+    erhoeht und auf der naechsten Zeile fortgesetzt. Wird ver- 
+    sucht, einen nicht vorhandenen Speicherbereich oder einen 
+    ROM zu beschreiben, erfolgt eine Fehleraussohrift: ER 
+    aerr bb, wobei aerr die Adresse und bb den fehlerhaften 
+    Inhalt darstellen. Anschliessend wird eine erneute Eingabe 
+    erwartet. Diese Fehlerausschrift wird vor allem dann auf- 
+    treten, wenn versucht wird, nicht vorhandene Speicher oder 
+    Festwertspeicher zu beschreiben. Mit Eingabe des Zeichens 
+    "R" kann die aktuelle Adresse bei Bedarf zurueckgestellt 
+    werden. 
+
+    Die Komandoausfuehrung wird beendet durch Eingabe eines 
+    Semikolon ";". Die aktuelle Adresse wird als Endadresse 
+    uebernommen. Mit dem Kommando 'D :' kann der aktualisier- 
+    te Speicherbereich nochmals auf dem Bildschirm angezeigt 
+    werden. 
+
+- D aadr eadr (Display Memory) 
+    Mit diesem Kommando koennen beliebige Speicherbereiche 
+    zwischen einer Anfangs- und einer Endadresse angezeigt 
+    werden. Die Anzeige des Bereiches zwischen FFF8 und FFFF 
+    ist mit dem D-Kommando nicht moeglich, dafuer muss das 
+    M-Kommando verwendet werden. Die Anzeige erfolgt zeilen- 
+    weise in hexadezimaler Form. Zuerst wird die Adresse des 
+    jeweiligen Bereiches ausgegeben, danach folgen acht Byte 
+    des Speicherinhaltes, gefolgt von einer dreistelligen 
+    Pruefsumme. Es wird immer eine Zeile vollständig ausge- 
+    geben, auch wenn die Endadresse eine andere Anzahl von 
+    Bytes verlangt. 
+    
+- K aadr eadr bb (Kill) 
+    Damit ist es moeglich, einen angegebenen Speicherbereich 
+    zu loeschen oder mit dem Byte bb zu fuellen. Wird das 
+    Kommando ohne Parameter verwendet, wird der gesamte adres- 
+    sierbare Speicher geloescht. Weiterarbeit ist dann nur 
+    nach Betaetigen der Resettaste moeglich. 
+
+- T aadr zadr anz (Transfer) 
+    Es erfolgt ein Transport eines Speicherbereiches ab der An- 
+    fangsadresse auf eine Zieladresse mit der festgelegten An- 
+    zahl von Bytes. Dabei ist eine Ueberlappung der beiden Be- 
+    reiche moeglich 
+
+- C adr1 adr2 anz (Compare) 
+    Dieses Kommando wird genutzt, um zwei Speicherbereiche 
+    miteinander zu vergleichen. Sind die Speicherbereiche 
+    gleich, meldet sich wieder der Monitor. Bei Ungleichheit 
+    erfolgt eine Fehlerausschrift in der Form: aaaa xx bbbb 
+    yy, wobei aaaa und bbbb Adressen und xx und yy deren Byte 
+    inhalte darstellen, zwischen denen die Ungleichheit be- 
+    steht. Mit Betaetigen der Entertaste wird der Vergleich 
+    fortgesetzt, eine andere Taste bricht den Vergleich ab. 
+
+- F aadr anz aa bb cc .. (Find) 
+    Ab der angegebenen Adresse soll eine bestimmte Anzahl 
+    aufeinanderfolgender Bytes im Speicher gesucht werden. 
+    Werden diese Bytes gefunden, erfolgt ein Uebergang zum 
+    M-Kommando, die Bytes koennen gelesen und/oder veraendert 
+    werden. Wird die Bytefolge nicht gefunden, erfolgt die 
+    Aussohrift "NOT FOUND" auf dem Bildschirm. 
+
+-- Debugging --
+  
+- I (Initialisierung) 
+    Es erfolgt ein Loeschen des Registerrette-Bereiches, so 
+    dass nach Programmstart mit dem E-Kommando die CPU-Re- 
+    gister mit definierten Anfangswerten geladen (geloescht) 
+    werden. Der weitere Ablauf ist wie nach Betaetigen der 
+    Reset-Taste, es wird der Grundzustand des Mikrorechners 
+    hergestellt. 
+
+- B hadr (Breakpoint-Haltepunkt) 
+    Es wird eine Haltepunktadresse eingegeben. Diese Adresse 
+    muss im RAM-Bereich liegen und auf das erste Byte eines 
+    Befehles zeigen. Zur Kontrolle wird der eingetragene 
+    Haltepunkt BP.:...., die dort befindlichen Befehlsbytes 
+    BS.:.... sowie alle Registerinhalte angezeigt. Ein zu 
+    testendes Programm haelt beim Erreichen dieser Adresse an 
+    und gibt eine Reihe von Informationen aus. Das sind wie- 
+    der die Haltepunktadresse sowie die ab dieser Adresse 
+    stehenden Befehlsbyte und alle Registerinhalte. Danach 
+    werden Monitorkommandos erwartet. Voraussetzung ist, dass 
+    die Haltepunktadresse auf das erste Byte eines Befehls 
+    zeigt. 
+
+- E sadr (Execute) 
+    Es wird ein Maschinenprogramm ab der eingegebenen Start- 
+    adresse unter Beachtung einer eventuell eingegebenen 
+    Haltepunktadresse gestartet. Zu Beginn werden alle Re- 
+    gister der CPU mit definierten Inhalten aus dem Register- 
+    rette-Bereich geladen. Mit Erreichen eines Haltepunktes 
+    werden die CPU-Register im Registerrette-Bereich ge- 
+    speichert und in den Monitor verzweigt. Eine Programm- 
+    fortsetzung des zu testenden Programmes kann auf mehreren 
+    Wegen erfolgen: 
+  * Festlegen eines neuen Haltepunktes mit dem B-Kommando und 
+    Fortsetzung mit dem G-Kommando (siehe dort) 
+  * Schrittweise Abarbeitung mit dem N-Kommando (s. d.) 
+  * Fortsetzung mit dem G-Kommando ohne Neufestlegung eines 
+    Haltepunktes 
+
+- G (Go) 
+    Fortsetzung eines Programmes ab der Haltepunktadresse. 
+    Zuvor werden die geretteten CPU-Register wieder geladen. 
+    Das G-Kommando kann auch nach dem Schrittbetrieb gegeben 
+    werden. Wurde zuvor mit dem B-Kommando ein neuer Halte- 
+    punkt eingegeben, laeuft das zu testende Programm bis zu 
+    dieser neuen Haltepunktadresse. 
+
+- N (Next) 
+    Dieses Kommando veranlasst die Ausfuehrung genau eines 
+    Befehls des zu testenden Programmes (Schrittbetrieb). Das 
+    N-Kommando kann nur angewandt werden, wenn zuvor ein Halte- 
+    punkt gesetzt und das zu testende Programm mit dem E-Kom- 
+    mando gestartet wurde. Nach der Ausfuehrung des Befehls 
+    werden alle Registerinhalte gerettet. Angezeigt werden der 
+    Befehlszaehler, die abzuarbeitenden Befehlsbyte sowie alle 
+    Registerinhalte. Waehrend des Schrittbetriebes duerfen in 
+    dem zu testenden Programm keine der nachfolgenden Befehle 
+    auftreten: 
+
+       'IM0', 'IM1' - Veraenderung im Interruptmodus 
+       'LD I, A'    - Veraenderung des Interruptvektors in der 
+                      CPU 
+       'DI'         - Verbieten Interrupt 
+
+- R rg/rg' (Register Display/Modify) 
+    Mit diesem Kommando ist es moeglich, Inhalte beliebiger 
+    Doppelregister der CPU einschliesslich des Austauschre- 
+    gistersatzes anzuzeigen und  zu veraendern, Nach Eingabe 
+    der Registerbezeichnung (AB, DC, DE, HL, IX, IY, PC, SP, 
+    AF', BC', DE', HL') wird der Inhalt des ausgewaehlten Dop- 
+    pelregisters ausgegeben und mit den Zeichen "#" die Eingabe 
+    des neuen Wertes erwartet. Wird an Stelle einer Registerbe- 
+    zeichnung ein Doppelpunkt ":" eingegeben, werden alle Re- 
+    gisterinhalte angezeigt. 
+    BP:XXXX BS:XXXXXX   S Z C X X X 
+    SP:XXXX PC:XXXX IX:XXXX IY:XXXX 
+    AF:XXXX BC:XXXX DE:XXXX HL:XXXX 
+    AF:XXXX BC:XXXX DE:XXXX HL:XXXX' 
+
+    Zu beachten ist, dass nur das S-, Z- und C-Flag einzeln 
+    angezeigt wird, die Belegung der anderen Flags ist dem 
+    AF-Register zu entnehmen. 
+
+-- Tastastur-Modus (nur 2.02) --
+
+- A (Alphaumschaltung) 
+    Schaltet die Tastatur wieder in den Grundzustand, sofern 
+    sie vorher mit dem Kommando "H" umgeschaltet war. 
+
+- H (Hexadezimalumschaltung) 
+    Schaltet in der Tastaturkodetabelle die Zahlen 0 bis 9 
+    sowie die entsprechenden Sonderzeichen in die Shiftebene 
+    0, d. h. anstelle der Zeichen "H" bis "Q". Dadurch sind 
+    hexadezimale Eingaben ohne Benutzung der Shift-Taste 
+    moeglich. 
+
+
+#------------------------------------------------------------------------------
+# Speicheraufteilung
+#------------------------------------------------------------------------------
+
+0000-00FFh	Systemzellen
+	0069-008Fh	Anwender-Stackbereich (Stack laeuft nach unten!)
+	0090-00AFh	System-Stackbereich (Stack laeuft nach unten!) 
+	00B0-00CFh	Kommandoerweiterungstabelle 
+	00E0-00FFh	Kassettenueberspielbereich
+0100-3FFF/EBFFh	Anwenderprogramme
+EC00-EFFFh	Bildwiederholspeicher BWS
+F000-F7FFh	Monitor (2k)
+F000-FFFFh	Monitor (4k)
+
+#------------------------------------------------------------------------------
+# Systemaufrufe (Monitorfunktionen)
+#------------------------------------------------------------------------------
+
+Name  Adresse Anzahl der Bedeutung 
+              Byte 
+SOIL  0016     2       Anfangsadresse der Eingabe- 
+                       zeile (Eingabepuffer) 
+ARG1  001B     2       1. Parameter eines Kommandos 
+ARG2  001D     2       2. Parameter 
+AR03  0023     2       3. Parameter 
+CURSR 002B     2       Kursoradresse 
+
+
+RST 38H	-> Rücksprung in Monitor, Init. (JMP KDO1, Eingang Kommandomodus)
+
+RST 20H (DB E7h) + 
+
+DB 00H OUTCH (OUT CHARACTER) 
+
+	Ausgabe des im A-Register stehenden Zeichens ueber den Video- 
+	treiber. 4 Steuerzeichen werden vom Z1013-Video-Treiber spe- 
+	ziell verarbeitet: 
+	
+	08H - Kursor links 
+	09H - Kursor rechts 
+	OCH - Bildschirm loeschen 
+	ODH - Neue Zeile; bei Erreichen des unteren Bildschirmrandes 
+	      wird gerollt 
+
+	Register AF, BC, DE, HL werden gerettet
+
+DB 01H INCH (IN CHARACTER) 
+
+	Mit dieser Routine wird die Eingabe eines Zeichens von der Tas- 
+	tatur in das A-Register realisiert. Dabei wird die Routine INKEY 
+	genutzt. Die Register BC, DE und HL werden gerettet. Der Rueck- 
+	sprung aus INCH erfolgt nur bei (A) ungleich 0. Ansonsten be- 
+	findet sich der Monitor in einer Eingabewarteschleife. 
+	
+	Es erfolgt keine Ausgabe des Zeichens auf den Bildschirm.
+
+	Register BC, DE, HL werden gerettet
+
+DB 02H PRST7 (PRINT STRING mit dem 7. Bit als Endzeichen) 
+
+	Die der Datenbytedefinition (DB 2) folgende Bytekette wird aus- 
+	gegeben, bis das 7. Bit gesetzt ist. Graphikzeichen (80H..FFH) 
+	sind also mit dieser Routine nicht ausgebbar. Fuer diesen Zweck 
+	ist ein Unterprogramm mit OUTCH aufzubauen. 
+
+DB 03H INHEX (Konvertierung einer max. 4-steillgen hexadezimalen 
+Zeichenkette in das interne Format) 
+
+	Die Routine realisiert die Konvertierung einer max. 4-stelligen 
+	hexadezimalen Zeichenkette in das Format eines Doppelregister- 
+	inhaltes. Die Anfangsadresse muss im DE-Register uebergeben wer- 
+	den. Fuehrende Leerzeichen werden ueberlesen. Das einer max. 
+	4-stelligen hexadezimalen Zeichenkette folgende Leerzeichen bzw. 
+	jedes andere Zeichen, welches verschiede von den Hexa-Zeichen 
+	ist, wird als Trennzeichen interpretiert. Der konvertierte Wert 
+	steht im HL-Register. Bei laengeren Zeichenkettern erfolgt keine 
+	Fehlerausschrift, sondern im HL-Register befindet sich der ge- 
+	wandelte Wert der letzten 4 Hexa-Zeichen. 
+
+DB 04H INKEY (IN KEYBOARD/Tastatureingabe) 
+
+	Mit Shift 4 und der Taste G (17H) wird im INKEY auf Graphik 
+	umgeschaltet, d. h. es wird zum ermittelten Hexa-Kode eine 80H 
+	aufaddiert. Die Umschaltung in die A-Ebene erfolgt mit Shift 4 
+	und der Taste A (91H). 
+	
+	C-L  : Kursor links 
+	C-R  : Kursor rechts 
+	CLS  : Bildschirm loeschen 
+	ENT  : ENTER 
+	STOP : Programmabarbeitungen stoppen 
+
+
+	!! FA 4/89 S. 173, zu 2.02 !!
+	Die INKEY-Funktion realisiert die Eingabe eines Zeichens von der Tastatur. Die 
+	Register AF, BC, DE und HL werden zerstört. Ist keine Taste gedrückt, so erfolgt 
+	der Rücksprung aus dieser Routine mit dem Wert 00H im A-Register. Ansonsten 
+	steht in A der ASCII-Kode der gedrückten Taste. Das eingegebene Zeichen wird 
+	ebenfalls in der RAM-Zelle 0004H gespeichert. Bei Betätigung von S4-G bzw. S4-A 
+	schaltet man zwischen Grafik- und Alphamodus um. Je nach eingegebenen Zeichen 
+	sind die Unterschiede in der Laufzeit der Routine sehr groß. Die geringsten 
+	Zeiten benötigen die Zeichen 1, 9 und Y. 
+
+	!!! Achtung: Im A2-Monitor anderes Verhalten !!!
+	
+	In 2.02 Rückkehr A=0 keine Taste gedrückt, A<>0 Zeichen
+	In A2 Rückkehr nur bei gedrückter Taste, s.u. !
+	
+
+DB 05H INLIN (Eingabe einer Zeile mit fuehrendem Promptsymbol) 
+
+	Ausgabe eines Promptsymbols und anschliessende Eingabe einer 
+	Zeichenkette bis Enter (0DH). die Startadresse fuer die Ein- 
+	gabezeile wird in SOIL zwischengespeichert und kann nach Rueck- 
+	kehr fuer die Auswertung, z. B. fuer INHEX, verwendet werden. 
+	Da jedes eingegebene Zeichen durch die Folge INCH/OUTCH bis 0DH 
+	sofort auf dem Bildschirm ausgegeben wird, erfolgt beim Rollen 
+	am unteren Bildschimrand automatisch eine Korrektur von SOIL 
+	um -20H. 
+
+DB 06H OUTHX (OUT A-Register hexadezimal) 
+
+	Ausgabe des A-Registers hexadezimal. Es werden pro Byte zwei 
+	Zeichen ausgegeben. 
+
+DB 07H OUTHL (OUT HL-Register hexadeziamal) 
+
+	Ausgabe des HL-Registers hexadezimal. Es werden 4 Zeichen aus- 
+	gegeben. 
+
+DB 08H CSAVE (Save to Cassette) 
+
+	Entspricht dem S-Kommando des Monitors, wobei die Anfangsadre- 
+	se und die Endadresse vorher in ARG1 und ARG2 einzutragen sind. 
+
+DB 09H CLOAD (Load from Cassette) 
+
+	Die Routine entspricht dem L-Kommando des Monitors. Anfangs- 
+	und Endadresse muessen vorher in ARG1 und ARG2 eingetragen 
+	werden. 
+
+DB 0AH MEM (Modify Memory) 
+
+	Die Routine entspricht dem M-Kommando des Monitors. Vor An- 
+	sprung ueber RST 20H muss die Anfangsadresse in ARG1 einge- 
+	tragen werden. 
+
+DB 0BH WIND (Rollfenster fuer Bildschirmbereich) 
+
+	Entspricht dem W-Kommando des Monitors. In ARG1 und ARG2 sind 
+	Anfangsadresse und Endeadresse+1 fuer das Rollfenster einzu- 
+	tragen. 
+
+DB 0CH OTHLS (Ausgabe von 2 Byte hexadezimal entspr. der Adresse im 
+HL-Register) 
+
+	Entsprechend der Adresse im HL-Hegister werden 2 Byte = 4 Zei- 
+	oben (erst High-Teil, dann Low-Teil) und anschliessend ein 
+	Leerzeichen ausgegeben. 
+
+DB 0DH OUTDP (Ausgabe eines Doppelpunktes (:) und weiter wie OTHLS) 
+
+	siehe OTHLS 
+
+DB 0EH OUTSP (Ausgabe eines Leerzeichens) 
+
+	Ausgabe eines Leerzeichens 
+
+DB 0FH TRANS (Transfer) 
+
+	Die Routine entspricht dem T-Kommando des Monitors. In ARG1, 
+	ARG2 und ARG3 sind vorher die Werte fuer "von Adresse", "auf 
+	Adresse" und Byteanzahl einzutragen. 
+
+DB 10H INSTR (Eingabe einer Zeichenkette) 
+
+	Es wird die Eingabe einer Zeichenkette abgefordert, die mit 
+	Enter abzuschliessen ist. Wie in INLIN steht in SOIL die An- 
+	fangsadresse der Zeichenkette fuer eine anschliessende Auswer- 
+	tung. Im INSTR wird kein fuehrendes Promptsymbol ausgegeben. 
+
+DB 11H KILL (Fuellen eines Speicherbereichen mit einem Byte) 
+
+	Die Routine entspricht dem K-Kommando des Monitors. ARG1, ARG2 
+	und ARG3 sind vorher mit "von Adresse", "bis Adresse" und dem 
+	zu fuellenden Byte zu laden. 
+
+DB 12H HEXUM (Hexa-Umschaltung) 
+
+	Die Routine entspricht dem H-Kommando des Monitors. Umschaltung 
+	der Tastatur auf die Zeichen 0..7, 8..? in die Shift-Ebene Null. 
+	Diese Umschaltung ist z. B. vor Zifferneingabe sehr sinnvoll. 
+
+DB 13H ALFA (Alpha-Umschaltung) 
+
+	Umschaltung der Tastencodetabelle auf die Zeichen H...W in der 
+	Shift-Ebene Null. Dieser RST 20H entspricht dem A-Kommando des 
+	Monitors. 
+
+RST20H  Funktion         Zellen/Bemerkung            2.02   A2    
+----------------------------------------------------------------
+DB 00H  OUTCHAR             A                       F21BH F258H 
+DB 01H  INCHAR              A   Ret bei A#0         F20CH F219H
+DB 02H  PRINT STRING            Ende Bit7=1         F2A5H F2E2H
+DB 03H  INHEX            Aadr=DE    Zahl=HL         F2F4H F331H
+DB 04H  INKEY               A + 0004H               F130H F119H
+DB 05H  INLINE           Aadr=SOIL ENDE=0DH         F2B3H F2F0H
+DB 06H  OUTHEX A            A                       F301H F33EH
+DB 07H  OUT HL             HL                       F31AH F357H
+DB 08H  CSAVE            Aadr=Arg1 Eadr=Arg2        F369H F3A6H
+DB 09H  CLOAD            Aadr=Arg1 Eadr=Arg2        F3F8H F435H
+DB 0AH  MEM              Aadr=Arg1                  F325H F362H
+DB 0BH  WINDOW           Aadr=Arg1 Eadr+1=Arg2      F6D1H F6F5H
+DB 0CH  OTHLS              HL                       F5C7H F604H
+DB 0DH  OUTDP              HL                       F5C4H F601H
+DB 0EH  OUTSPACE           --                       F5CFH F60CH
+DB 0FH  TRANSFER         Von=Arg1 Nach=Arg2 An=Arg3 F51DH F55AH
+DB 10H  INSTRING         Aadr=SOIL ohne'#'          F2B9H F2F6H
+DB 11H  KILL             Aadr=Arg1 Eadr=Arg2 B=Arg3 F50BH F548H
+DB 12H  HEXUM                                       F6B8H -----
+DB 13H  ALPHA                                       F6C5H -----
+----------------------------------------------------------------
+
+
+#------------------------------------------------------------------------------
+# Systemzellen 2.02
+#------------------------------------------------------------------------------
+
+Adresse Laenge  Bedeutung                                       
+0000    3       RST 0H, frei fuer den Anwender                   
+0003    1       Zwischenspeicher f. Spezifikationsbyte RST 20H   
+0004    1       Merkzelle fuer letztes Zeichen von Tastatur      
+0005    3       freu fuer Anwendung eines zentralen CALL 5       
+0008    3       RST 8H, frei fuer den Anwender                   
+000B    2       Zwischenspeicher fuer BREAK-Adresse              
+000D    3       Zwischenspeicher fuer Operandenfolge bei BREAK   
+0010    3       RST 10H, frei fuer den Anwender                  
+0013    3       Arbeitszellen fuer INHEX-Routine                 
+0016    2       (SOIL) Anfangsadresse der Eingabezeile           
+0018    3       RST 18H, frei fuer den Anwender                  
+001B    2       (ARG1) Parameter 1                               
+001D    2       (ARG2) Parameter 2                               
+001F    1       Code-Zwischenspeicher fuer OUTCH                 
+0020    3       RST 20H, zentr. Ansprung f. Monitorroutinen      
+0023    2       (ARG3) Parameter 3                               
+0025    2       2. Adresse der Eingabezeile                      
+0027    1       Merkzelle ASCII(=0)/Grafik(=80H)                 
+0028    3       RST 28H, frei fuer den Anwender                  
+002B    2       (CURSR) aktuelle Cursorposition                  
+002D    1       Cursor-Zwischenspeicher                          
+002F    1       Merkzelle fuer Phasenlage bei CLOAD              
+0030    3       RST 30H, frei fuer den Anwender                  
+0033    2       Laenge der Synchronisationsluecke bei CSAVE      
+0035    2       Beginn Tastencodetabelle                         
+0038    3       RST 38H, wird als zentraler Fehleransprung ver-  
+                wendet, bei eintritt in den Monitor erscheint ?# 
+003B    12      Fortsetzung Tastencodetabelle                    
+0047    2       Rolldistanz bei OUTCH                            
+0049    2       Anfangsadresse des BS Rollbereiches              
+004B    2       Endadresse+1 des Rollbereiches                   
+004D    24      Registerrettbereich                              
+0066    3       NMI, frei fuer den Anwender                      
+  .                                                              
+  .                                                          
+0090    >32     Anwender-Stackbereich (Stack laeuft nach unten!) 
+  .                                                              
+  .                                                          
+00B0    >=32    System-Stackbereich (Stack laeuft nach unten!)   
+00B0    <=48    fei füer Kommandoerweiterungstabelle des Moni-   
+                tors, welche ueber @... erreichbar ist           
+00E0    32      Kassettenueberspielbereich                       
+                                                                 
+
+
+#------------------------------------------------------------------------------
+# E/A-Adressen 
+#------------------------------------------------------------------------------
+
+0000  /IOSEL0  PIO  PORT A  Daten 
+  01                        Steuerwort 
+  02                PORT B  Daten 
+  03                        Steuerwort 
+0004  /IOSEL1 
+  05 
+  06 
+  07 
+0008  /IOSEL2  Tastaturspalten-Treiber 
+  09 
+
+
+X4 Anwendertor 
+
+    A   B     C
+        
+1  5P   /ASTB BRDY  
+2  PA6  PA7   ARDY  
+3  PA3  PA4   PA5   
+4  PA0  PA1   PA2   
+5  00   00    /BSTB 
+
+X5 Magnetbandanschluß 1 Ausgabe
+2 Masse
+3 Eingabe
+4 Ausgabe
+5 Eingabe 
+ 
+ 
+
+#------------------------------------------------------------------------------
+# Sprungverteiler
+#------------------------------------------------------------------------------
+
+Von der Interessengemeinschaft Heimcomputer der KdT des IZ der TU-Dresden wurde 
+ein Sprungverteiler vereinbart, der zur Einbindung von Erweiterungen des „Z 
+1013“-Monitorprogramms in Anwenderprogrammen dient. Das Ziel der Vereinbarung 
+bestand in einer weitestgehenden Portabilitaet von Programmen fuer den „Z 1013“, 
+auch wenn diese z.B. einen Sprung zu einem Druckertreiber enthalten sollen. Der 
+Verteiler beginnt auf der Adresse FFFFH abwaertsfuehrend und enthaelt 
+Sprungbefehle zu den entsprechenden Unterprogrammen der Systemerweiterung, 
+welche mit einem RET-Befehl enden muessen, um die Rueckkehr in das 
+Anwenderprogramm zu erreichen. Nicht vorhandene Unterprogramme sind durch RET 
+(C9H) kurzzuschliessen. 
+
+Sprungverteiler fuer Z 1013-Erweiterungen: 
+
+Adr.  Aufruf  Bemerkung  
+
+FFFDH  JMP INKEY  holt ein Zeichen von Tastatur in den Akku; kommt beim 2. 
+		Aufruf nur zurueck, wenn Taste zwischendurch losgelassen wurde  
+
+FFFAH  JMP POLL  bringt immer ein Zeichen im Akku zurueck, egal ob Taste 
+		losgelassen wurde oder nicht  
+
+FFF7H  JMP STAT  uebergibt Tastaturstatus im Akku
+		A=0 - keine Taste gedrueckt
+		A=FFH - Taste gedrueckt
+		die Abfrage erfolgt ohne Ruecksicht, ob die Taste schon vor dem 
+		Aufruf gedrueckt war und hinterlaesst trotz gedrueckter Taste 
+		den Status 'letztes Zeichen war 0' ((Zelle 4)=0) um eine evtl. 
+		nachfolgenden INKEY-Routine nicht zu sperren  
+
+FFF4  JMP SARUF  ruft die SAVE-Routine des Headersave
+		! zerstoert 1. Registersatz + AF'
+		Parameteruebergabe:
+		Zellen 1BH - anfadr., 1DH - endadr., 23H - strtadr.
+		Akku 3AH - Wiederholen der SAVE-Funktion mit gleichem Kopf
+		H(IY) Typvorgabe (in ASCII), sonst 0  
+
+FFF1H  JMP LORUF  ruft LOAD-Routine des Headersave
+		! zerstoert 1. Registersatz + AF'
+		Parameteruebergabe:
+		Zellen 1BH - neue Anfangsadresse des Files sonst 0
+		Akku 0 - ohne signifikante Kontrolle, 4EH - mit signifikanter Kopfkontrolle (Typ) + Namenabfrage
+		H(IY) 0 - Typ wird abgefragt H(IY) = Typkennzeichen (in ASCII) - keine Typabfr.
+		L(IY) 20H - Freigabe Autostart bei COM-Files  
+
+FFEEH  JMP ZMINI  Initialisierung der Z-Monitorrufe auf B0H  
+
+FFEBH  JMP DRDEL  setzt den logischen Druckertreiber zurueck  
+
+FFE8H  JMP DRAKK  uebergibt den Akkuinhalt an den logischen Druckertreiber  
+
+FFE5H  JMP BSDR  druckt den Inhalt des BWS und kehrt in das rufende Programm zurueck  
+
+FFE2H  JMP HARDC  uebergibt den Akkuinhalt an logischen Druckertreiber wenn ein 
+		Flag im Rechner gesetzt ist; wandelt CR (0DH) in NL (1EH/0DH-0AH)
+		! nur verwenden, wenn Programm eine eigene Bildschirmverwaltung hat  
+
+FFDFH  JMP DRZEL  wie DRAKK, nur das der Inhalt von 1BH uebergeben wird 
+		(vorgesehen, um im BASIC mit POKE zu drucken)  
+
+FFDCH  JMP BEEP  erzeugen eines kurzen Signals  
+
+FFD9H  JMP ASTA  Ausgabe Akkuinhalt als ASCII-Zeichen an PUNCH  
+
+FFD6H  JMP BSTA  Ausgabe Akkuinhalt als Byte an PUNCH  
+
+FFD3H  JMP AIN  Eingabe eines ASCII-Zeichens vom LBL in den Akku  
+
+FFD0H  JMP BIN  Eingabe eines Bytes vom LBL in den Akku  
+
+FFCDH  JMP DRINI  Initialisierung des logischen Druckertreibers  
+
+FFCAH  JMP ZEIDR  uebergibt ein Zeichen im Akku an physischen Druckertreiber  
+
+FFC7H  JMP BLMK  Lesen eines Blocks vom Headersave
+		Parameteruebergabe:
+		Zellen 25H/26H * Kopfinhalt des zu lesenden Bl.
+		HL * Ladeadresse des Blocks
+		Return:
+		Zellen 25H/26H * Kopfinhalt + 20H
+		HL * HL:=HL+20H
+		Abbruch des Lesens bei Kopfinhalt=0FFFFH oder DMA > Endadr in ARG2 (1DH)  
+
+FFC4H  JMP BSMK  Schreiben eines Blocks im Headersave
+		Parameteruebergabe:
+		HL * Quelladresse Block
+		IX * Kopfinhalt
+		DE * Anzahl der Sync.-Bits
+		Return:
+		HL * HL:=HL+20H  
+
+FFC1H  JMP SUCHK  Suchen eines Kopfblocks und Uebergabe des Inhalts im 
+		Kopfpuffer (E0-FF), keine Auswertung  
+
+FFBEH  JMP AKP  Aufbereitung Kopfpuffer mit Namenabfrage
+		Parameteruebergabe wie bei SARUF  
+
+FFBBH  JMP GETST  Abfrage der Joysticks und Uebergabe des Ergebnisses in BC (B-
+		links,C-rechts) mit folgenden Bit-Bedeutungen (Belegung mit 1):
+		Bit 0 - links
+		1 - rechts
+		2 - runter
+		3 - hoch
+		4 - Aktionstaste
+		Z-Flag=1, wenn keine Betaetigung vorliegt
+		CY-Flag=1, wenn Spielhebel nicht angeschlossen  
+
+FFB8H  JMP SOUND Ausgabe einer vollen Periode auf die Tonbandbuchse, sowie auf 
+		Bit 7 vom Systemport (User-P) Uebergabe der Periodendauer in C 
+		mit T=n*33us+20us (2MHz)  
+
+#------------------------------------------------------------------------------
+# A2-Monitor
+#------------------------------------------------------------------------------
+
+
+; Ersatz-Routine f. INKEY (aus F83)
+; s.a. Doku zu MicroWord 1.5
+
+INKEY:	push	ix
+	push	bc
+	push	de
+	push	hl
+	ld	bc, 1000h
+inc1:	push	bc
+	rst	20h
+	db    4			; INKEY
+	pop	bc
+	ld	ix, 4		; LAKEY letztes Zeichen von Tastatur
+	cp	(ix+0)
+	jr	nz, inc6	; wenn anderes Zeichen
+	or	a
+	jr	z, inc5		; wenn keine Taste gedückt
+inc2:	dec	c
+	jr	nz, inc2	; kurz warten
+	bit	4, (hl)		; Repeat?
+	jr	nz, inc4	; ja -> gleich weiter
+	ld	de, 800h	; sonst längeres Warten	
+inc3:	dec	de
+	ld	a, e
+	or	d
+	jr	nz, inc3
+inc4:	djnz	inc1		; 16x 
+	set	4, (hl)		; Repeat ein
+	xor	a		; A := 0 kein Zeichen 
+	jr	inc6
+inc5:	res	4, (hl)		; kein Repeat mehr
+inc6:	ld	(ix+0),	a	; LAKEY füllen
+	pop	hl
+	pop	de
+	pop	bc
+	pop	ix
+	ret
+
+#------------------------------------------------------------------------------
+#
+#------------------------------------------------------------------------------
+
+
+****************************************************************
+*          MRB-Z1013     BEDIENUNGSANLEITUNG   Teil 1          *
+****************************************************************
+
+
+
+
+von VP-SOFT'88 
+
+
+Monitorkommandos
+----------------
+
+allg. Form:
+ XY aaaa bbbb cccc
+ XY:              alte Parameter    
+
+ X                @ oder Buchstabe
+ Y                SPACE oder Buchstabe
+ aaaa bbbb cccc   Hex-zahlen, nur die letzten Ziffern gelten
+                   keine Ziffern -> Zahl wird 0
+
+
+W aaaa eeee+1     Window(Bildschirmfenster)
+                   Bild wird nicht geloescht
+
+C adr1 adr2 anz   Compare(Vergleich), mit ENTER fortsetzen
+D aadr eadr       Display Memory(Speicherinhalte anzeigen)
+F aadr anz aa bb .. Find(Stringfolge suchen), wenn gefunden -> M
+K [aadr eadr bb]  Kill(Speicherbereich mit bb fuellen)
+T aadr zadr anz   Transfer(Speicherbereich verschieben)
+
+L aadr eadr       Load from Cassette
+S aadr eadr       Save to Cassette
+
+R rg/rg'          Register Modify
+                   Eingabe Registername (*AF'),Anzeige Inhalt,
+                   Eingabe neuer Wert
+R :               Register Display(Anzeige Registerinhalte)
+M aadr            Modify(Speicher aendern)
+J sadr            Jump(Programm starten)
+
+I                 Init(Initialisierung)
+B hadr            Breakpoint(Haltepunkt setzen)
+E sadr            Execute(Start von Programmen mit Breakpoint)
+       N          Next(Step)
+                   nicht abgearbeitet werden duerfen: IM0; IM1;
+                   LD A,I; DI
+       G          Go(weiter zum naechsten Breakpoint)
+
+-----------------------------------------------------------------------------------
+
+Tastatur
+--------
+
+     -------------------------------------------------
+     I X   I Y   I Z   I [ { I \ | I ] } I ^ ~ I _   I
+ RZ0-I     I     I     I     I     I     I     I     I
+     I @ ` I A   I B   I C   I D   I E   I F   I G   I
+     I-----+-----+-----+-----+-----+-----+-----+-----I
+     I 0   I 1 ! I 2 " I 3 # I 4 $ I 5 % I 6 & I 7 ' I
+ RZ1-I     I     I     I     I     I     I     I     I
+     I H   I I   I J   I K   I L   I M   I N   I O   I
+     I-----+-----+-----+-----+-----+-----+-----+-----I
+     I 8 ( I 9 ) I : * I ; + I < , I = - I > . I ? / I
+ RZ2-I     I     I     I     I     I     I     I     I
+     I P   I Q   I R   I S   I T   I U   I V   I W   I
+     I-----+-----+-----+-----+-----+-----+-----+-----I
+     I     I     I     I     I     I     I     I     I
+ RZ3-I     I     I     I     I     I     I     I     I
+     I S1  I S2  I S3  I S4  I <-  I SP  I ->  I ENT I
+     -------------------------------------------------
+        !     !     !     !     !     !     !     !
+       RS0   RS1   RS2   RS3   RS4   RS5   RS6   RS7
+
+IN 2 |                     OUT 8
+
+
+-----------------------------------------------------------------------------------
+
+Z1013-BASIC
+-----------
+
+
+Kommandos
+
+LIST [n]       L.[n]     Listen(20 Zeilen ab >=n)
+RUN            R.
+NEW            N.
+BYE            B.
+END n          E.n       Speicherende setzen
+CSAVE"name"    C."name
+CLOAD          CL.
+
+Befehle
+
+FOR            F.
+TO             T.
+NEXT           N.
+IF             I.
+GOTO           G.
+GOSUB          GO.
+RETURN         R.
+PRINT          P.
+INPUT["..."]a  I.["..."]a
+LET            L.
+REM            RE.
+CALL           C.
+POKE           PO.
+OUTCHARn       O.n
+OUT(n)         OU.(n)
+TAB(n)         T.(n)     Ausgabe n Leerzeichen
+BYTE(n)        B.(n)     Ausgabe 2stellige Hexzahl
+WORD(n)        W.(n)     Ausgabe 4stellige Hexzahl
+O$(n)                    Ausgabe Zeichenkette von (n)
+I$(n)                    Einlesen Zeichenkette nach (n)
+
+Anweisungen
+
+RND(n)         R.(n)     Zufallszahl 1...n
+ABS(n)         A.(n)
+PEEK(n)        P.(n)
+IN(n)
+INCHAR         I.        ein Zeichen einlesen
+STEP           ST.
+HEX n          H.n       Wandlung Hex-->Dez
+TOP            T.        erster freier Speicher nach BASIC
+SIZE           S.        freier BASIC-Speicher
+'a'                      ASCII-Code von a
+C
+@( )                     eindimensionales Feld
+
+
+Das Programm wird im RAM von 1152H bis (101FH) abgelegt, aber
+bereits ab 1000H abgeSAVEt. Jede Zeile hat folgenden Aufbau:
+
+       2 byte Zeilennummer
+       x byte Text
+       1 byte Zeilenabschluss (0DH)
+
+
+-----------------------------------------------------------------------------------
+
+Riesa-Schach
+------------
+
+K Spielstaerke 1... (mehrmals druecken)
+R Figuren aufstellen
+W Farbe wechseln, Beginn mit Q
+Q Quittung, bei Fehleingabe oder mehmals druecken: Anzeige
+  der Stellung
+L Eingabe loeschen (vor Q)
+M ???
+P Problemeingabe:Feld wird geloescht
+  wohin(Feld),Figur
+
+    Figur   weiss     schwarz
+    
+    Dame    E1 o. EA  1 o. A
+    Bauer   E2 EB     2 B
+    Koenig  E3 EC     3 C
+    Pferd   E4 ED     4 D
+    Laeufer E6 EF     6 F
+    Turm    E8 EH     8 H
+
+  z.B. A2EB - weisser Bauer auf A2
+
+-----------------------------------------------------------------------------------
+
+Unterprogramme des Monitors
+---------------------------
+
+Der Aufruf der Programme kann ueber Direkt-CALLs oder besser
+ueber einen Supervisorruf (RST 20H; DB nnH) erfolgen. Beim
+Aufruf ist zu beachten, dass die Programme normalerweise nicht
+die Register retten!
+
+OUTCH   DB 00H,  F21BH  Ausgabe von Register A an Videotreiber,
+                         Sonderzeichen: CUL(08H),CUR(09H),
+                         CLS(0CH),ENT(1EH)
+INCH    DB 01H,  F20CH  Eingabe ein Zeichen von der Tastatur
+                         nach Register A. Rueckkehr erst bei 
+                         A<>0. INKEY wird genutzt; die Register
+                         BC,DE,HL werden gerettet. Es erfolgt
+                         kein Echo auf dem Bildschirm. 
+PRST7   DB 02H,  F2A5H  Die auf den Ruf folgende Zeichenkette
+                         wird mittels OUTCH ausgegeben. Beim
+                         letzten Zeichen muss Bit 7 gesetzt sein.
+INHEX   DB 03H,  F2F4H  Konvertierung einer Zeichenkette in Hex
+                         nach HL. Der Beginn der Zeichenkette
+                         steht in DE. Fuehrende Trennzeichen
+                         werden ueberlesen, die letzten 4 Zei-
+                         chen sind signifikant. Trennzeichen
+                         sind alle Zeichen verschieden von 1...F.
+INKEY   DB 04H,  F130H  Eingabe ein Zeichen von der Tastatur
+                         ins Register A.
+INLIN   DB 05H,  F2B3H  Ausgabe eines '#', Eingabe einer Zeile
+                         bis ENT. Die Anfangsadresse der Zeile
+                         steht in SOIL(0016H).
+OUTHX   DB 06H,  F301H  Ausgabe Register A hexadezimal
+                         (2 Stellen).
+OUTHL   DB 07H,  F31AH  Ausgabe Register HL hexadezimal
+                         (4 Stellen).
+CSAVE   DB 08H,  F369H  Speicher absaven von ARG1 bis ARG2.
+CLOAD   DB 09H,  F3F8H  Speicher laden von ARG1 bis ARG2.
+MEM     DB 0AH,  F325H  Speicher modifizieren ab ARG1.
+WIND    DB 0BH,  F6D1H  Fenster setzen von ARG1 bis ARG2-1
+OTHLS   DB 0CH,  F5C7H  wie OUTHL +Ausgabe 1 Leerzeichen. 
+OUTDP   DB 0DH,  F5C4H  Ausgabe von ':', weiter wie OTHLS.
+OUTSP   DB 0EH,  F5CFH  Ausgabe ein Leerzeichen.
+TRANS   DB 0FH,  F51DH  Verschieben Speicherbereich von ARG1 auf
+                         ARG2 in einer Laenge von ARG3.
+INSTR   DB 10H,  F2B9H  wie INLIN ohne Ausgabe '#'.
+KILL    DB 11H,  F50BH  Fuellen Speicherbereich von ARG1 bis
+                         ARG2 mit ARG3.   
+
+
+
+Volker Pohlers, Lomonossowallee 41/81, Greifswald, 2200
+
+
+;-------------------------------------------------------------------------------
+; 
+;-------------------------------------------------------------------------------
+
+===============================================================
+=                                                             =
+=                    STANDARD-ADRESSEN                        =
+=                                                             =
+==================================== Stand: 20.08.89  =========
+                                     ausgearbeitet:
+                                     IG-HC TU Dresden
+Inhalt:	SPRUNGVERTEILER
+        SYSTEMADRESSEN UND BELEGUNG
+        I/O-ADRESSEN 
+***************************************************************
+SPRUNGVERTEILER:
+
+Von der Interessengemeinschaft Heimcomputr der KdT des IZ
+der TU-Dresden wurde ein Sprungverteiler vereinbart, der zur
+Einbindung von Erweiterungen des "Z 1013"-Monitorprogramms
+in Anwenderprogrammen dient. Das Ziel der Vereinbarung bestand
+in einer weitestgehenden Portabilitaet von Programmen fuer
+den "Z 1013", auch wenn diese z.B. einen Sprung zu einem Druk-
+kertreiber enthalten sollen. Der Verteiler beginnt auf der A-
+dresse FFFFH abwaertsfuehrend und enthaelt Sprungbefehle zu
+den entsprechenden Unterprogrammen der Systemerweiterung, wel-
+che mit einem RET-Befehl enden muessen, um die Rueckkehr in 
+das Anwenderprogramm zu erreichen. Nicht vorhandene Unterpro-
+gramme sind durch RET (C9H) kurzzuschliessen.  
+
+                                     (TEXT:V.LUEHNE FA 10/88)
+
+Sprungverteiler fuer Z 1013-Erweiterungen:
+__________________________________________
+
+ FFFDH - JMP INKEY  holt ein Zeichen von Tastatur in den
+                    Akku; kommt beim 2. Aufruf nur zurueck,
+                    wenn Taste zwischendurch losgelassen 
+                    wurde 
+
+ FFFAH - JMP POLL   bringt immer ein Zeichen im Akku zu-
+                    rueck, egal ob Taste losgelassen wurde
+                    oder nicht
+
+ FFF7H - JMP STAT   uebergibt Tastaturstatus im Akku
+                    A=0   - keine Taste gedrueckt
+                    A=FFH - Taste gedrueckt
+                    die Abfrage erfolgt ohne Ruecksicht,
+                    ob die Taste schon vor dem Aufruf ge-
+                    drueckt war und hinterlaesst trotz ge-
+                    drueckter Taste den Status
+                    'letztes Zeichen war 0' ((Zelle 4)=0)
+                    um eine evtl. nachfolgenden INKEY-Rou-
+                    tine nicht zu sperren
+
+ FFF4 - JMP SARUF   ruft die SAVE-Routine des Headersave
+                    ! zerstoert 1. Registersatz + AF'
+                    Parameteruebergabe:
+                    Zellen 1BH - anfadr.
+                           1DH - endadr.
+                           23H - strtadr.
+                    Akku   3AH - Wiederholen der SAVE-Funk-
+                                 tion mit gleichem Kopf
+                    H(IY)  Typvorgabe (in ASCII), sonst 0
+
+ FFF1H - JMP LORUF  ruft LOAD-Routine des Headersave
+                    ! zerstoert 1. Registersatz + AF'
+                    Parameteruebergabe:
+                    Zellen 1BH - neue Anfangsadresse des
+                    Files sonst 0
+                    Akku   0   - ohne signifikante Kontrol-
+                    le
+                    4EH - mit signifikanter Kopfkontrolle
+                          (Typ) + Namenabfrage
+             H(IY)  0   - Typ wird abgefragt 
+                          Typkennzeichen (in ASCII),
+                          keine Typabfr. 
+             L(IY)  20H - Freigabe Autostart bei
+                          COM-Files 
+
+ FFEEH - JMP ZMINI Initialisierung der Z-Monitorrufe
+                   auf B0H
+
+ FFEBH - JMP DRDEL setzt den logischen Druckertreiber
+                   zurueck
+
+ FFE8H - JMP DRAKK  uebergibt den Akkuinhalt an den lo-
+                    gischen Druckertreiber
+
+ FFE5H - JMP BSDR   druckt den Inhalt des BWS und kehrt
+                    in das rufende Programm zurueck
+
+ FFE2H - JMP HARDC  uebergibt den Akkuinhalt an logischen
+                    Druckertreiber wenn ein Flag im Rechner
+                    gesetzt ist;
+                    wandelt CR (0DH) in NL (1EH/0DH-0AH)
+                    ! nur verwenden, wenn Programm eine
+                    eigene Bildschirmverwaltung hat
+
+ FFDFH - JMP DRZEL  wie DRAKK, nur das der Inhalt von
+                    1BH uebergeben 
+                    wird (vorgesehen, um im BASIC mit POKE
+                    zu drucken)
+
+ FFDCH - JMP BEEP   erzeugen eines kurzen Signals
+
+ FFD9H - JMP ASTA   Ausgabe Akkuinhalt als ASCII-Zeichen
+                    an PUNCH
+
+ FFD6H - JMP BSTA   Ausgabe Akkuinhalt als Byte an PUNCH
+
+
+ FFD3H - JMP AIN    Eingabe eines ASCII-Zeichens vom LBL
+                    in den Akku
+
+ FFD0H - JMP BIN    Eingabe eines Bytes vom LBL in den 
+                    Akku
+
+ FFCDH - JMP DRINI  Initialisierung des logischen Drucker-
+                    treibers
+
+ FFCAH - JMP ZEIDR  uebergibt ein Zeichen im Akku an phy-
+                    sischen Druckertreiber
+
+ FFC7H - JMP BLMK   Lesen eines Blocks vom Headersave
+                    Parameteruebergabe:
+                    Zellen 25H/26H * Kopfinhalt des zu le-
+                    senden Bl.
+                    HL             * Ladeadresse des Blocks
+                  Return:
+                    Zellen 25H/26H * Kopfinhalt + 20H
+                    HL             * HL:=HL+20H
+                  Abbruch des Lesens bei Kopfinhalt=0FFFFH 
+                    oder DMA > Endadr in ARG2 (1DH)
+
+ FFC4H - JMP BSMK   Schreiben eines Blocks im Headersave
+                    Parameteruebergabe:
+                    HL  * Quelladresse Block
+                    IX  * Kopfinhalt
+                    DE  * Anzahl der Sync.-Bits
+                  Return:
+                    HL  * HL:=HL+20H
+
+ FFC1H - JMP SUCHK  Suchen eines Kopfblocks und Uebergabe
+                    des Inhalts im Kopfpuffer (E0-FF), keine 
+                    Auswertung
+
+ FFBEH - JMP AKP    Aufbereitung Kopfpuffer mit Namenab-
+                    frage
+                    Parameteruebergabe wie bei SARUF
+
+ FFBBH - JMP GETST  Abfrage der Joysticks und Uebergabe 
+                    des Ergebnisses in BC (B-links,C-rechts)
+                    mit folgenden Bit-Bedeutungen
+                    (Belegung mit 1):
+                    Bit 0 - links
+                        1 - rechts
+                        2 - runter
+                        3 - hoch
+                        4 - Aktionstaste
+                       Z-Flag=1, wenn keine Betaetigung vor-
+                    liegt
+                    CY-Flag=1, wenn Spielhebel nicht ange-
+                    schlossen  
+
+ FFB8H - JMP SOUND  Ausgabe einer vollen Periode auf die
+                    Tonbandbuchse, sowie auf Bit 7 vom Sys-
+                    temport (User-P)
+                    Uebergabe der Periodendauer in C mit 
+                    T=n*33us+20us (2MHz)
+
+**************************************************************
+
+BELEGTE SYSTEMZELLEN DES Z1013:
+-------------------------------
+
+ADR  BYTE FUNKTION		ZUSATZFKT.
+
+0000 3				Sprung zum Warmstart
+0003 1	Befehlscode bei RST 20H	Geraetezuweisg.
+				 (I/O-Byte)
+0004 1	letztes Zeichen Tastatur
+0005 3		CALL 0005H
+0008 3	RST 8H
+000B 2	Breakpointadr.
+000D 3	Operandenfolge bei Breakpoint
+0010 3	RST 10H
+0013 2	Adr. bei INHEX 
+0015 1				Merkzelle HSave; (SHILO)
+0016 2	SOIL
+0018 3	RST 18H			Sprung zu Monitor
+				  2/3
+001B 2	ARG 1
+001D 2	ARG 2
+001F 1	vom Cursor verdecktes Zeichen
+0020 3	RST 20H
+0023 2	ARG 3
+0025 2	Cursorpos. nach Kommandokonv.
+0027 1	ASCII/Graphikschalter
+0028 3	RST 28H
+002B 2	akt. Cursorposition
+002D 3	BER 3 frei		2D:Zeilenzaehler
+    				2E:max. Zeilenzahl
+    				2F:Seitenlaenge
+0030 3	RST 30H
+0033 2	Kenntonlaenge
+0035 3	Tastaturcodetab.
+0038 3	RST 38H
+003B 12	Tastaturcodetab.
+0047 2	WINDOW-Laenge
+0049 2	 -"-  -Anfang
+004B 2	 -"-  -Ende
+004D 2	Reg.retteber.:HL'
+004F 2	              DE'
+0051 2	              BC'
+0053 2	              AF'
+0055 2	              HL
+0057 2	              DE
+0059 2	              BC
+005B 2	              AF
+005D 2	              IY
+005F 2	              IX
+0061 2	              PC
+0063 2	  Stackpointer(90H nach RESET)
+0065 1	BER 1 frei		Spaltenzaehler
+0066 3	NMI
+0069 1	Merkz. fuer NEXT (gegen EI getauschtes Byte)
+006A 2	SP-Zwischenspeicher
+006C 2	Zwischenspeicher bei FIND
+006E-008FH Anwenderstack
+0090-00AFH Systemstack
+00B0-00DFH frei fuer Kommandoschleife
+00E0-00FFH Puffer fuer Header S/L
+
+**************************************************************
+
+I/O-ADRESSEN fuer den "Z-1013":
+_______________________________
+
+Auch bei den I/O-Adressen wurde neben den vom Hersteller fest-
+gelegten Adressen einige mit Funktionen belegt und als Stan-
+dard fuer die Anwender vorgeschlagen (1.Tagung in Dresden)
+
+
+ADR.	D-Bit	I/O-PORT		BEMERKUNGEN
+		bzw.FUNKTION
+
+00H,01H		PIO Z-1013 PORT A	USER fuer Spiel-
+					hebel, Drucker usw.
+
+02H,03H		PIO Z-1013 PORT B
+
+
+
+04H	DB7	UMSCHALTUNG 32/64 BS 	Bilidschirm von 32
+					auf 64 Zchn. umschal-
+				        ten, und umgekehrt.
+
+	DB6	UMSCHALTUNG TAKTFREQUENZ Taktfrequenz kann
+					mit diesem I/O-Signal
+					von 2 auf 4 MHz und
+                                        umgekehrt umgeschal-
+                                        tet werden.
+
+	DB5	UMSCHALTUNG ZEICHEN-    Wenn verschiedene Zei-
+                GENERATOR               chen-Generatoren (z.B.
+    					ASCII-Code m.Grafik-
+ 					Zeichen und DIN-Zei-
+					chensatz-m.Umlaute 
+				 	und SZ, sowie gesetz-
+					ten 7.Bit /invers)							
+
+	DB4	ROM-ABSCHALTUNG		Wenn z.B.exter-
+					ner ROM verwendet 
+					werden soll, oder 
+					ein Urlader. 
+		0=ROM on, 1=ROM off			
+					
+
+        DB3     freiprogrammierbarer
+                Zeichengenerator
+	
+        DB2     Schreibschutz fuer     F000H-F7FFH 
+        u.      4K-RAM-Bereich         und
+        DB1     (z.B. Urlader)         F800H-FFFFH
+
+		0=nur read, 1=read & write	
+
+        DB0     frei                   (freihalten fuer
+                                       wichtige Verwendung.
+        rueckgesetztes Datenbit ist normaler Zustand
+        (Z1013-Original), dabei ist der Schreibschutz
+        eingeschaltet. Bitte bei Anwendung in Programmen
+        nur die jeweils benoetigten Bits setzen oder 
+        ruecksetzen. 
+     !! NICHT GENERELL '0' BEIM RUECKSETZEN VERWENDEN !!
+
+05H	DB0-7	frei fuer Anwender
+
+08H		TASTATUR-SPALTEN-TREIBER
+
+
+FUER ERWEITERUNGEN:
+
+dat,control
+30H,31H		PIO 1 PORT A		Fuer EPROM-
+					Programmierung u.a.
+32H,33H		PIO 1 PORT B            
+
+34H,35H		PIO 2 PORT A		V.24-Inter-
+					face (Riesa)
+
+36H,37H		PIO 2 PORT B		frei
+
+  0,  1,  2,  3 Kanal
+38H,39H,3AH,3BH CTC 1, 4 KANAELE       (Bei eigner CTC In-
+3CH,3DH,3EH,3FH CTC 2  4  ="=          stalierung, 1. CTC als
+                                       Systemuhr vorgeschlagen)
+
+98H		RAM-FLOPPY A           (Adressen fuer 2 RAM-
+58H             RAM-FLOPPY B           Floppy)
+
+FUER ROM-FLOPPY STEHT DIE ADRESSE NOCH NICHT FEST, WIRD ABER
+WIE RAM-FLOPPY ANGESTEUERT, LIEGT ALSO ETWA IM GLEICHEN BE-
+REICH.
+
+D0H,D1H,D2H (nach Kramer) 
+F0H,F1H,F2H (nach Brosig)             fuer DISK-FLOPPY genutzt.
+
+Standard-Adressen fuer Vollgrafik festzulegen, hält die IG-HC
+noch fuer verfrüht, da noch kein für alle akzeptables System
+vorliegt.
+*************************************************************
+^^^^^                             letzter Bearbeiter: Hofmann
+
+;-------------------------------------------------------------------------------
+; Links
+;-------------------------------------------------------------------------------
+
+Rechner von Martin Duchrow
+
+http://www.duchrow.de/z1013/index.html
+
+Klaus J. Hofmann
+
+http://www.klaus-j-hofmann.de/home/index.php/de/wissenswertes/technisches-in-der-ddr/ich-und-der-computer/79-z-1013-der-bausatzrechner-aus-riesa
+
+Z1013.16	87:	965,-M
+
+"Ich nahm Kontakt mit dem zuständigen Technologen im VEB Robotron Riesa Kontakt 
+auf und bekam einen Hinweis auf Leiterkarten vom Hersteller, die man 
+preisgünstig erwerben kann. Kleine Fehler wurden ausgebessert. .. Unterdessen 
+war ich auch Mitglied des berühmten Z-1013-Computerclub der TU Dresden (s.d.) 
+unter Leitung von Rainer Brosig. .. An der Stelle eine Anmerkung: Ich hatte den 
+Kontakt mit vielen Interessierten geknüpft. Meine Adresse und viele 
+Informationen erschienen seit dem auch ständig im "Funkamateur" einer 
+Fachzeitung, die sich auch der Computerfreunde annahm. (Dazu später noch unter 
+"Computerclubs der DDR"). So kam auch der Kontakt mit dem Hersteller zustande, 
+den Entwicklungsingenieuren des Z-1013, im VEB Robotron Riesa. Damit konnten 
+Abstimmungen zu den Adressen und andere Erweiterungen (z.B. Taktfrequenz auf 2 
+MHz u. anderes aufeinander abgestimmt werden.
+
+Rainer Brosig entwickelte zum Beispiel ein ROM-Modul und eine 1 MB RAM-Floppy 
+(u.a.)
+
+Andere entwarfen, oft in Zusammenarbeit mit anderen Clubmitgliedern, weitere 
+Erweiterungen. Ich erinnere mich auch an eine Ansteuerungskarte für ein 
+Diskettenlaufwerk, Tastaturschaltungen zum Einsatz einer 
+Schreibmaschinentastatur einer in der DDR entwickelten elektronischen 
+Schreibmaschine, Druckeransteuerungen u.v.a.m.
+
+Viel wurde auch auf dem Softwaresektor geschaffen.
+
+Es war eine tolle Zeit damals. Ich erinnere mich, dass ich viel nach der Arbeit 
+im Studentenwohnheim in der Juri-Gagarin-Straße in Dresden war. Hier konnte ich 
+viel zum 1x1 des Computer lernen.
+
+Es gab nach dieser für mich denkwürdigen z-1013-Tagung noch zwei weitere, eine 
+weitere in Dresden und eine in Leipzig.
+
+Wie unter "Computerclub der TU Dresden" gesagt, ... hatte sich meine Adresse 
+über den "Funkamateur", einer Fachzeitung, DDR-weit verbreitet, da blieb es 
+nicht aus, dass sich aus allen Winkeln der DDR Z-1013- Freunde meldeten. Es 
+kamen Anfragen, der Wunsch nach Schaltpläne, Software u.v.a.m. Es wurde aber 
+auch Software gesendet, wobei es natürlich auch vorkam, dass ich Software bekam, 
+die ich schon hatte oder aber auch solche, die bei uns in Dresden entwickelt 
+wurde. Da ich in Radeberg einen Computerclub gegründet hatte, war mir folgendes 
+aufgefallen:
+
+Wer einen Verein gründen will, muss in der DDR auch einen Träger dieses Vereins 
+nachweisen. Das konnten Betriebe sein, oder aber auch andere Gesellschaften. Mir 
+viel dabei auf, dass der Kulturbund der DDR einen Träger abgab, der sich nicht 
+in die Angelegenheiten derer einmischte, der ihn als Träger haben wollte. Das 
+gefiel mir und ich trug unser Anliegen mit Erfolg an diese Einrichtung. 
+
+Nun meldeten sich ja täglich viele Z-1013-Freunde bei mir, viele wollten 
+Software und so weiter. Und alles mit der "Schneckenpost", gab es doch noch kein 
+Internet. Täglich Briefe beantworten, Kassetten bespielen, bei mir liefen 
+ständig zwei Recorder zum Kopieren der Kassetten, Päckchen packen und alles zur 
+Post tragen. Porto und leere Kassetten mussten mir zugesendet werden, alles 
+andere machte ich kostenlos. Ich sendete auch nur Software, die geprüft war und 
+funktionierte.
+
+Dabei kam ich auf die Idee, wenn sich mehrere aus der gleichen Gegend meldeten, 
+diese anzusprechen doch einen eigenen Computerclub, unter der Fahne des 
+Kulturbundes, zu gründen. Ich habe so vielen Computerclubs in der DDR auf die 
+Beine geholfen.
+
+Dann kam die Wende ... alles war danach Makulatur. Oder?
+
+
+-----------
+http://www.berni-p.de/html/computereigenbau.html
+Die etwas andere 8-Bit-Seite
+
+ 
+Dieser Abschnitt wendet sich vor allem an den experimentierfreudigen Amateur, 
+der sich mit möglichst geringem Aufwand einen grafikfähigen 8-Bit-Kleincomputer 
+aufbauen möchte. Die Dokumentation wurde mir von Tobias Bremer zur Verfügung 
+gestellt, wofür ich mich herzlichst bedanken möchte. Weiterhin wird ein 
+universeller Floppy-Controller beschrieben, der nicht nur am Z1013 funktioniert, 
+sondern mit geringen Treibermodifikationen, auch an anderen 8-Bit-Schnittstellen 
+betrieben werden kann.
+ 
+Um den Link zur Computereigenbau-Seite bei Ihnen einbinden zu können, benötigen 
+Sie den folgenden HTML-Code:
+ 
+© 2001 webmaster@berni-p.de (Quedlinburg) 
+ 
+#------------------------------------------------------------------------------
+
+http://www.webmaxe.net/cms/index.php?page=der-z-1013
+
+Erst ca.1983 wurde von der Fa. Robotron ein Rechnerbausatz unter der Bezeichnung "Robotron Z1013" auf den Markt gebracht, der sowohl privat käuflich als auch für die damaligen Verhälnisse erschwinglich war. Einziger Nachteil: Der Bedarf (wie beim Trabbi) überstieg die Liefermöglichkeiten. Die Wartezeit war ca. 1 Jahr. 
+
+Ich hatte mir ein solches Teil bestellt und erhielt nach ca. einem Jahr die Benachrichtigung, es in einem ca. 50 km entfernten Fachgeschäft abholen zu können. 
+

@@ -1,0 +1,48 @@
+Programme aus Handbuch Teil II B
+================================
+
+ANLAGE 11: REASSEMBLER FÜR U880-BEFEHLE						C.REASSEMBLER.z80
+ANLAGE 12: BASIC-Interpreter							C.Z1013 BASIC 3K.z80	M0111
+ANLAGE 13: MC-BEISPIELPROGRAMME
+1. ZÄHLERMODUL									C.ZAEHLERMODUL.z80
+2. MUSIKMODUL									C.MUSIKMODUL.z80
+3. ORGEL									C.ORGEL.z80
+4. SIRENE									C.SIRENE.z80
+5. OHNE FLEISS - KEIN PREIS							C.Ohne Fleiss k.Pr.z80
+ANLAGE 14: BASIC-BEISPIELPROGRAMME
+1. BASIC-PROGRAMM  ZUM SPEICHERN VON ADRESSEN UND TELEFONNUMMERN		b.ADRESSEN_TELEFON.z80	M0111
+2. BASIC-PROGRAMM "BEGRIFFE RATEN"						b.BEGRIFFE RATEN.z80	M0111
+3. BASIC-PROGRAMM ZUM RATEN EINER DURCH DIE RND-FUNKTION ERMITTELTEN ZAHL	b.ZAHLEN RATEN.z80	M0111
+4. MATHE-UEBUNGSPROGRAMM IN BASIC						b.MATHE-UEBUNG.z80	M0111
+5. BASIC-PROGRAMM ZUR DARSTELLUNG VON GROESSEN IM BALKENDIAGRAMM		b.BALKENDIAGRAMM.z80	M0111
+6. BASIC-Programm "Turm von Hanoi"						b.TURM VON HANOI.z80	M0111
+7. BASIC-PROGRAMM "MASTERMIND"							b.MASTERMIND.z80	M0111
+8. BASIC-PROGRAMM "23 STREICHHOELZER"						b.23STREICHHOELZER.z80	M0111
+
+
+VP
+==
+
+Von robotron gab es die Kassette M0111, die das Tiny-Basic und die Basic-Programme enthält.
+
+Erstaunlicherweise sind die MC-Programme nicht von robotron veröffentlicht und
+auch in Programm-Sammlungen nicht alle enthalten. Die Programme
+
+C.Ohne Fleiss k.Pr.z80
+C.ORGEL.z80
+C.REASSEMBLER.z80
+C.ZAEHLERMODUL.z80
+
+stammen aus Sammlungen und wurden mehrfach gegen die Listings im Handbuch verglichen.
+
+C.SIRENE.z80
+C_MUSIKMODUL.z80
+
+wurden neu abgetippt.
+
+Die Maschinencode-Programme wurden reassembliert und kommentiert.
+
+
+
+Volker Pohlers
+1990,2022,2024

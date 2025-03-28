@@ -1,0 +1,236 @@
+**************************************************************
+*                Eine Tastatur mit Rafinessen                *
+*   (c) by R. Brosig , Coswig , bearbeitet  von   U. Rehn    *
+**************************************************************
+
+
+1. Loesungspinzip:
+------------------
+
+Es wird eine K 7659 - Tastatur mit einer speziellen Hardware-
+anpassung verwendet, die an den gleichen Hardwareschnittstellen
+wie die Originaltastatur betrieben wird. Dadurch gibt es wenig
+Probleme bei Software, die direkt auf die Tastaturmatrix zu-
+greift. Die Tastaturabfrage erfolgt durch ein neues komfortab-
+les Programm, welches verstaendlicherweise laenger als das Ori-
+ginale ist und dadurch ausserhalb des 2K-MONITORs generiert
+wird (ab F800). Um voellige Softwarekompatibilitaet zu si-
+chern, wurde am Anfang der originalen Tastaturabfrage ein
+Sprung zum externen Tastaturprogramm eingetragen. Um diesen
+Sprung einzutragen ist es erforderlich, den originalen MONITOR
+zu aendern. Auf den durch die Aenderung frei gewordenen Spei-
+cherplatz im MONITOR wurden kleine Hilfsroutinen wie die
+Ausgabe auf einen Port (0) und die Anzeige des Kommandovertei-
+lers auf B0H (Z) gelegt.
+Weiterhin befindet sich dort eine NMI-Unterbrechungsroutine, wo
+mit Hilfe der NMI-Taste (s.'J+T 10/87') ein Maschinenprogramm
+mit Registeranzeige unterbrochen werden kann. Zur Aenderung des
+MONITOR-PROMs muss nicht unbedingt ein Eingriff in die Origi-
+nalleiterkarte erfolgen. Es besteht die Moeglichkeit, den 1013
+im Originalzustand zu belassen und den geaenderten PROM von
+aussen zuzuschalten (MEMDI-Steuerung). Einfacher ist es jedoch,
+den alten PROM auszuloeten und durch einen anderen PROM mit
+Fassung zu ersetzen. Derzeitig wird fuer den MONITOR ein 2732
+benutzt. Auf diesem EPROM befinden sich weiterhin das Programm
+'HEADERSAVE' sowie ein Sprungverteiler fuer Peripherie-
+schnittstellen.
+
+
+2. Hardware:
+------------
+
+Die zusaetzliche Hardware beschraenkt sich auf einen 1-aus-
+16-Decoder, der Statussteuerung und einem 8-auf-4-Coder. Zur An-
+zeige von 'SHIFTLOCK' und 'HARDCOPY' werden zwei Anzeige-FLIP-
+FLOPs verwendet. Damit 12 Spalten abgefragt werden koennen,
+muss die 4-Bit-Spalteninformation vom Spaltenlatch A47 neu
+decodiert werden. Dazu werden die Spalteninformationen von A47
+mit kurzen Draehten auf die vier freien Kontakte des Loetkamms
+X2 gefuehrt. Zwoelf Ausgaenge des 1-aus-16-Decoders steuern die
+Spaltenleitungen der Tastatur, die 4 verbleibenden werden zum
+Schalten der FLIPFLOPs, der Tastatursteuerung und des BEEPs ge-
+nutzt. Die Zeilenausgaenge der Tastatur werden durch einen Co-
+der in einen negierten, binaeren Kode gewandelt, um wieder die
+originalen 4-Bit-Zeilenleitungen zu erhalten. Deshalb sind prin-
+zipiell Direktzugriffe auf die Tastatur moeglich. Es muss aber
+darauf hingewiesen werdden, dass solche unnoetigen Praktiken,
+direkt auf die Matrix zuzugreifen, immer zu Softwareinkompatibi-
+litaet fuehren und deshalb zu vermeiden sind!
+Die Statussteuerung hat die Aufgabe, alle Spalten der Matrix
+aktiv zu schalten, um einerseitseine schnelle Tastaturabfrage zu
+realisieren (der Rechner muss nicht die Leitungen einzeln abfra-
+gen) und andererseits die Interruptfaehigkeit zu moeglichen.
+Die Abfrage der Tastatur wird bei unbetaetigten Tasten etwa
+100mal schneller als die Originale. Per Tastendruck kann hier
+eine zusaetzliche Zeitschleife eingeschaltet werden (z.B. fuer
+blinkenden Cursor). Die Funktion der Statussteuerung wird
+mittels LED angezeigt (Bereitschaft einer Dateneingabe ueber
+Tastatur).
+Um das strapazierte Netzteil des Z1013 nicht noch mehr zu belas-
+ten, wurde die zusaetzliche Hardware in CMOS realisiert.
+Es machte sich erforderlich, fuer die Anzeige der Funktionen
+'SHIFTLOCK' und 'HARDCOPY' FLIP-FLOPs mit gemeinsamer RESET-Lei-
+tung zu verwenden. Bei jeder Neubelegung eines FLIPFLOPs
+werden deshalb durch den Rechner immer beide neu gesetzt. An der
+RESET-Leitung ist ebenfalls der Tastaturbeep angeschlossen, wo-
+durch die FLIPFLOPs auch nach der Ausgabe eines Tones neu ge-
+setzt werden muessen.
+Fuer die CMOS-Version wurde eine Leiterplatte entwickelt.
+
+
+3. Software:
+------------
+
+Das neue Tastaturprogramm hat mit Tabellen eine Laenge von .75
+K und kann deshalb nicht den originalen Standort belegen.
+Durch den auf der alten Aufrufadresse (F130H) eingetragenen
+Sprung nach F800H wird Softwarekompatibilitaet zum Originalmo-
+nitor erreicht. Es muss aber eingeschraenkt werden, dass Pro-
+gramme, die in die Originalmatrix hineinspringen, nicht mehr
+fehlerfrei laufen.
+Der Nutzer ist in der Lage, sich die Tastatur nach eigenen Wuen-
+schen zusammenzustellen. Bis auf zwei Tasten (SHIFT/CONTROL)
+sind alle Tasten neu belegbar! Weiterhin kann wahlweise ein
+String auf beliebige Tasten gelegt werden. Wenn dafuer keine
+besonderen Tasten verwendet werden sollen, koennen Strings auch
+durch  gemeinsames Druecken von SHIFT und CTRL. sowie einer
+dritten Zeichentaste erzeugt werden.
+Fuer die einzelnen Felder (String-,Tastencode-,Funktions-
+tasten- und Funktionstastenadressfeld) gibt es ein Pointer-
+feld, welches auf dem ehemaligen Tastencodefeld (ab 38H) an-
+gelegt wurde. Damit ist es dem Anwender moeglich, sich durch
+das Veraendern dieser Pointer auf beliebige Stellen im RAM ein
+neues Feld aufzubauen. Das Pointerfeld wird nach jedem RESET
+auf Standardwerte zurueckgestellt. Fuer die einzelnen Tas-
+taturmodes existieren Flags in der Zelle 27H mit folgender Be-
+deutung:
+
+  Bit 0 - lange Repeatverzoegerung
+      1 - Stringmode on
+      2 - Graficmode on
+      3 - Hardcopy on
+      4 - Shiftlock on
+      5 - Beep on
+      6 - Slow
+      7 - Flags/LEDs synchron
+
+Diese Flags werden durch Tasten oder Programme beeinflusst.
+Die Tastenentprellung erfolgt positiv und negativ, d.h. damit
+eine Taste als betaetigt erkannt wird, muss mindestens 15 ms
+lang ein prellfreies Signal anliegen (positive Entprellung). Das
+Gleiche gilt uebertragen auch fuer das Loslassen der Taste
+(negative Entprellung).
+Wird eine Taste laenger als 0.5s gedrueckt, wird der Autorepeat
+eingeschaltet. Ein Austritt aus der Tastaturroutine erfolgt wie
+gehabt mit Zeichen im Akku und in Zelle 4H.
+
+
+4. Standard-Tastenbelegung:
+---------------------------
+
+Funktionstasten (ohne Kodeerz.):
+
+F01- RST 38H    F06- JMP 100H
+F07- JMP 200H   F08- JMP 300H
+F09- SCREENCOPY F53- GRAFICMODE
+E53- HARDCOPY   D53- SLOW/FAST
+C53- BEEP       D00- SHIFTLOCK
+B11- SHIFT      C00- CONTROL
+
+Steuerzeichenbeleg. (2.mit Sh.):
+
+Pos. 1.Fkt.     2.Fkt.     CTRL.
+--------------------------------
+A00 CUR.RUNTER  -""-         K
+A01 CUR.HOCH    -""-         J
+A10 CUR.LINKS   -""-         H
+A11 CUR.RECHTS  -""-         I
+F14 BREAK       -""-         C
+F02 ESCAPE      -""-
+B13 ENTER       -""-         M
+F05 TAB-DUMMY                F
+D95 CUR.ZANF(ED)FETT'DUMMY   E
+B95 CUR'ZEND(ED)NORM-DUMMY   A
+D13 DEL-MTX     DEL ZEI(ED)
+E14 LIST(KC)                 T
+F10 RUN (KC)                 U
+F11 CUR.ZANF(KC)CUR.ZEND(KC) Y
+F12 INS (KC)                 R
+F13 DEL (KC)                 P
+E95 FETTDRUCK   -""-
+F95 NORMDRUCK   -""-
+
+
+5. Aufbau des Pointerfeldes:
+----------------------------
+
+Das Pointerfeld befindet sich auf dem jetzt nicht mehr benoe-
+tigten Tastaturcodefeld und wird vom MONITOR initialisiert.
+Das originale Tastaturcodefeld beginnt auf 35H und wird durch
+den Monitorsprung RST 38H unterbrochen.
+Die ersten 3 Zellen sind Zaehlzellen des Druckertreibers und
+sind mit 0 initialisiert. Das Pointerfeld beginnt erst hinter
+dem RST 38H auf 3BH mit folgendem Aufbau:
+
+3BH- Tastenbelegungsfeldpointer
+3DH- Stringfeldpointer
+3FH- Pointer auf naechst. String
+41H- Laenge Funktionstastenfeld
+43H- Funktionstastenfeldpointer
+45H- Fkt.-Tastenadressfeldpoint.
+
+
+6. Aufbau des Stringfeldes:
+---------------------------
+
+Das Stringfeld besitzt einen sehr effektiven, einfachen Auf-
+bau. Der auszugebende String beginnt mit dem Namen des Strings,
+welcher nur aus einem Grafikzeichen besteht. Es werden so lange
+Zeichen ausgegeben, bis ein neues Grafikzeichen auftritt oder
+das Ende des Stringfeldes erreicht ist. Strings duerfen des-
+halb keine Grafikzeichen enthalten und koennen eine beliebige
+Laenge haben und in beliebiger Reihenfolge angeordnet sein.
+
+
+7. Aenderungen am MONITOR:
+--------------------------
+
+Eine der wichtigsten Aenderungen am Originalmonitor ist das Ein-
+tragen der Aussprungadresse in der Tastaturroutine und der ver-
+aenderten Initialisierung des ehemaligen Tastaturcodefeldes.
+Es wurden weitere Veraenderungen vorgenommen, die keine Soft-
+wareinkompatibilitaet verursachen,solange fuer Monitorzugriffe
+die RST 20H- Tabelle genutzt wird:
+
+* NMI-Unterbrechung m. Reg.-Anz.
+* Screencopy-Funktion
+* Beschreiben eines I/O-Portes
+* Auflist. des Zusatzkomm.-Vert.
+* Initial. des Zusatzkomm.-Vert.
+
+Da der zusaetzliche Speicher mit dem Tastaturprogramm noch nicht
+ausgelastet ist, wurden auf dem Jest des Speichers das 'HEADER-
+SAVE', das Screencopy-Programm, die Joystick-Abfrage sowie der
+Sprungverteiler fuer Systemerweiterungen fest installiert.
+Der Sprungverteiler sieht folgendes vor:
+
+FFF7H- Uebergibt Tastaturstatus im Akku
+FFF4H- Ruft Save-Funktion des 'HEADERSAVE' auf
+FFF1H- Ruft Load-Funktion des 'HEADERSAVE' auf
+FFEEH- Initialisierung der Zusatzmonitorrufe auf B0H
+FFEBH- Setzt logischen Druckertreiber zurueck
+FFE8H- Uebergibt Akku an log. Druckertreiber
+FFE5H- Druckt Bildschirminhalt bis Cursor
+FFCDH- Initialisierung des log. Druckertreibers
+FFCAH- Uebergibt Akku an phys. Druckertreiber
+FFBEH- Abfrage der Joysticks
+FFB8H- Ausgabe einer vollen Pe riode auf TBG.-Buchse so-
+       wie PIO-Port A7
+
+Die Spruenge fuer den Druckertreiber sind mit JMP E800H, E803H,
+E806H, und E809H realisiert, wo ein Unterverteiler fuer den
+verwendeten, individuellen Druckertreiber installiert werden
+kann.
+
+--------------------------------
+Rainer Brosig, Dresden, Okt.'87, Uwe Rehn, Nov.'87, vp 91

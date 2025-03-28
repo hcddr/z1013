@@ -1,0 +1,344 @@
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 1 - 8/15/2024 12:56:33
+
+
+    1/       0 :                        ; File Name   :	d:\hobby3\z1013_hb_programme\C.ZAEHLERMODUL.z80
+    2/       0 :                        ; Format      :	Binary file
+    3/       0 :                        ; Base Address:	0000h Range: 3BE0h - 3EA0h Loaded length: 02C0h
+    4/       0 :                        
+    5/       0 :                        		cpu	z80undoc
+    6/       0 :                        
+    7/       0 :                        ; bws(zeile 0..31, spalte 0..31) analog print_at
+    8/       0 :                        bws		function z,s,z*32+s+0EC00h
+    9/       0 :                        
+   10/    4000 :                        		org 4000h
+   11/    4000 :                        
+   12/    4000 : 21 07 41               freqz:		ld	hl, iotab	; Port-Initialisierung
+   13/    4003 : 01 03 03               		ld	bc, 303h
+   14/    4006 : ED B3                  		otir
+   15/    4008 : 31 ED 3E               		ld	sp, 3EEDh
+   16/    400B : CD BA 40               		call	cls		; clear	screen
+   17/    400E : CD C6 40               		call	rahmen
+   18/    4011 : 21 38 41               		ld	hl, aBedienungsanle ; "Bedienungsanleitung ?"
+   19/    4014 : 11 06 EE               		ld	de, 0EE06h	; bws(16,6)
+   20/    4017 : 01 15 00               		ld	bc, 15h
+   21/    401A : ED B0                  		ldir
+   22/    401C : E7                     		rst	20h
+   23/    401D : 01                     		db    1			; INCH
+   24/    401E : FE 0D                  		cp	0Dh		; ENTER ?
+   25/    4020 : CC A8 40               		call	z, hilfe	; Hilfetext anzeigen
+   26/    4023 : CD BA 40               		call	cls		; clear	screen
+   27/    4026 : CD C6 40               		call	rahmen
+   28/    4029 : 21 26 41               		ld	hl, aFrequenzHz	; "FREQUENZ:	   Hz"
+   29/    402C : 11 88 EE               		ld	de, 0EE88h	; bws(20,8)
+   30/    402F : 01 12 00               		ld	bc, 12h
+   31/    4032 : ED B0                  		ldir
+   32/    4034 :                        		
+   33/    4034 :                        ; Messung		
+   34/    4034 : 11 18 32               f1:		ld	de, 3218h	; Takt Zeitkonstante ZK	(2MHz)
+   35/    4037 : 21 ED 3E               		ld	hl, 3EEDh	; Konvertierungsbuffer
+   36/    403A : 36 30                  		ld	(hl), '0'
+   37/    403C : 21 00 00               		ld	hl, 0		; Takt Vorzaehler VZ
+   38/    403F : 44                     		ld	b, h
+   39/    4040 : 7B                     f2:		ld	a, e
+   40/    4041 : B2                     		or	d
+   41/    4042 : 28 13                  		jr	z, todez	; Ende Messung-> Anzeige
+   42/    4044 :                        ; Messschleife		
+   43/    4044 : DB 02                  		in	a, (2)
+   44/    4046 : 4F                     		ld	c, a
+   45/    4047 : 80                     		add	a, b
+   46/    4048 : 41                     		ld	b, c
+   47/    4049 : CB 77                  		bit	6, a
+   48/    404B : CA 53 40               		jp	z, f3
+   49/    404E : 23                     		inc	hl
+   50/    404F : 1B                     		dec	de
+   51/    4050 : C3 40 40               		jp	f2
+   52/    4053 : 1B                     f3:		dec	de
+   53/    4054 : 00                     		nop
+   54/    4055 : 18 E9                  		jr	f2
+   55/    4057 :                        
+   56/    4057 :                        ; Zahl HL dezimal anzeigen
+   57/    4057 : 2B                     todez:		dec	hl
+   58/    4058 : DD 21 92 EE            		ld	ix, 0EE92h	; bws(20,18)
+   59/    405C : 11 10 27               		ld	de, 10000
+   60/    405F : CD 7D 40               		call	todez1
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 2 - 8/15/2024 12:56:33
+
+
+   61/    4062 : 11 E8 03               		ld	de, 1000
+   62/    4065 : CD 7D 40               		call	todez1
+   63/    4068 : 11 64 00               		ld	de, 100
+   64/    406B : CD 7D 40               		call	todez1
+   65/    406E : 11 0A 00               		ld	de, 10
+   66/    4071 : CD 7D 40               		call	todez1
+   67/    4074 : 11 01 00               		ld	de, 1
+   68/    4077 : CD 7D 40               		call	todez1
+   69/    407A : C3 34 40               		jp	f1		; weiter messen
+   70/    407D :                        ;
+   71/    407D : AF                     todez1:		xor	a
+   72/    407E : 06 FF                  		ld	b, 0FFh
+   73/    4080 : 04                     todez2:		inc	b
+   74/    4081 : ED 52                  		sbc	hl, de
+   75/    4083 : 30 FB                  		jr	nc, todez2
+   76/    4085 : 19                     		add	hl, de
+   77/    4086 : 78                     		ld	a, b
+   78/    4087 : C6 30                  		add	a, 30h ; '0'
+   79/    4089 : FE 30                  		cp	30h ; '0'
+   80/    408B : 28 09                  		jr	z, todez4
+   81/    408D : 32 ED 3E               		ld	(3EEDh), a
+   82/    4090 : DD 77 00               todez3:		ld	(ix+0),	a
+   83/    4093 : DD 23                  		inc	ix
+   84/    4095 : C9                     		ret
+   85/    4096 : E5                     todez4:		push	hl
+   86/    4097 : 21 ED 3E               		ld	hl, 3EEDh
+   87/    409A : BE                     		cp	(hl)
+   88/    409B : E1                     		pop	hl
+   89/    409C : 20 F2                  		jr	nz, todez3
+   90/    409E : 3E 20                  		ld	a, 20h ; ' '
+   91/    40A0 : 18 EE                  		jr	todez3
+   92/    40A2 :                        
+   93/    40A2 :                        ; Ausgabe einer Linie
+   94/    40A2 :                        ; d. B x volles Kästchen (FF), Abstand in DE
+   95/    40A2 : 36 FF                  line:		ld	(hl), 0FFh
+   96/    40A4 : 19                     		add	hl, de
+   97/    40A5 : 10 FB                  		djnz	line
+   98/    40A7 : C9                     		ret
+   99/    40A8 :                        
+  100/    40A8 :                        ; Hilfetext anzeigen
+  101/    40A8 : 21 4D 41               hilfe:		ld	hl, aFrequenzmessun	; "\xFF  Frequenzmessung am TB-Eing. \xFF"
+  102/    40AB : 11 00 EE               		ld	de, 0EE00h	; bws(16,0)
+  103/    40AE : 01 40 01               		ld	bc, 140h
+  104/    40B1 : ED B0                  		ldir
+  105/    40B3 : E7                     hilfe1:		rst	20h
+  106/    40B4 : 01                     		db    1			; INCH
+  107/    40B5 : FE 0D                  		cp	0Dh		; ENTER ?
+  108/    40B7 : 20 FA                  		jr	nz, hilfe1
+  109/    40B9 : C9                     		ret
+  110/    40BA :                        
+  111/    40BA :                        ; clear	screen
+  112/    40BA : 21 00 EC               cls:		ld	hl, 0EC00h	; bws(0,0)	
+  113/    40BD : 36 20                  cls1:		ld	(hl), ' '
+  114/    40BF : 23                     		inc	hl
+  115/    40C0 : CB 64                  		bit	4, h
+  116/    40C2 : CA BD 40               		jp	z, cls1
+  117/    40C5 : C9                     		ret
+  118/    40C6 :                        
+  119/    40C6 :                        ; Rahmen zeichnen
+  120/    40C6 :                        
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 3 - 8/15/2024 12:56:33
+
+
+  121/    40C6 :                        ; "                                "
+  122/    40C6 :                        ; "                                "
+  123/    40C6 :                        ; "                                "
+  124/    40C6 :                        ; "                                "
+  125/    40C6 :                        ; "¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦"
+  126/    40C6 :                        ; "¦                              ¦"
+  127/    40C6 :                        ; "¦                              ¦"
+  128/    40C6 :                        ; "¦                              ¦"
+  129/    40C6 :                        ; "¦ Z 1013 - SOFT - ZAEHLERMODUL ¦"
+  130/    40C6 :                        ; "¦                              ¦"
+  131/    40C6 :                        ; "¦                              ¦"
+  132/    40C6 :                        ; "¦                              ¦"
+  133/    40C6 :                        ; "¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦"
+  134/    40C6 :                        ; "¦                              ¦"
+  135/    40C6 :                        ; "¦                              ¦"
+  136/    40C6 :                        ; "¦                              ¦"
+  137/    40C6 :                        ; "¦                              ¦"
+  138/    40C6 :                        ; "¦                              ¦"
+  139/    40C6 :                        ; "¦                              ¦"
+  140/    40C6 :                        ; "¦                              ¦"
+  141/    40C6 :                        ; "¦       FREQUENZ: 12822 Hz     ¦"
+  142/    40C6 :                        ; "¦                              ¦"
+  143/    40C6 :                        ; "¦                              ¦"
+  144/    40C6 :                        ; "¦                              ¦"
+  145/    40C6 :                        ; "¦                              ¦"
+  146/    40C6 :                        ; "¦                              ¦"
+  147/    40C6 :                        ; "¦                              ¦"
+  148/    40C6 :                        ; "¦                              ¦"
+  149/    40C6 :                        ; "¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦"
+  150/    40C6 :                        ; "                                "
+  151/    40C6 :                        ; "                                "
+  152/    40C6 :                        ; "                                "
+  153/    40C6 :                        
+  154/    40C6 : 21 80 EC               rahmen:		ld	hl, 0EC80h	; bws(4,0)
+  155/    40C9 : 11 01 00               		ld	de, 1		; linie nach rechts
+  156/    40CC : 06 20                  		ld	b, 20h
+  157/    40CE : CD A2 40               		call	line
+  158/    40D1 : 21 80 EF               		ld	hl, 0EF80h	; bws(28,0)
+  159/    40D4 : 06 20                  		ld	b, 20h		; linie nach rechts
+  160/    40D6 : CD A2 40               		call	line
+  161/    40D9 : 21 80 ED               		ld	hl, 0ED80h	; bws(12,0)
+  162/    40DC : 06 20                  		ld	b, 20h		; linie nach rechts
+  163/    40DE : CD A2 40               		call	line
+  164/    40E1 : 11 20 00               		ld	de, 20h		; linie nach unten
+  165/    40E4 : 06 18                  		ld	b, 18h
+  166/    40E6 : 21 80 EC               		ld	hl, 0EC80h	; bws(4,0)
+  167/    40E9 : CD A2 40               		call	line
+  168/    40EC : 21 9F EC               		ld	hl, 0EC9Fh	; bws(4,31)
+  169/    40EF : 06 18                  		ld	b, 18h
+  170/    40F1 : CD A2 40               		call	line		; linie nach unten
+  171/    40F4 : 21 0A 41               		ld	hl, aZ1013SoftZaehl ; "Z 1013 -	SOFT - ZAEHLERMODUL"
+  172/    40F7 : 11 02 ED               		ld	de, 0ED02h	; bws(8,2)
+  173/    40FA : 01 1C 00               		ld	bc, 1Ch
+  174/    40FD : ED B0                  		ldir			; Ausgabe Titel
+  175/    40FF : C9                     		ret
+  176/    4100 :                        
+  177/    4100 :                        ; wait (ungenutzt)
+  178/    4100 :                        ; in DE
+  179/    4100 : 1B                     loc_3D00:	dec	de
+  180/    4101 : 7B                     		ld	a, e
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 4 - 8/15/2024 12:56:33
+
+
+  181/    4102 : B2                     		or	d
+  182/    4103 : C2 00 41               		jp	nz, loc_3D00
+  183/    4106 : C9                     		ret
+  184/    4107 :                        
+  185/    4107 :                        ; Port-Initialisierung
+  186/    4107 : CF                     iotab:		db 0CFh
+  187/    4108 : FF                     		db 0FFh
+  188/    4109 : 07                     		db    7
+  189/    410A :                        
+  190/    410A : 5A 20 31 30 31 33 20   aZ1013SoftZaehl:db "Z 1013 - SOFT - ZAEHLERMODUL"
+          4111 : 2D 20 53 4F 46 54 20
+          4118 : 2D 20 5A 41 45 48 4C
+          411F : 45 52 4D 4F 44 55 4C
+  191/    4126 : 46 52 45 51 55 45 4E   aFrequenzHz:	db "FREQUENZ:       Hz"
+          412D : 5A 3A 20 20 20 20 20
+          4134 : 20 20 48 7A         
+  192/    4138 : 42 65 64 69 65 6E 75   aBedienungsanle:db "Bedienungsanleitung ?"
+          413F : 6E 67 73 61 6E 6C 65
+          4146 : 69 74 75 6E 67 20 3F
+  193/    414D : FF 20 20 46 72 65 71   aFrequenzmessun:db 0FFh,"  Frequenzmessung am TB-Eing. ",0FFh
+          4154 : 75 65 6E 7A 6D 65 73
+          415B : 73 75 6E 67 20 61 6D
+          4162 : 20 54 42 2D 45 69 6E
+          4169 : 67 2E 20 FF         
+  194/    416D : FF 20 20 20 20 55 65   		db 0FFh,"    Ue   minimal    100 mV    ",0FFh
+          4174 : 20 20 20 6D 69 6E 69
+          417B : 6D 61 6C 20 20 20 20
+          4182 : 31 30 30 20 6D 56 20
+          4189 : 20 20 20 FF         
+  195/    418D : FF 20 20 20 20 55 65   		db 0FFh,"    Ue   maximal      5  V    ",0FFh
+          4194 : 20 20 20 6D 61 78 69
+          419B : 6D 61 6C 20 20 20 20
+          41A2 : 20 20 35 20 20 56 20
+          41A9 : 20 20 20 FF         
+  196/    41AD : FF 20 20 20 20 66 65   		db 0FFh,"    fe   maximal     12 kHz   ",0FFh
+          41B4 : 20 20 20 6D 61 78 69
+          41BB : 6D 61 6C 20 20 20 20
+          41C2 : 20 31 32 20 6B 48 7A
+          41C9 : 20 20 20 FF         
+  197/    41CD : FF 20 20 20 20 20 20   		db 0FFh,"                              ",0FFh
+          41D4 : 20 20 20 20 20 20 20
+          41DB : 20 20 20 20 20 20 20
+          41E2 : 20 20 20 20 20 20 20
+          41E9 : 20 20 20 FF         
+  198/    41ED : FF 20 20 20 43 50 55   		db 0FFh,"   CPU-Takt   ZK=(3C35H/36H)  ",0FFh
+          41F4 : 2D 54 61 6B 74 20 20
+          41FB : 20 5A 4B 3D 28 33 43
+          4202 : 33 35 48 2F 33 36 48
+          4209 : 29 20 20 FF         
+  199/    420D : FF 20 20 20 20 20 31   		db 0FFh,"     1 MHz        190CH       ",0FFh
+          4214 : 20 4D 48 7A 20 20 20
+          421B : 20 20 20 20 20 31 39
+          4222 : 30 43 48 20 20 20 20
+          4229 : 20 20 20 FF         
+  200/    422D : FF 20 20 20 20 20 32   		db 0FFh,"     2 MHz        3218H       ",0FFh
+          4234 : 20 4D 48 7A 20 20 20
+          423B : 20 20 20 20 20 33 32
+          4242 : 31 38 48 20 20 20 20
+          4249 : 20 20 20 FF         
+  201/    424D : FF 20 20 20 56 6F 72   		db 0FFh,"   Vorzaehler VZ=(3C3DH/3EH)  ",0FFh
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 5 - 8/15/2024 12:56:33
+
+
+          4254 : 7A 61 65 68 6C 65 72
+          425B : 20 56 5A 3D 28 33 43
+          4262 : 33 44 48 2F 33 45 48
+          4269 : 29 20 20 FF         
+  202/    426D : FF 20 62 65 69 20 54   		db 0FFh," bei TAKT=1 MHz: fe max 6 kHz ",0FFh
+          4274 : 41 4B 54 3D 31 20 4D
+          427B : 48 7A 3A 20 66 65 20
+          4282 : 6D 61 78 20 36 20 6B
+          4289 : 48 7A 20 FF         
+  203/    428D : FF                     		db 0FFh
+  204/    428E : FF                     		db 0FFh
+  205/    428F : FF                     		db 0FFh
+  206/    4290 :                        
+  207/    4290 :                        ;ENDE
+  208/    4290 :                        
+  209/    4290 : FE                     		db 0FEh	; þ
+  210/    4291 : 27                     		db  27h	; '
+  211/    4292 : DA                     		db 0DAh	; Ú
+  212/    4293 : B8                     		db 0B8h	; ¸
+  213/    4294 : 3D                     		db  3Dh	; =
+  214/    4295 : FE                     		db 0FEh	; þ
+  215/    4296 : 30                     		db  30h	; 0
+  216/    4297 : DA                     		db 0DAh	; Ú
+  217/    4298 : BD                     		db 0BDh	; ½
+  218/    4299 : 3D                     		db  3Dh	; =
+  219/    429A : CD                     		db 0CDh	; Í
+  220/    429B : BF                     		db 0BFh	; ¿
+  221/    429C : 3C                     		db  3Ch	; <
+  222/    429D : 18                     		db  18h
+  223/    429E : B4                     		db 0B4h	; ´
+  224/    429F : 21                     		db  21h	; !
+  225/    42A0 :                        
+  226/    42A0 :                        		end
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 6 - 8/15/2024 12:56:33
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+ ABEDIENUNGSANLE :             4138 C |  AFREQUENZHZ :                 4126 C |
+ AFREQUENZMESSUN :             414D C |
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+ AZ1013SOFTZAEHL :             410A C | *CASESENSITIVE :                  0 - |
+ CLS :                         40BA C |  CLS1 :                        40BD C |
+*CONSTPI :        3.141592653589793 - | *DATE :                 "8/15/2024" - |
+ F1 :                          4034 C |  F2 :                          4040 C |
+ F3 :                          4053 C | *FALSE :                          0 - |
+*FREQZ :                       4000 C | *FULLPMMU :                       1 - |
+*HAS64 :                          0 - | *HASFPU :                         0 - |
+*HASPMMU :                        0 - |  HILFE :                       40A8 C |
+ HILFE1 :                      40B3 C | *INSUPMODE :                      0 - |
+ IOTAB :                       4107 C |  LINE :                        40A2 C |
+*LISTON :                         1 - |  LOC_3D00 :                    4100 C |
+*MACEXP :                         7 - | *MOMCPU :                      80DC - |
+*MOMCPUNAME :            "Z80UNDOC" - | *NESTMAX :                      100 - |
+*PADDING :                        1 - |  RAHMEN :                      40C6 C |
+*RELAXED :                        0 - | *TIME :                  "12:56:33" - |
+ TODEZ :                       4057 C |  TODEZ1 :                      407D C |
+ TODEZ2 :                      4080 C |  TODEZ3 :                      4090 C |
+ TODEZ4 :                      4096 C | *TRUE :                           1 - |
+*VERSION :                     142F - |
+
+     41 symbols
+     21 unused symbols
+
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 7 - 8/15/2024 12:56:33
+
+
+  Defined Functions:
+  ------------------
+
+BWS                                   |
+
+ AS V1.42 Beta [Bld 249] - Source File zaehlermodul-as.asm - Page 8 - 8/15/2024 12:56:33
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.02 seconds assembly time
+
+    227 lines source file
+      2 passes
+      0 errors
+      0 warnings

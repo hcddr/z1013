@@ -1,0 +1,456 @@
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 1 - 8/16/2024 9:42:29
+
+
+    1/       0 :                        ; File Name   :	d:\hobby3\z1013_hb_programme\C.Ohne Fleiss k.Pr.z80
+    2/       0 :                        ; Format      :	Binary file
+    3/       0 :                        ; Base Address:	0000h Range: 00E0h - 0380h Loaded length: 02A0h
+    4/       0 :                        
+    5/       0 :                        		cpu	z80undoc
+    6/       0 :                        
+    7/       0 :                        
+    8/       0 : =2BH                   CUPOS:	EQU	0002BH			;aktuelle Cursorposition
+    9/       0 : =0EC00H                BWS:	EQU	0EC00H			;Beginn BWS
+   10/       0 : =38H                   RST38:	EQU	00038H			;RST 38H
+   11/       0 :                        
+   12/       0 :                        ; bws(zeile 0..31, spalte 0..31) analog print_at
+   13/       0 :                        bws		function z,s,z*32+s+0EC00h
+   14/       0 :                        
+   15/     100 :                        		org 100h
+   16/     100 :                        
+   17/     100 :                        
+   18/     100 :                        ; "                                "
+   19/     100 :                        ; "   OHNE FLEISS-KEIN PREIS       "
+   20/     100 :                        ; "                                "
+   21/     100 :                        ; "                                "
+   22/     100 :                        ; "                                "
+   23/     100 :                        ; "                                "
+   24/     100 :                        ; "                                "
+   25/     100 :                        ; "        ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦         "
+   26/     100 :                        ; "        ¦             ¦         "
+   27/     100 :                        ; "        ¦    15 14 13 ¦         "
+   28/     100 :                        ; "        ¦             ¦         "
+   29/     100 :                        ; "        ¦ 12 11 10 09 ¦         "
+   30/     100 :                        ; "        ¦             ¦         "
+   31/     100 :                        ; "        ¦ 08 07 06 05 ¦         "
+   32/     100 :                        ; "        ¦             ¦         "
+   33/     100 :                        ; "        ¦ 04 03 02 01 ¦         "
+   34/     100 :                        ; "        ¦             ¦         "
+   35/     100 :                        ; "        ¦¦¦¦¦¦¦¦¦¦¦¦¦¦¦         "
+   36/     100 :                        ; "                                "
+   37/     100 :                        ; "          ZUG-NR: 0000          "
+   38/     100 :                        ; "                                "
+   39/     100 :                        ; "                                "
+   40/     100 :                        ; "S=START, N=ZAEHLER NULL         "
+   41/     100 :                        ; "CTRL-C=ABBRUCH                  "
+   42/     100 :                        ; "     _                          "
+   43/     100 :                        ; "     ?                          "
+   44/     100 :                        ; "     U                          "
+   45/     100 :                        ; " <-  -  ->                      "
+   46/     100 :                        ; "     ?                          "
+   47/     100 :                        ; "     _                          "
+   48/     100 :                        ; "                                "
+   49/     100 :                        ; 
+   50/     100 :                        
+   51/     100 :                        start:		; Ueberschrift
+   52/     100 : E7                     		rst	20h
+   53/     101 : 02                     		db	2		; RPRST
+   54/     102 : 0C 0D 0D 20 20 20 4F   		db 0Ch,0Dh,0Dh,"   OHNE FLEISS-KEIN PREIS",0A0h
+           109 : 48 4E 45 20 46 4C 45
+           110 : 49 53 53 2D 4B 45 49
+           117 : 4E 20 50 52 45 49 53
+           11E : A0                  
+   55/     11F : 2A 2B 00               		ld	hl, (CUPOS)
+   56/     122 : 36 20                  		ld	(hl), ' '
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 2 - 8/16/2024 9:42:29
+
+
+   57/     124 :                        		; Spielfeldumrandung zeichnen
+   58/     124 :                        		; obere Linie links->rechts
+   59/     124 : 21 08 ED               		ld	hl, bws(8,8)
+   60/     127 : 06 0F                  		ld	b, 15
+   61/     129 : 36 FF                  start1:		ld	(hl), 0FFh
+   62/     12B : 23                     		inc	hl
+   63/     12C : 10 FB                  		djnz	start1
+   64/     12E :                        		; rechte Linie oben->unten
+   65/     12E : 21 36 ED               		ld	hl, bws(9,22)
+   66/     131 : 11 20 00               		ld	de, 20h
+   67/     134 : 06 0A                  		ld	b, 10
+   68/     136 : 36 FF                  start2:		ld	(hl), 0FFh
+   69/     138 : 19                     		add	hl, de
+   70/     139 : 10 FB                  		djnz	start2
+   71/     13B :                        		; untere Linie rechts->links
+   72/     13B : 21 55 EE               		ld	hl,bws(18,21)
+   73/     13E : 06 0E                  		ld	b, 14
+   74/     140 : 36 FF                  start3:		ld	(hl), 0FFh
+   75/     142 : 2B                     		dec	hl
+   76/     143 : 10 FB                  		djnz	start3
+   77/     145 :                        		; linke Linie unten->oben
+   78/     145 : 21 28 EE               		ld	hl, bws(17,8)
+   79/     148 : 06 0A                  		ld	b, 10
+   80/     14A : AF                     		xor	a		; Cy=0 f. sbc
+   81/     14B : 36 FF                  start4:		ld	(hl), 0FFh
+   82/     14D : ED 52                  		sbc	hl, de
+   83/     14F : 10 FA                  		djnz	start4
+   84/     151 :                        		;		
+   85/     151 : 21 49 ED               		ld	hl,bws(10,9)
+   86/     154 : 22 2B 00               		ld	(CUPOS), hl
+   87/     157 :                        ; Spielfeld init 		
+   88/     157 : 3E 16                  start5:		ld	a, 16h		; Zahlen von 16..01 abwaerts
+   89/     159 : 0E 04                  		ld	c, 4		; 4 Zeilen
+   90/     15B : 06 04                  		ld	b, 4		; 4 Werte nebeneinander
+   91/     15D : F5                     start6:		push	af
+   92/     15E : E7                     		rst	20h
+   93/     15F : 02                     		db    2			; RPRST
+   94/     160 : A0                     		db ' '+80h
+   95/     161 : F1                     		pop	af
+   96/     162 : E7                     		rst	20h
+   97/     163 : 06                     		db    6			; ROTHX
+   98/     164 : D6 01                  		sub	1
+   99/     166 : 27                     		daa
+  100/     167 : 10 F4                  		djnz	start6
+  101/     169 :                        		;
+  102/     169 : 0D                     		dec	c
+  103/     16A : 28 12                  		jr	z, start7	; 16 Zahlen geschrieben
+  104/     16C :                        		;
+  105/     16C : 2A 2B 00               		ld	hl, (CUPOS)
+  106/     16F : 36 20                  		ld	(hl), ' '
+  107/     171 : 11 34 00               		ld	de, 34h
+  108/     174 : 19                     		add	hl, de
+  109/     175 : 36 20                  		ld	(hl), ' '
+  110/     177 : 22 2B 00               		ld	(CUPOS), hl
+  111/     17A : 06 04                  		ld	b, 4		; 4 Werte nebeneinander
+  112/     17C : 18 DF                  		jr	start6		; nächste Zeile
+  113/     17E :                        ; Freifeld leeren (noch steht dort 16)
+  114/     17E : 2A 2B 00               start7:		ld	hl, (CUPOS)
+  115/     181 : 36 20                  		ld	(hl), ' '
+  116/     183 : 21 4A ED               		ld	hl, bws(10,10)
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 3 - 8/16/2024 9:42:29
+
+
+  117/     186 : 22 2B 00               		ld	(CUPOS), hl
+  118/     189 : 36 20                  		ld	(hl), ' '
+  119/     18B : 23                     		inc	hl
+  120/     18C : 36 20                  		ld	(hl), ' '
+  121/     18E :                        ; Tasten-Beschreibung
+  122/     18E :                        ; Ausgabe via RPRST geht nicht, da Grafikzeichen enthalten sind
+  123/     18E : 21 E0 EE               		ld	hl, bws(23,0)
+  124/     191 : 22 2B 00               		ld	(CUPOS), hl
+  125/     194 : 21 A6 01               		ld	hl, aSStartNZaehler ; "S=START,	N=ZAEHLER NULL\rCTRL-C=ABBRUCH\r"...
+  126/     197 : 7E                     start8:		ld	a, (hl)
+  127/     198 : E7                     		rst	20h
+  128/     199 : 00                     		db 0			; ROUTC
+  129/     19A : 23                     		inc	hl
+  130/     19B : FE 9A                  		cp	9Ah 		; Ende
+  131/     19D : 20 F8                  		jr	nz, start8
+  132/     19F :                        ;		
+  133/     19F : 2A 2B 00               		ld	hl, (CUPOS)
+  134/     1A2 : 36 20                  		ld	(hl), ' '
+  135/     1A4 : 18 54                  		jr	start9		; Startposition	0,0
+  136/     1A6 :                        
+  137/     1A6 : 53 3D 53 54 41 52 54   aSStartNZaehler:db "S=START, N=ZAEHLER NULL",0Dh
+           1AD : 2C 20 4E 3D 5A 41 45
+           1B4 : 48 4C 45 52 20 4E 55
+           1BB : 4C 4C 0D            
+  138/     1BE : 43 54 52 4C 2D 43 3D   		db "CTRL-C=ABBRUCH",0Dh
+           1C5 : 41 42 42 52 55 43 48
+           1CC : 0D                  
+  139/     1CD : 20 20 20 20 20 9D 0D   		db "     ",9Dh, 0Dh
+  140/     1D4 : 20 20 20 20 20 A1 0D   		db "     ",0A1h,0Dh
+  141/     1DB : 20 20 20 20 20 55 0D   		db "     U",0Dh
+  142/     1E2 : 20 3C 2D 20 20 2D 20   		db " <-  -  ->",0Dh
+           1E9 : 20 2D 3E 0D         
+  143/     1ED : 20 20 20 20 20 A1 0D   		db "     ",0A1h, 0Dh
+  144/     1F4 : 20 20 20 20 20 9A      		db "     ",9Ah
+  145/     1FA :                        		
+  146/     1FA : AF                     start9:		xor	a		; Startposition	0,0
+  147/     1FB : 32 54 03               		ld	(spalte), a	; Spalte Freifeld
+  148/     1FE : 32 55 03               		ld	(zeile), a	; Zeile	Freifeld
+  149/     201 :                        ;
+  150/     201 : AF                     null:		xor	a		; Zaehler auf 0
+  151/     202 : 32 56 03               		ld	(zugnr), a
+  152/     205 : 32 57 03               		ld	(zugnr+1), a
+  153/     208 : CD 24 03               		call	outzug		; ZugNr. anzeigen
+  154/     20B : 18 03                  		jr	loop1
+  155/     20D :                        
+  156/     20D :                        ; Tastaturschleife
+  157/     20D : CD 0D 03               loop:		call	inczug		; Zg.Nr	erhoehen und anzeigen
+  158/     210 : E7                     loop1:		rst	20h
+  159/     211 : 01                     		db    1			; INCH
+  160/     212 : FE 53                  		cp	'S'
+  161/     214 : CA 00 01               		jp	z, start
+  162/     217 : FE 55                  		cp	'U'
+  163/     219 : CA A4 02               		jp	z, hoch
+  164/     21C : FE 08                  		cp	8
+  165/     21E : CA 37 02               		jp	z, links
+  166/     221 : FE 4E                  		cp	'N'
+  167/     223 : CA 01 02               		jp	z, null		; Zaehler null
+  168/     226 : FE 09                  		cp	9
+  169/     228 : CA C6 02               		jp	z, rechts
+  170/     22B : FE 20                  		cp	' '
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 4 - 8/16/2024 9:42:29
+
+
+  171/     22D : CA 7F 02               		jp	z, runter
+  172/     230 : FE 03                  		cp	3		; Ctrl-C Abbruch
+  173/     232 : CA 38 00               		jp	z, RST38
+  174/     235 : 18 D9                  		jr	loop1
+  175/     237 :                        
+  176/     237 :                        ; Schieben nach links
+  177/     237 : 3A 54 03               links:		ld	a, (spalte)	; Spalte Freifeld
+  178/     23A : FE 03                  		cp	3		; pos ist ganz rechts?
+  179/     23C : CA 10 02               		jp	z, loop1	; dann kein verschieben	moeglich
+  180/     23F : 3C                     		inc	a		; Freifeld eins nach rechts setzen
+  181/     240 : 32 54 03               		ld	(spalte), a	; Spalte Freifeld
+  182/     243 : 3D                     		dec	a		; orig. Spalte Freifeld
+  183/     244 : CD E8 02               		call	roffs		; BC=A*3
+  184/     247 : 3A 55 03               		ld	a, (zeile)	; Zeile	Freifeld
+  185/     24A : CD FE 02               		call	toffs		; DE=A*2
+  186/     24D : 21 44 03               		ld	hl, ztab	; Tabelle der Zeilenpos.
+  187/     250 : CD 04 03               		call	zugbws
+  188/     253 : 01 03 00               		ld	bc, 3		; 3 Zeichen nach rechts
+  189/     256 :                        		
+  190/     256 :                        ; Spielzug ausfuehren
+  191/     256 : 09                     zug0:		add	hl, bc
+  192/     257 :                        zug1:		; 3 Zeichen in Zwischenpuffer
+  193/     257 : 06 03                  		ld	b, 3		; 3 Zeichen
+  194/     259 : 22 58 03               		ld	(savpos), hl	; Speicher aktuelle Position
+  195/     25C : D5                     		push	de		; DE sichern
+  196/     25D : 11 5B 03               		ld	de, zugbuf
+  197/     260 : 7E                     zug2:		ld	a, (hl)
+  198/     261 : 12                     		ld	(de), a
+  199/     262 : 23                     		inc	hl
+  200/     263 : 13                     		inc	de
+  201/     264 : 10 FA                  		djnz	zug2
+  202/     266 :                        		; die 3 Zeichen nach DE kopieren
+  203/     266 : D1                     		pop	de		; DE restaurieren
+  204/     267 : 21 5B 03               		ld	hl, zugbuf
+  205/     26A : 06 03                  		ld	b, 3
+  206/     26C : 7E                     zug3:		ld	a, (hl)
+  207/     26D : 12                     		ld	(de), a
+  208/     26E : 23                     		inc	hl
+  209/     26F : 13                     		inc	de
+  210/     270 : 10 FA                  		djnz	zug3
+  211/     272 :                        		;Freifeld zeichnen (3 Leerzeichen)
+  212/     272 : 2A 58 03               		ld	hl, (savpos)	; Speicher aktuelle Position
+  213/     275 : 06 03                  		ld	b, 3
+  214/     277 : 36 20                  zug4:		ld	(hl), ' '
+  215/     279 : 23                     		inc	hl
+  216/     27A : 10 FB                  		djnz	zug4
+  217/     27C : C3 0D 02               		jp	loop
+  218/     27F :                        
+  219/     27F :                        ;  Schieben nach unten
+  220/     27F : 3A 55 03               runter:		ld	a, (zeile)	; Zeile	Freifeld
+  221/     282 : F6 00                  		or	0		; pos ist ganz oben?
+  222/     284 : CA 10 02               		jp	z, loop1	; dann kein verschieben	moeglich
+  223/     287 : 3D                     		dec	a
+  224/     288 : 32 55 03               		ld	(zeile), a	; Zeile	Freifeld
+  225/     28B : 3C                     		inc	a
+  226/     28C : CD F0 02               		call	doffs		; BC=A*40h
+  227/     28F : 3A 54 03               		ld	a, (spalte)	; Spalte Freifeld
+  228/     292 : CD FE 02               		call	toffs		; DE=A*2
+  229/     295 : 21 4C 03               		ld	hl, stab	; Tabelle der Spaltenpos.
+  230/     298 : CD 04 03               		call	zugbws		; Berechne naechste BWS-Pos.
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 5 - 8/16/2024 9:42:29
+
+
+  231/     29B : 01 40 00               		ld	bc, 40h		; 2 Bildzeilen nach unten
+  232/     29E : A7                     runter1:	and	a
+  233/     29F : ED 42                  		sbc	hl, bc
+  234/     2A1 : C3 57 02               		jp	zug1
+  235/     2A4 :                        
+  236/     2A4 :                        ;  Schieben nach oben
+  237/     2A4 : 3A 55 03               hoch:		ld	a, (zeile)	; Zeile	Freifeld
+  238/     2A7 : FE 03                  		cp	3		; pos ist ganz unten?
+  239/     2A9 : CA 10 02               		jp	z, loop1	; dann kein verschieben	moeglich
+  240/     2AC : 3C                     		inc	a
+  241/     2AD : 32 55 03               		ld	(zeile), a	; Zeile	Freifeld
+  242/     2B0 : 3D                     		dec	a
+  243/     2B1 : CD F0 02               		call	doffs		; BC=A*40h
+  244/     2B4 : 3A 54 03               		ld	a, (spalte)	; Spalte Freifeld
+  245/     2B7 : CD FE 02               		call	toffs		; DE=A*2
+  246/     2BA : 21 4C 03               		ld	hl, stab	; Tabelle der Spaltenpos.
+  247/     2BD : CD 04 03               		call	zugbws		; Berechne naechste BWS-Pos.
+  248/     2C0 : 01 40 00               		ld	bc, 40h		; 2 Bildzeilen nach oben
+  249/     2C3 : C3 56 02               		jp	zug0
+  250/     2C6 :                        
+  251/     2C6 :                        ;  Schieben nach rechts
+  252/     2C6 : 3A 54 03               rechts:		ld	a, (spalte)	; Spalte Freifeld
+  253/     2C9 : F6 00                  		or	0		; pos ist ganz links?
+  254/     2CB : CA 10 02               		jp	z, loop1	; dann kein verschieben	moeglich
+  255/     2CE : 3D                     		dec	a
+  256/     2CF : 32 54 03               		ld	(spalte), a	; Spalte Freifeld
+  257/     2D2 : 3C                     		inc	a
+  258/     2D3 : CD E8 02               		call	roffs		; BC=A*3
+  259/     2D6 : 3A 55 03               		ld	a, (zeile)	; Zeile	Freifeld
+  260/     2D9 : CD FE 02               		call	toffs		; DE=A*2
+  261/     2DC : 21 44 03               		ld	hl, ztab	; Tabelle der Zeilenpos.
+  262/     2DF : CD 04 03               		call	zugbws		; Berechne naechste BWS-Pos.
+  263/     2E2 : 01 03 00               		ld	bc, 3		; 3 Spalten nach rechts
+  264/     2E5 : C3 9E 02               		jp	runter1
+  265/     2E8 :                        
+  266/     2E8 :                        ; Offset nächste Spalte berechnen
+  267/     2E8 :                        ; BC=A*3
+  268/     2E8 : 47                     roffs:		ld	b, a		; a = alte Spalte Leerfeld
+  269/     2E9 : CB 27                  		sla	a
+  270/     2EB : 80                     		add	a, b		; *3
+  271/     2EC : 06 00                  		ld	b, 0
+  272/     2EE : 4F                     		ld	c, a		; BC=offs. nächste Spalte
+  273/     2EF : C9                     		ret
+  274/     2F0 :                        
+  275/     2F0 :                        ; Offset nächste Zeile berechnen
+  276/     2F0 :                        ; BC=A*40h
+  277/     2F0 : 47                     doffs:		ld	b, a
+  278/     2F1 : B7                     		or	a
+  279/     2F2 : 28 06                  		jr	z, doffs2
+  280/     2F4 : 0E 40                  		ld	c, 40h		; Länge 2 BWS-Zeilen
+  281/     2F6 : AF                     		xor	a
+  282/     2F7 : 81                     doffs1:		add	a, c
+  283/     2F8 : 10 FD                  		djnz	doffs1
+  284/     2FA : 06 00                  doffs2:		ld	b, 0
+  285/     2FC : 4F                     		ld	c, a
+  286/     2FD : C9                     		ret
+  287/     2FE :                        
+  288/     2FE :                        ; Offset fuer ztab oder stab berechnen
+  289/     2FE :                        ; DE=A*2
+  290/     2FE : CB 27                  toffs:		sla	a
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 6 - 8/16/2024 9:42:29
+
+
+  291/     300 : 16 00                  		ld	d, 0
+  292/     302 : 5F                     		ld	e, a
+  293/     303 : C9                     		ret
+  294/     304 :                        
+  295/     304 :                        ; Berechne naechste BWS-Pos.
+  296/     304 : 19                     zugbws:		add	hl, de		; HL=ztab oder stab
+  297/     305 :                        					; DE=offs zur Zeile/Spalte
+  298/     305 : 5E                     		ld	e, (hl)
+  299/     306 : 23                     		inc	hl
+  300/     307 : 56                     		ld	d, (hl)
+  301/     308 : EB                     		ex	de, hl		; HL=BWS-Pos finale Zeile/Spalte
+  302/     309 : 09                     		add	hl, bc		; add. Offs nächste Pos
+  303/     30A : E5                     		push	hl
+  304/     30B : D1                     		pop	de		; HL=DE
+  305/     30C : C9                     		ret
+  306/     30D :                        
+  307/     30D :                        
+  308/     30D :                        ; Zg.Nr	erhoehen und anzeigen
+  309/     30D : A7                     inczug:		and	a
+  310/     30E : 3A 56 03               		ld	a, (zugnr)
+  311/     311 : C6 01                  		add	a, 1
+  312/     313 : 27                     		daa
+  313/     314 : 32 56 03               		ld	(zugnr), a
+  314/     317 : 3A 57 03               		ld	a, (zugnr+1)
+  315/     31A : CE 00                  		adc	a, 0
+  316/     31C : 27                     		daa
+  317/     31D : 32 57 03               		ld	(zugnr+1), a
+  318/     320 : CD 24 03               		call	outzug		; ZugNr. anzeigen
+  319/     323 : C9                     		ret
+  320/     324 :                        
+  321/     324 :                        ; ZugNr. anzeigen
+  322/     324 : 2A 2B 00               outzug:		ld	hl, (CUPOS)
+  323/     327 : 36 20                  		ld	(hl), ' '
+  324/     329 : 21 8A EE               		ld	hl, bws(20,10)
+  325/     32C : 22 2B 00               		ld	(CUPOS), hl
+  326/     32F : E7                     		rst	20h
+  327/     330 : 02                     		db    2			; RPRST
+  328/     331 : 5A 55 47 2D 4E 52 3A   		db "ZUG-NR:",0A0h
+           338 : A0                  
+  329/     339 : 2A 56 03               		ld	hl, (zugnr)
+  330/     33C : E7                     		rst	20h
+  331/     33D : 07                     		db    7			; ROTHL
+  332/     33E : 2A 2B 00               		ld	hl, (CUPOS)
+  333/     341 : 36 20                  		ld	(hl), ' '
+  334/     343 : C9                     		ret
+  335/     344 :                        
+  336/     344 :                        ; Startpositionen BWS Zeilen und Spalten
+  337/     344 : 49 ED                  ztab:		dw bws(10,9)
+  338/     346 : 89 ED                  		dw bws(12,9)
+  339/     348 : C9 ED                  		dw bws(14,9)
+  340/     34A : 09 EE                  		dw bws(16,9)
+  341/     34C :                        
+  342/     34C : 49 ED                  stab:		dw bws(10,9)
+  343/     34E : 4C ED                  		dw bws(10,12)
+  344/     350 : 4F ED                  		dw bws(10,15)
+  345/     352 : 52 ED                  		dw bws(10,18)
+  346/     354 :                        
+  347/     354 : 00                     spalte:		db 0			; Spalte Freifeld
+  348/     355 : 00                     zeile:		db 0			; Zeile	Freifeld
+  349/     356 : 01 00                  zugnr:		dw 1			; Anzahl der Züge
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 7 - 8/16/2024 9:42:29
+
+
+  350/     358 : 00 00                  savpos:		dw 0			; Speicher aktuelle Position
+  351/     35A : 00                     		db 0			; ?? frei
+  352/     35B :                        zugbuf:		ds 3			; 3 Zeichen Puffer f. Zug
+  353/     35E :                        		
+  354/     35E :                        ; ENDE		
+  355/     35E : 00                     		db 0
+  356/     35F : 00                     		db 0
+  357/     360 :                        
+  358/     360 :                        		end
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 8 - 8/16/2024 9:42:29
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+ ASSTARTNZAEHLER :              1A6 C | *BWS :                        0EC00 - |
+*CASESENSITIVE :                  0 - | *CONSTPI :        3.141592653589793 - |
+ CUPOS :                         2B - | *DATE :                 "8/16/2024" - |
+ DOFFS :                        2F0 C |  DOFFS1 :                       2F7 C |
+ DOFFS2 :                       2FA C | *FALSE :                          0 - |
+*FULLPMMU :                       1 - | *HAS64 :                          0 - |
+*HASFPU :                         0 - | *HASPMMU :                        0 - |
+ HOCH :                         2A4 C |  INCZUG :                       30D C |
+*INSUPMODE :                      0 - |  LINKS :                        237 C |
+*LISTON :                         1 - |  LOOP :                         20D C |
+ LOOP1 :                        210 C | *MACEXP :                         7 - |
+*MOMCPU :                      80DC - | *MOMCPUNAME :            "Z80UNDOC" - |
+*NESTMAX :                      100 - |  NULL :                         201 C |
+ OUTZUG :                       324 C | *PADDING :                        1 - |
+ RECHTS :                       2C6 C | *RELAXED :                        0 - |
+ ROFFS :                        2E8 C |  RST38 :                         38 - |
+ RUNTER :                       27F C |  RUNTER1 :                      29E C |
+ SAVPOS :                       358 C |  SPALTE :                       354 C |
+ STAB :                         34C C |  START :                        100 C |
+ START1 :                       129 C |  START2 :                       136 C |
+ START3 :                       140 C |  START4 :                       14B C |
+*START5 :                       157 C |  START6 :                       15D C |
+ START7 :                       17E C |  START8 :                       197 C |
+ START9 :                       1FA C | *TIME :                   "9:42:29" - |
+ TOFFS :                        2FE C | *TRUE :                           1 - |
+*VERSION :                     142F - |  ZEILE :                        355 C |
+ ZTAB :                         344 C |  ZUG0 :                         256 C |
+ ZUG1 :                         257 C |  ZUG2 :                         260 C |
+ ZUG3 :                         26C C |  ZUG4 :                         277 C |
+ ZUGBUF :                       35B C |  ZUGBWS :                       304 C |
+ ZUGNR :                        356 C |
+
+     62 symbols
+     22 unused symbols
+
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 9 - 8/16/2024 9:42:29
+
+
+  Defined Functions:
+  ------------------
+
+BWS                                   |
+
+ AS V1.42 Beta [Bld 249] - Source File ohnefleiss-as.asm - Page 10 - 8/16/2024 9:42:29
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.02 seconds assembly time
+
+    359 lines source file
+      2 passes
+      0 errors
+      0 warnings

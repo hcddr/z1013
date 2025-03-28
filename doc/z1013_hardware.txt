@@ -1,0 +1,418 @@
+3. Hardware des Z1013
+
+Am konkreten Beispiel des MRB Z1013 soll in diesem Kapitel 
+die Arbeitsweise eines Mikrorechners erlaeutert werden. Grund- 
+lage dafuer bilden Stromlaufplaene des Z 1013, die Sie in der 
+Anlage 16 finden. 
+
+3.1. Blockschaltbild
+ _____    ___________   __________   ___________ 
+|     |  | Betriebs- | | Arbeits- | |           | 
+|     |  | system    | | RAM      | |           | 
+|     |  | ROM       | |          | |           | <-> MBG 
+|     |   ----|-|----   ---|-|----  |           | 
+|     |       | |          | |      |           | 
+|     |-------   ----------   ------| Parallel- |     8-bit 
+| CPU |         Systembus           | E/A       |---- E/A 
+|     |-------| |-----| |----| |----|           |---- Schnitt 
+ --|--        | |     | |    | |     ----| |----      stelle 
+   |          | |     | |    | |         |^| 
+ -----    ----------  | |  -------   ----------- 
+|     |  |          | | | |       | |           | 
+|Takt-|  | Bild-    | | | | Aus-  |-| Tastatur  | 
+|gene-|  | schirm-  | | | | gabe- |>|           | 
+|rator|  | steuerg. | | | | tor   |-|           | 
+|     |  |          | | | |       | |           | 
+ -----    ----------  | |  -------   ----------- 
+              |       | | 
+          BAS |       | | 
+       |------|       | | 
+       |  ____|__     | | 
+       | | HF-   |    | | 
+       | | Modu- |    | | 
+       | | lator |    | | 
+       |  -------     | | 
+       |     |        | | 
+      TV-Geraet     Systemsteckverbinder 
+
+3.2.1. Steuersignale
+
+Neben den Z80-Signalen
+umfasst der Systembus folgende Signale, die nicht 
+von der CPU ausgesandt oder empfangen werden: 
+
+- /MEMDI 
+
+  Stellt ein Systemsignal dar, mit dem angeschlossene Funk- 
+  tionseinheiten den Zugriff auf Speichereinheiten auf der 
+  Leiterplatte der Grundausbaustufe verhindern koennen. 
+  Dieses Signal wird erzeugt, wenn Speichererweiterungen die 
+  festgelegten Speicheradressen des Grundgeraetes ebenfalls 
+  verwenden. Es wird verhindert, dass nicht mehr als eine 
+  Speichereinheit den Datenbus benutzen kann. 
+
+- /IODI 
+
+  Stellt analog zum MEMDI-Signal eine Moeglichkeit dar, 
+  bestimmte Adressbereiche auszublenden und Konflikte auf 
+  dem Datenbus bei der E/A-Arbeit zu verhindern. 
+
+- /IEI und /IEO 
+
+  Werden zur Bildung der Prioritaetskette der interrupter- 
+  zeugenden Funktionseinheiten benoetigt. Jeweils der Ausgang 
+  (IEO) der hoeheren Prioritaet wird dem Eingang (IEI) der 
+  naechstfolgenden Prioritaetsstufe zugefuehrt (vergleiche 
+  auch Abschnitt 4.4 Interruptbehandlung). 
+  Ein Interrupt kann von einer Funktionseinheit nur ausge- 
+  loest werden, wenn das zugefuehrte Signal IEI H-Pegel 
+  fuehrt. Gleichzeitig wird das abgegebene Signal IEO auf 
+  L-Pegel gehalten. Damit wird sichergestellt, dass immer nur 
+  die in der Prioritaetskette am weitesten am Anfang einge- 
+  reihte Funktionseinheit eine Unterbrechung ausloesen kann. 
+
+- /BAI und /BAO 
+
+  Stellen analog zu den Signalen IEI und IEO die Signale einer 
+  Prioritaetskette dar, die alle Funktionseinheiten verbindet, 
+  die eine Anforderung auf den Systembus (BUSRQ) stellen koen- 
+  nen. Fuer die Benutzer des MRB Z1013 werden diese Signale 
+  kaum Bedeutung haben. 
+
+- RDY 
+
+  Stellt ein aehnliches Signal wie WAIT dar, um langsame Funk- 
+  tionseinheiten an die CPU anzupassen. Es kennzeichnet die 
+  Kommunikationsbereitschaft einer Funktionseinheit und kann 
+  mit der WAIT-Leitung verbunden werden. Im Gegensatz zu den 
+  meisten anderen Steuersignalen ist es nicht Low-aktiv. 
+
+3.2.2. Takterzeugung
+
+Der Taktgenerator wird durch drei Gatter von A6, dem Kondensa- 
+tor C7.1 und den Widerstaenden R38 und R39 gebildet. Stabili- 
+siert wird die Taktfrequenz durch den Schwingquarz Q1. Dieser 
+schwingt mit einer Frequenz von 8 MHz. Der Takt wird dem Binaer- 
+teiler A3 zugefuehrt, an dessen Ausgaengen die Taktfrequenzen 
+von 4 MHz, 2 MHz und 1 MHz anliegen. Der Z 1013.01 arbeitet 
+standardmaessig mit 1 MHz Systemtakt, der Z 1013.12 mit 2 MHz. 
+Hinweis: Das Umruesten des Z 1013.01 auf 2 MHz fuehrt zum Er- 
+loeschen der Garantie. Die Taktfrequenz 4 MHz ist nicht zuge- 
+lassen! 
+
+Je nach Lage von El erhaelt die CPU den Takt mit der Frequenz 
+entsprechend folgender Zuordnung: 
+Lage     Systemtakt 
+
+E1.1       1 MHz 
+E1.2       2 MHz 
+
+Mittels des Widerstandes R52 erfolgt noch die erforderliche 
+Pegelanpassung zur Speisung der CPU (A7) und des E/A-Schalt- 
+kreises A45. 
+
+Dieser Takt realisiert die Synchronitaet aller Zeitablaeufe. 
+
+3.2.3 RESET-Logik
+
+Um einen definierten Anfangszustand der CPU zu erreichen, 
+ist die RESET-Steuerung erforderlich. RESET kann von 3 Stellen 
+ausgeloest werden: 
+
+1. Taste TAl auf der Leiterplatte (RESET-Taste) 
+2. Externe Tastatur ueber den Steckverbinderanschluss 
+   X2:A02 
+3. A20 des Systemsteckverbinders X1 
+
+Eine spezielle Schaltung sorgt dafuer, dass der Datenbustrei- 
+ber A1 inaktiv wird, d. h. er wird vom Prozessor getrennt. 
+Unmittelbar an der CPU werden die Datenleitungen ueber die 
+Widerstaende R44 ... R51 auf Masse, d. h. L-Pegel gelegt. 
+
+Da die CPU nach aktiven RESET den Befehlszaehler auf die 
+0000H einstellt, werden nun auf dieser Adresse die Daten 
+00H gelesen. Das bedeutet fuer den Prozessor die Ausfuehrung 
+eines sogenannten Leerbefehls (NOP, s. 4.3.15). Bei dessen 
+Ausfuehrung wird der Befehlszaehler um eins erhoeht. Auf die- 
+se Art und Weise zaehlen die Adressen hoch, bis die Adresse 
+des Betriebssystems erreicht wird und das  Signal /CS akti- 
+viert wird, das den Datenbus mit Hilfe der Logik wieder frei 
+gibt. Als naechstes wird jetzt der erste Befehl des Betriebs- 
+systemprogrammes gelesen und dieses wird abgearbeiet. 
+
+Damit die Laenge des Reset-Impulses ven der Laenge der Betae- 
+tigung unabhaengig wird, wurde ein Monoflop verwendet. Damit 
+wird eine zeitgerechte Aufffrischung der dynamischen Speicher 
+gewaehrleistet. Einige periphere Schaltkreise besitzen keinen 
+Reset-Anschluss. Sie werten das alleinige Auftreten des Sig- 
+nale /M1 als Resetimpuls. Damit auch diese Schaltkreise in 
+einen definierten Anfangszuetand versetzt werden koennen, 
+wurden die Signale /RESET und /M1 zum Signal /PM1 verknuepft, 
+welches die Ruecksetzfunktion ausfuehrt. 
+
+3.3 Speichereinheiten
+
+Die Auswahl des be- 
+treffenden Speicherschaltkreisee erfolgt mit dem Adressde- 
+koder A23, der aus einem Bereich von 8 KByte fuer jeden 
+einzelnen 1 KByte-Bereich eine Auswahlleitung bereitstellt. 
+Mit dem Gatter A 24/25 wird dieser Bereich auf den oberen 
+Adressraum eingestellt. Dazu werden mit A25 die betreffen- 
+den Adressleitungen mit dem Speicherauswahlsignal MREQ ver- 
+knuepft und damit der Adressdekoder frei gegeben
+
+Die Bildung der Auswahlsignale kann ueber das Signal MEMDI am 
+Steckverbinder X1 von ausserhalb verhindert werden. Das wird 
+dann sinnvoll sein, wenn der MRB Z1013 als Bestandteil eines 
+Mikrorechnersysteme betrieben wird und in diesen Adressbe- 
+reichen bereits Speichereinheiten angeschlossen sind. 
+
+3.4. Ein- und Ausgabebaugruppen
+
+3.4.1. Parallel E/A-Baustein U 855 PIO
+
+Im MRB Z1013 kommt ein Baustein U 855 zum Einsatz. Ein Teil 
+davon wird von den E/A-Baugruppen des Z1013 selbst genutzt 
+(s. 3.4.2., 3.4.3.). Ueber den anderen Teil koennen Sie frei 
+verfuegen. 
+
+- /IEI (E), /IEO (A) 
+  Hiermit werden die Prioritaeten bei der Behandlung von Un- 
+  terbrechungsanforderungen durch Bildung einer Prioritaets- 
+  kette (daisy chain). 
+         _______________         _______________ 
+        | E/A-Baugruppe |       | E/A-Baugruppe | 
+        |       1       |       |       2       | 
+5P -----| IEI       IEO |-------| IEI       IEO |----> 
+         ---------------         --------------- 
+
+  Die in einer solchen Kaskade am weitesten links stehende 
+  Baugruppe hat den groessten Vorrang. Wird an dieser E/A- 
+  Einheit eine Unterbrechung angemeldet, dann wird diese Kette 
+  unterbrochen (der Schalter oeffnet), so dass fuer die nach- 
+  folgenden Einheiten ein Interrupt gesperrt ist. 
+
+  Intern besitzt das Tor A gegenueber Tor B hoehere Priori- 
+  taet. 
+
+3.4.1.2. Programmierung
+
+Am Beispiel der im MRB Z1013 verwendeten E/A-Tore soll die 
+Bildung der Auswahladresse erlaeutert werden. Fuer die Er- 
+gaenzung der Chip-select Signale wird ein Dekoder A27 einge- 
+setzt, der mit dem E/A-Anforderungssignal die ersten acht 
+Ausgaenge freigibt. Die Festlegung der jeweiligen aktiven 
+IOSEL-Leitung erfolgt dann mit den Adressen A2, A3 und A4. 
+
+Mit dem im vorigen Abschnitt zu den 0/13 SEL- ;4nd B/ASEL- 
+Signalen gesagten ergibt sich folgende Adreseverteilung: 
+ADR:    7  6  5  4  3  2  1  0 
+                             C/D SEL 
+                             0, wenn Information Daten 
+                             1, wenn Information Steuerworte 
+                          B/A SEL 
+                           0  , wenn Tor A 
+        beliebig, z.B.     1  , wenn Tor B 
+        0  0  0  0  0  0  ==>IOSELO, PIO 
+                 0  1  0  ==>IOSEL2, Tastaturspaltentreiber 
+
+Damit ergeben sich die Adressen: 
+
+    Tor A (Anwenderport) - Daten:      00H 
+                         - Steuerwort: 01H 
+    Tor B (Systemport)   - Daten:      02H 
+                         - Steuerwort: 03H 
+
+Im Z1013 sind diese Adressen nicht eindeutig, da die Adress- 
+bits A7, A6, A5 auch 111 sein koennten. Da diese nicht ausge- 
+wertet werden, spielt das aber keine Rolle, 
+
+3.4.2. Tastaturanschluss
+
+Elektrisch stellt die Tastatur nichts anderes als eine Matrix 
+von Schaltern in folgender Anordnung dar:
+ 
+Die Zeilen dieser Anordnung sind mit den Widerstaenden R11 
+bis R14 auf "H"-Pegel gelegt. Diese Leitungen sind mit dem 
+Tor B, Bit 0 bis 3, des PIO verbunden, welche fuer Eingabe 
+programmiert sind. Wird keine Taste gedrueckt, liest die 
+PIO auf allen vier Leitungen eine 1. 
+Die acht Spaltenleitungen der Tastatur sind an ein separates 
+Ausgabetor, das durch die Bausteine A47 (Speicher fuer Spal- 
+tennummer) und A46 (1 aus 8 Spaltenleitungen) gebildet wird, 
+angeschlossen. Die Adresse dieses Tores ist 08H. Die Spal- 
+tennummer steht im niederwertigen Halbbyte des Datenbusses 
+binaer verschluesselt. Bei einer Ausgabe werden diese vier 
+Bit entschluesselt und legt so eine Spalte auf "L"-Potential. 
+Wird in dieser aktivierten Spalte nun eine Taste betaetigt, 
+wird der L-Pegel auf die entsprechende Zeilenleitung durch- 
+gereicht. Der Rechner liest jetzt eine 0 in der entsprechen- 
+den Bit stelle. 
+
+Aus der ausgegebenen Spaltennunmer und der eingelesenen Zei- 
+lennummer ermittelt das Tastaturbedienprogramm des Betriebs- 
+systems den rechnerinternen Kode der gerade betaetigten Taste. 
+Der Z1013 benutzt den sogenannten ASCII-Kode (s. Anlage 7). 
+
+3.4.3. Magnetbandanschluss
+
+Von der auf der Leiterplatte installierten PIO wird eine Bit- 
+leitung (PB 7) zur Ausgabe eines seriellen Datenstromes ge- 
+nutzt. Die erforderliche Parallel/Serienwandlung wird soft- 
+warenaessig realisiert. Das ausgegebene Signal wird ueber 
+einen Spannungsteiler R27/28 zur Pegelanpassung abgeschwaecht; 
+mit einem Kondensator C1.9 werden die Flanken verrundet, da- 
+mit ein etwa sinusfoerniges Signal in Magnetbandgeraet aufge- 
+zeichnet werden kann. 
+
+Das Ausgangssignal eines Magnetbandgeraetes wird gleichspan- 
+nungsfrei einem Operationsverstärker A48 zugefuehrt. Das 
+auf TTL-Pegel verstaerkte Signal wird an einen Anschluss der 
+PIO (PB 6) geleitet, Durch entsprechende Software wird dieser 
+Anschluss staendig abgefragt und aus dem ankommenden seriel- 
+len Datenstrom durch Serien/Parallelwandlung die ursprueng- 
+liche Information wieder zurueckgeweonnen. 
+
+3.4.4. Bildschirmsteuerung
+
+Die Bildschirmsteuerung wandelt die vom Rechner auszugebende 
+Information in ein CCIR-kopatibles Fernsehsignal, indem sie 
+zusaetzlich die notwendigen Synchron- und Dunkeltastimpulse 
+erzeugt. Um diesen Vorgang prinzipiell zu verstehen, sind ei- 
+nige Bemerkungen ueber den Aufbau des Fernsehsignals notwendig. 
+Beim Schreiben eines Fernsehbildes laeuft ein Elektronen- 
+strahl, auf den die Bildinformation aufmoduliert wurde, ueber 
+einen fluereszierenden Schirm. Fuer eine Zeile benoetigt er 
+eine Zeit von 64 µs. Das entspricht einer Zeilenfrequenz 
+von 15,625 kHz. Ein Zeilensynchronimpuls veranlasst den 
+Strahlruecklauf, wobei der Strahl dunkelgesteuert wird. 
+Um ein Flimmern der Anzeige zu vermeiden, muss das ganze Bild 
+mit einer Frequenz von mindestens 25 Hz wechseln. 
+
+Da beim Fernsehen in dieser Zeit zwei Halbbilder geschrieben 
+werden, im Z1013 aber ein Bild zweimal, ergibt sich hier 
+eine Bildwechselfrequenz von 50 Hz. 
+
+Ein sogenannter Bildsynchronimpuls loest dann jeweils einen 
+Strahlruecklauf zum oberen Bildrand aus. Die Bildschirmsteue- 
+rung des MRB Z1013 arbeitet nach folgendem Prinzip: 
+
+Die gesamte Erzeugung des fernsehgerechten Signals, des soge- 
+nannten BAS-Signals, wird durch die Zaehlkaskade ohne Mitar- 
+beit der CPU gesteuert. Die Kaskade A3, A4, A5 und A12 wird 
+mit dem 8 MHz-Takt des Taktgenerators gespeist. Eine Teilung 
+durch 2 hoch 9 liefert z. B. die Zeilenfrequenz. 
+
+Aus dem Bildaufbau wissen wir bereits, dass eine Zeile aus 
+32 (=2 hoch 5) Zeichen besteht. Um diese abzuzaehlen, werden 
+die 5 niederwertigen Adressen des Bildwiederholspeichers (BWS) 
+A30/31 genutzt. Die hoeherwertigen Adresseingaenge zaehlen die 
+Zeichenzeilen eines Bildes. Da die Zaehlkaskade immer zyklisch 
+durchzaehlt, wird auch der BWS zyklisch ausgelesen. 
+
+Das aus dem BWS gelesene Byte, das den ASCII-Kode entsprechend 
+Anlage 7 des darzustellenden Zeichens enthaelt, steht als 
+hoeherwertiger Adressteil am Zeichengemerator A44. Mit den 
+drei Ausgaengen des Linien pro Zeichenzaehlers, die an die 
+niederwertigen Adresseingaenge von A44 gehen, werden nacheinan- 
+der die Bildpunktzeilen an den nachfolgenden Parallel/Serien- 
+Wandler A21/22 uebergeben. Hier wird das uebernommene Bitmu- 
+ster mit dem 8 MHz-Takt seriell herausgeschoben. Dieser seriell 
+Datenstrom bildet die Bildinformation des Bild-, Austast- und 
+Synchronsignals (BAS-Signal). 
+
+Mit den Gattern der Schaltkreise A9, A10, A13 und A20 werden 
+aus dem Zaehlfolgen entsprechend der Fernsehnorm  die Synchron- 
+impulse dekodiert. 
+Ausserdem wird durch diese Schaltung gesichert, dass fuer der 
+Strahlruecklauf das Signal dunkelgesteuert wird, da dieser 
+sonst auf dem Bildschirm sichtbar waere. Diese Impulse werden 
+mit der Bildinformation gemischt und ergeben so das BAS-Sig- 
+mal. 
+
+In einem HF-Modulator wird das BAS-Signal auf eine HF-Traeger- 
+frequenz, die auf den Fernsehkanal 3 abgestimmt ist, aufmodu- 
+liert. Der Ausgang dieses Modulators kann nun direkt mit dem 
+Antenneneingang des Fernsehgeraetes verbunden werden. 
+
+Wie gelangen aber nun in diese selbstaendig arbeitende Einhel 
+die darzustellenden Daten? Ueber die Adroesmultiplexer (A29, 
+A42, AlS) kann die CPU einen Platz im BWS adressieren. Dazu 
+wird mit einem Speicherbereichauswahlsignal der Multiplexer 
+umgeschaltet. Ueber den Datentreiber A43 kann die CPU den 
+BWS beschreiben oder lesen. 
+
+Damit ist auch deutlich gemacht, dass der BWS wie ein norma- 
+ler Speicher behandelt werden kann. Die Anfangsadresse ergibt 
+sich analog zu dem ROM-Auswahlsignal zu EC00H. Welche Position 
+die einzelnen Speicherplaetze auf dem Bildschirm einnehmen, 
+ist in der Anlage 8 schematisch dargestellt. 
+
+3.5.  Stromversorgung
+
+Fuer den Betrieb des MRB Z1013 sind drei verschiedene Ver- 
+sorgungsspannungen noetig. 
+
+Zur Versorgung aller Logikschaltkreise wird eine Spannung 
+von + 5 V, die im folgenden mit 5P bezeichnet wird und etwa 
+mit 1 A belastbar ist, verwendet. Die beiden anderen Span- 
+nungen von + 12 (12P) und - 5 V (5N) werden fuer die Speicher- 
+einheiten sowie einige Spezialfaelle benoetigt. Sie werden 
+nicht so stark belastet. 
+
+Um diese Spannungen zu erzeugen, besitzt der MRB Z1013 ein 
+eigenes Netzteil. Eine zugefuehrte Wechselspannung von ca. 
+12 V wird mittels Dioden in Einweggleichrichtung gleichge- 
+richtet. An den Ladekondensatoren C2.1, C3.1 und C5.1 sind je- 
+weile Rohspannungen verfuegbar. Eine Ausnahme bildet die 
+Erzeugung der Rohspannung fuer die 12P. Hier wird mit einer 
+Spannungsverdopplerschaltung gearbeitet. 
+
+Die Erzeugung der 5P wird mit einem integrierten Festspan- 
+mungsregler A2 vorgenommen, der auf einem Chip alle benoetig- 
+ten Bauteile enthaelt und kaum eine Aussenbeschaltung benoe- 
+tigt. Lediglich ein Kondensator am Ausgang ist erforderlich. 
+Da eine starke Belastung dieses Bauelementes erfolgt, wird 
+eine angemessene Kuehlung benoetigt. 
+
+Die Spannung 5N wird mittels einer Z-Diode D4 stabilisiert. 
+Diese einfache Widerstands/Z-Dioden-Kombination ist bei dem 
+geringen Leistungsbedarf ausreichend. 
+Um die Spannung 12P zu erzeugen, wird eine verdoppelte und 
+anschliessend mit einer Widerstands/Z-Dioden-Kombination 
+stabilisierte Spannung der Basis eines Transistors V2 zuge- 
+fuehrt. Dadurch ist am Emitter dieses Transistors eine stabi- 
+lisierte Spannung verfuegbar, die staerker belastet werden 
+kann. 
+
+3.6. Bussystem
+
+Die wichtigsten Signale des Mikrorechners Z1013 sind an den 
+Rand der Leiterplatte gefuehrt und dort fuer den Anschluss 
+von Steckverbindern vorbereitet. Dabei haben diese Anschluesse 
+folgende Bedeutung: 
+
+Xl:  Systembus (Steckverbinder: StL 304-58 TGL 29331/03) 
+     Enthaelt alle Signale des Systembusses und ist elektrisch 
+     kompatibel zum K1520-Systembus. (Anlage 6) 
+
+X2:  Pruefkamm und Tastaturanschlusspunkte (hier wird entspre- 
+     chend den Hinweisen von Pkt.1.2.4.1. und 1.4. der Bedie- 
+     nungsanleitung das Tastaturbandkabel oder die Buchsenlei- 
+     ste BuL 202-26 TGL 29331/04 angeloetet) 
+
+X3:  Wechselspannungszufuehrung (Flachsteckverbinder) 
+
+X4:  PIO Kanal A (Steckverbinder: BuL 402-15 TGL 29331/04) 
+     Hier werden die Anschluesse des Kanals A der PIO heraus- 
+     gefuehrt. Ausser den Steuerleitungen ARDY und /ASTB des 
+     Kanals A wurden auch die des Kanals B (BRDY und /BSTB) 
+     auf den Steckverbinder gelegt, um die Betriebsart bi- 
+     direktionale E/A realisieren zu koennen. 
+
+X5:  Anschluss Magnetbandgeraet (Diodenbuchse) 
+
+X6:   HP-Ausgang des Modulators (Koaxialbuchse) 
+
+Die genaue Zuordnung der einzelnen Signale zu den jeweiligen 
+Anschluessen ist der Anlage 6 zu entnehmen. 

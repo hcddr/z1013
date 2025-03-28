@@ -1,0 +1,1778 @@
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 1 - 8/15/2024 13:19:58
+
+
+    1/       0 :                        ; File Name   :	d:\hobby3\z1013-reass\reass 1.02.z13
+    2/       0 :                        ; Format      :	Binary file
+    3/       0 :                        ; Base Address:	0000h Range: 3600h - 3FFFh Loaded length: 0A00h
+    4/       0 :                        
+    5/       0 :                        ; robotron Z 1013 REASS 1.02
+    6/       0 :                        ; MRB Z 1013 Dokumentation, Anlagenteil. Anlage 11
+    7/       0 :                        ; reassembled V. Pohlers 21.09.2020
+    8/       0 :                        
+    9/       0 :                        		cpu	z80undoc
+   10/       0 :                        
+   11/       0 :                        ; Z1013-System
+   12/       0 : =16H                   SOIL	equ 0016h
+   13/       0 : =2BH                   CURSR	equ 002Bh
+   14/       0 : =73H                   xxxx	equ 0073h
+   15/       0 :                        
+   16/       0 :                        OUTCH		macro	
+   17/       0 :                        		rst	20h
+   18/       0 :                        		db    0			; OUTCH
+   19/       0 :                        		endm
+   20/       0 :                        
+   21/       0 :                        INCH		macro	
+   22/       0 :                        		rst	20h
+   23/       0 :                        		db    1			; INCH
+   24/       0 :                        		endm
+   25/       0 :                        		
+   26/       0 :                        PRST7		macro
+   27/       0 :                        		rst	20h
+   28/       0 :                        		db    2			; PRST7
+   29/       0 :                        		endm
+   30/       0 :                        
+   31/       0 :                        INHEX		macro
+   32/       0 :                        		rst	20h
+   33/       0 :                        		db    3			; INHEX
+   34/       0 :                        		endm
+   35/       0 :                        
+   36/       0 :                        OUTHX		macro
+   37/       0 :                        		rst	20h
+   38/       0 :                        		db    6			; OUTHX
+   39/       0 :                        		endm
+   40/       0 :                        
+   41/       0 :                        OUTHL		macro
+   42/       0 :                        		rst	20h
+   43/       0 :                        		db    7			; OUTHL
+   44/       0 :                        		endm
+   45/       0 :                        		
+   46/       0 :                        OUTSP		macro
+   47/       0 :                        		rst	20h
+   48/       0 :                        		db  0Eh			; OUTSP
+   49/       0 :                        		endm
+   50/       0 :                        
+   51/       0 :                        INSTR		macro
+   52/       0 :                        		rst	20h
+   53/       0 :                        		db  10h			; INSTR
+   54/       0 :                        		endm
+   55/       0 :                        		
+   56/       0 :                        ;------------------------------------------------------------------------------
+   57/       0 :                        ; Hauptschleife
+   58/       0 :                        ;------------------------------------------------------------------------------
+   59/       0 :                        
+   60/    3600 :                        		org 3600h
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 2 - 8/15/2024 13:19:58
+
+
+   61/    3600 :                        
+   62/    3600 : 21 73 00               reas:		ld	hl, 0073h	; ???
+   63/    3603 : 36 00                  		ld	(hl), 0
+   64/    3605 : (MACRO)                		PRST7
+   64/    3605 : E7                                     rst     20h
+   64/    3606 : 02                                     db    2                 ; PRST7
+   65/    3607 : 0C 0D 0D 72 6F 62 6F   		db 0Ch,0Dh,0Dh,"robotron Z 1013 REASS 1.02",8Dh
+          360E : 74 72 6F 6E 20 5A 20
+          3615 : 31 30 31 33 20 52 45
+          361C : 41 53 53 20 31 2E 30
+          3623 : 32 8D               
+   66/    3625 : (MACRO)                reas0:		PRST7
+   66/    3625 : E7                                     rst     20h
+   66/    3626 : 02                                     db    2                 ; PRST7
+   67/    3627 : 0D 0D 41 42 20 20 20   		db 0Dh,0Dh,"AB   BIS  ORG-ADRESSE:",0Dh,8Dh
+          362E : 42 49 53 20 20 4F 52
+          3635 : 47 2D 41 44 52 45 53
+          363C : 53 45 3A 0D 8D      
+   68/    3641 : (MACRO)                		INSTR
+   68/    3641 : E7                                     rst     20h
+   68/    3642 : 10                                     db  10h                 ; INSTR
+   69/    3643 : ED 5B 16 00            		ld	de, (SOIL)	; Eingabe-Pointer
+   70/    3647 : (MACRO)                		INHEX
+   70/    3647 : E7                                     rst     20h
+   70/    3648 : 03                                     db    3                 ; INHEX
+   71/    3649 : 22 D8 3F               		ld	(adr), hl	; ab
+   72/    364C : 22 E0 3F               		ld	(oadr),	hl	; Offset-Adr.
+   73/    364F : (MACRO)                		INHEX
+   73/    364F : E7                                     rst     20h
+   73/    3650 : 03                                     db    3                 ; INHEX
+   74/    3651 : 22 DE 3F               		ld	(eadr),	hl	; bis
+   75/    3654 : (MACRO)                		INHEX
+   75/    3654 : E7                                     rst     20h
+   75/    3655 : 03                                     db    3                 ; INHEX
+   76/    3656 : 7C                     		ld	a, h
+   77/    3657 : B5                     		or	l
+   78/    3658 : 28 03                  		jr	z, reas1
+   79/    365A : 22 E0 3F               		ld	(oadr),	hl	; org-adr
+   80/    365D : 2A D8 3F               reas1:		ld	hl, (adr)
+   81/    3660 : CD C0 36               		call	codlen		; Befehlslaenge bestimmen
+   82/    3663 : 78                     		ld	a, b
+   83/    3664 : 32 DC 3F               		ld	(laen),	a
+   84/    3667 : 57                     		ld	d, a		; Anz. Bytes
+   85/    3668 : 2A 2B 00               		ld	hl, (CURSR)	; Cursor-Adresse
+   86/    366B : 22 E2 3F               reas2:		ld	(cupos), hl	; sichern (wird aber nicht weiter genutzt)
+   87/    366E : 2A E0 3F               		ld	hl, (oadr)	; Offset-Adr.
+   88/    3671 : (MACRO)                		OUTHL
+   88/    3671 : E7                                     rst     20h
+   88/    3672 : 07                                     db    7                 ; OUTHL
+   89/    3673 : (MACRO)                		OUTSP
+   89/    3673 : E7                                     rst     20h
+   89/    3674 : 0E                                     db  0Eh                 ; OUTSP
+   90/    3675 : 1E 0D                  		ld	e, 13		; Tab-Position
+   91/    3677 : 2A D8 3F               		ld	hl, (adr)
+   92/    367A : 7E                     reas3:		ld	a, (hl)		; D Bytes hex. ausgeben
+   93/    367B : (MACRO)                		OUTHX
+   93/    367B : E7                                     rst     20h
+   93/    367C : 06                                     db    6                 ; OUTHX
+   94/    367D : (MACRO)                		OUTSP
+   94/    367D : E7                                     rst     20h
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 3 - 8/15/2024 13:19:58
+
+
+   94/    367E : 0E                                     db  0Eh                 ; OUTSP
+   95/    367F : 23                     		inc	hl
+   96/    3680 : 1D                     		dec	e
+   97/    3681 : 1D                     		dec	e
+   98/    3682 : 1D                     		dec	e
+   99/    3683 : 15                     		dec	d
+  100/    3684 : 20 F4                  		jr	nz, reas3
+  101/    3686 : 1D                     reas4:		dec	e		; mit Leerzeichen auffuellen
+  102/    3687 : 28 04                  		jr	z, reas5
+  103/    3689 : (MACRO)                		OUTSP
+  103/    3689 : E7                                     rst     20h
+  103/    368A : 0E                                     db  0Eh                 ; OUTSP
+  104/    368B : 18 F9                  		jr	reas4
+  105/    368D : CD 85 39               reas5:		call	code		; Ausgabe Mnemonik
+  106/    3690 : 2A D8 3F               		ld	hl, (adr)	; oadr neu berechnen
+  107/    3693 : 16 00                  		ld	d, 0
+  108/    3695 : 3A DC 3F               		ld	a, (laen)
+  109/    3698 : 5F                     		ld	e, a
+  110/    3699 : 19                     		add	hl, de
+  111/    369A : 22 D8 3F               		ld	(adr), hl
+  112/    369D : 2A E0 3F               		ld	hl, (oadr)	; Offset-Adr.
+  113/    36A0 : 19                     		add	hl, de
+  114/    36A1 : 22 E0 3F               		ld	(oadr),	hl	; Offset-Adr.
+  115/    36A4 : 2A D8 3F               		ld	hl, (adr)
+  116/    36A7 : ED 5B DE 3F            		ld	de, (eadr)	; Ende erreicht?
+  117/    36AB : 37                     		scf
+  118/    36AC : ED 52                  		sbc	hl, de
+  119/    36AE : D2 25 36               		jp	nc, reas0	; ja ->	Neustart
+  120/    36B1 : (MACRO)                reas6:		INCH
+  120/    36B1 : E7                                     rst     20h
+  120/    36B2 : 01                                     db    1                 ; INCH
+  121/    36B3 : FE 03                  		cp	3
+  122/    36B5 : CA 38 00               		jp	z, 0038h	; STOP -> Ende
+  123/    36B8 : FE 0D                  		cp	0Dh		; Enter?
+  124/    36BA : 20 F5                  		jr	nz, reas6	; nein -> neue Abfrage
+  125/    36BC : (MACRO)                		OUTCH			; Ausgabe neue Zeile
+  125/    36BC : E7                                     rst     20h
+  125/    36BD : 00                                     db    0                 ; OUTCH
+  126/    36BE : 18 9D                  		jr	reas1		; naechster Befehl
+  127/    36C0 :                        		
+  128/    36C0 :                        ;------------------------------------------------------------------------------
+  129/    36C0 :                        ; Befehlslaenge bestimmen
+  130/    36C0 :                        ;s. Kieder/Meder U880, Anhang Programmierunterlagen zum U880
+  131/    36C0 :                        ;------------------------------------------------------------------------------
+  132/    36C0 :                        		
+  133/    36C0 : 7E                     codlen:		ld	a, (hl)		; 1. Byte
+  134/    36C1 : FE DD                  		cp	0DDh
+  135/    36C3 : 28 68                  		jr	z, codlen_xy
+  136/    36C5 : FE ED                  		cp	0EDh
+  137/    36C7 : CA 6A 37               		jp	z, codlen_ed
+  138/    36CA : FE FD                  		cp	0FDh
+  139/    36CC : 28 5F                  		jr	z, codlen_xy
+  140/    36CE : E6 F0                  		and	0F0h	      	; ?? wozu ??
+  141/    36D0 : FE 40                  		cp	40h 
+  142/    36D2 : 38 2D                  		jr	c, codelen_xx	; 00..3F
+  143/    36D4 : FE C0                  		cp	0C0h       	; 40..BF
+  144/    36D6 : 38 51                  		jr	c, len_1	; 1-Byte-Befehl
+  145/    36D8 : 7E                     		ld	a, (hl)		; 1. Byte
+  146/    36D9 : FE E7                  		cp	0E7h 	    	; E7 (RST20H) -> Z1013 spezifisch 2 Byte
+  147/    36DB : 28 48                  		jr	z, len_2	; 2-Byte-Befehl
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 4 - 8/15/2024 13:19:58
+
+
+  148/    36DD : E6 3F                  		and	3Fh		; C0..FF
+  149/    36DF : FE 0D                  		cp	0Dh		; CD
+  150/    36E1 : 28 3E                  		jr	z, len_3	; 3-Byte-Befehl
+  151/    36E3 : FE 03                  		cp	3		; C3
+  152/    36E5 : 28 3A                  		jr	z, len_3	; 3-Byte-Befehl
+  153/    36E7 : FE 0B                  		cp	0Bh		; CB
+  154/    36E9 : 28 3A                  		jr	z, len_2	; 2-Byte-Befehl
+  155/    36EB : E6 37                  		and	37h
+  156/    36ED : FE 13                  		cp	13h		; D3,DB
+  157/    36EF : 28 34                  		jr	z, len_2	; 2-Byte-Befehl
+  158/    36F1 : E6 0F                  		and	0Fh
+  159/    36F3 : FE 02                  		cp	2		; C2,CA,D2,DA,E2,EA,F2,FA (JP)
+  160/    36F5 : 28 2A                  		jr	z, len_3	; 3-Byte-Befehl
+  161/    36F7 : FE 04                  		cp	4		; C4,CC,D4,DC,E4,EC,F4,FC (CALL)
+  162/    36F9 : 28 26                  		jr	z, len_3	; 3-Byte-Befehl
+  163/    36FB : FE 06                  		cp	6		; C6,CE;D6,DE,E6,EE,F6,FE (ADD n..CP n)
+  164/    36FD : 28 26                  		jr	z, len_2	; 2-Byte-Befehl
+  165/    36FF : 18 28                  		jr	len_1		; 1-Byte-Befehl
+  166/    3701 :                        ;00..3F
+  167/    3701 : 7E                     codelen_xx:	ld	a, (hl)
+  168/    3702 : E6 0F                  		and	0Fh
+  169/    3704 : FE 01                  		cp	1		; 01,11,21,31
+  170/    3706 : 28 19                  		jr	z, len_3	; 3-Byte-Befehl
+  171/    3708 : 7E                     		ld	a, (hl)
+  172/    3709 : E6 37                  		and	37h		; 00,08
+  173/    370B : 28 1C                  		jr	z, len_1	; 1-Byte-Befehl
+  174/    370D : E6 2F                  		and	2Fh
+  175/    370F : FE 22                  		cp	22h		; 22,2A,32,3A
+  176/    3711 : 28 0E                  		jr	z, len_3	; 3-Byte-Befehl
+  177/    3713 : E6 0F                  		and	0Fh		; 10,18,20,28,30,38
+  178/    3715 : 28 0E                  		jr	z, len_2	; 2-Byte-Befehl
+  179/    3717 : FE 06                  		cp	6		; 06,0E,16,1E,26,2E,36,3E
+  180/    3719 : 28 0A                  		jr	z, len_2	; 2-Byte-Befehl
+  181/    371B : 18 0C                  		jr	len_1		; 1-Byte-Befehl
+  182/    371D :                        ;
+  183/    371D : 3E 04                  len_4:		ld	a, 4		; 4-Byte-Befehl
+  184/    371F : 18 0A                  		jr	len0
+  185/    3721 :                        ;
+  186/    3721 : 3E 03                  len_3:		ld	a, 3		; 3-Byte-Befehl
+  187/    3723 : 18 06                  		jr	len0
+  188/    3725 :                        ;
+  189/    3725 : 3E 02                  len_2:		ld	a, 2		; 2-Byte-Befehl
+  190/    3727 : 18 02                  		jr	len0
+  191/    3729 :                        ;
+  192/    3729 : 3E 01                  len_1:		ld	a, 1		; 1-Byte-Befehl
+  193/    372B : 47                     len0:		ld	b, a
+  194/    372C : C9                     		ret
+  195/    372D :                        
+  196/    372D :                        ;DD xx, FD xx
+  197/    372D : 23                     codlen_xy:	inc	hl
+  198/    372E : 7E                     		ld	a, (hl)		; 2.Byte
+  199/    372F : FE 21                  		cp	21h
+  200/    3731 : 28 EA                  		jr	z, len_4	; 4-Byte-Befehl
+  201/    3733 : FE 22                  		cp	22h
+  202/    3735 : 28 E6                  		jr	z, len_4	; 4-Byte-Befehl
+  203/    3737 : FE 36                  		cp	36h
+  204/    3739 : 28 E2                  		jr	z, len_4	; 4-Byte-Befehl
+  205/    373B : FE 2A                  		cp	2Ah
+  206/    373D : 28 DE                  		jr	z, len_4	; 4-Byte-Befehl
+  207/    373F : FE 2B                  		cp	2Bh
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 5 - 8/15/2024 13:19:58
+
+
+  208/    3741 : 28 E2                  		jr	z, len_2	; 2-Byte-Befehl
+  209/    3743 : FE 34                  		cp	34h
+  210/    3745 : 28 DA                  		jr	z, len_3	; 3-Byte-Befehl
+  211/    3747 : FE 35                  		cp	35h
+  212/    3749 : 28 D6                  		jr	z, len_3	; 3-Byte-Befehl
+  213/    374B : FE CB                  		cp	0CBh
+  214/    374D : 28 CE                  		jr	z, len_4	; 4-Byte-Befehl
+  215/    374F : FE 7C                  		cp	7Ch
+  216/    3751 : 28 D2                  		jr	z, len_2	; 2-Byte-Befehl
+  217/    3753 : FE 23                  		cp	23h
+  218/    3755 : 28 CE                  		jr	z, len_2	; 2-Byte-Befehl
+  219/    3757 : FE 7D                  		cp	7Dh
+  220/    3759 : 28 CA                  		jr	z, len_2	; 2-Byte-Befehl
+  221/    375B : E6 F0                  		and	0F0h
+  222/    375D : FE 70                  		cp	70h		; 70..7F 3 Byte
+  223/    375F : 28 C0                  		jr	z, len_3	; 3-Byte-Befehl
+  224/    3761 : 7E                     		ld	a, (hl)		; 2.Byte
+  225/    3762 : E6 07                  		and	7
+  226/    3764 : FE 06                  		cp	6		; 46,4E,56,5E,66..BE  3	Byte
+  227/    3766 : 28 B9                  		jr	z, len_3	; 3-Byte-Befehl
+  228/    3768 : 18 BB                  		jr	len_2		; 2-Byte-Befehl
+  229/    376A :                        
+  230/    376A :                        ;ED xx
+  231/    376A : 23                     codlen_ed:	inc	hl
+  232/    376B : 7E                     		ld	a, (hl)		; 2. Byte
+  233/    376C : FE 80                  		cp	80h		; >=80h, dann immer 2 Byte
+  234/    376E : 30 B5                  		jr	nc, len_2	; 2-Byte-Befehl
+  235/    3770 : E6 07                  		and	7
+  236/    3772 : FE 03                  		cp	3		; 0011 o. 1011 ->  x3 oder xB
+  237/    3774 :                        					; ED43,ED4B,ED53,ED5B,ED73,ED7B	-> 4 Byte
+  238/    3774 : 28 A7                  		jr	z, len_4	; 4-Byte-Befehl
+  239/    3776 : 18 AD                  		jr	len_2		; 2-Byte-Befehl
+  240/    3778 :                        
+  241/    3778 :                        ;------------------------------------------------------------------------------
+  242/    3778 :                        ; UP
+  243/    3778 :                        ;------------------------------------------------------------------------------
+  244/    3778 :                        
+  245/    3778 :                        ; Ausgabe 4 Zeichen + Leerzeichen
+  246/    3778 : 7E                     out4:		ld	a, (hl)
+  247/    3779 : (MACRO)                		OUTCH
+  247/    3779 : E7                                     rst     20h
+  247/    377A : 00                                     db    0                 ; OUTCH
+  248/    377B : 23                     		inc	hl
+  249/    377C : 7E                     		ld	a, (hl)
+  250/    377D : (MACRO)                		OUTCH
+  250/    377D : E7                                     rst     20h
+  250/    377E : 00                                     db    0                 ; OUTCH
+  251/    377F : 23                     		inc	hl
+  252/    3780 : 7E                     		ld	a, (hl)
+  253/    3781 : (MACRO)                		OUTCH
+  253/    3781 : E7                                     rst     20h
+  253/    3782 : 00                                     db    0                 ; OUTCH
+  254/    3783 : 23                     		inc	hl
+  255/    3784 : 7E                     		ld	a, (hl)
+  256/    3785 : (MACRO)                		OUTCH
+  256/    3785 : E7                                     rst     20h
+  256/    3786 : 00                                     db    0                 ; OUTCH
+  257/    3787 : (MACRO)                		OUTSP
+  257/    3787 : E7                                     rst     20h
+  257/    3788 : 0E                                     db  0Eh                 ; OUTSP
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 6 - 8/15/2024 13:19:58
+
+
+  258/    3789 : C9                     		ret
+  259/    378A :                        
+  260/    378A :                        ;------------------------------------------------------------------------------
+  261/    378A :                        ; Texte
+  262/    378A :                        ; Reihenfolge ist oftmals wichtig!
+  263/    378A :                        ;------------------------------------------------------------------------------
+  264/    378A :                        
+  265/    378A : 48 41 4C 54            aHalt:		db "HALT"
+  266/    378E : 4C 44 20 20            aLd:		db "LD  "
+  267/    3792 :                        ;Liste Arithmetikbefehle. Reihenfolge ist wichtig!
+  268/    3792 : 41 44 44 20            aAdd:		db "ADD "		; 80..87, C6
+  269/    3796 : 41 44 43 20            aAdc:		db "ADC "		; 88..8F, CE
+  270/    379A : 53 55 42 20            aSub:		db "SUB "               ; 90..97, D6
+  271/    379E : 53 42 43 20            aSbc:		db "SBC "		; 98..9F, DE
+  272/    37A2 : 41 4E 44 20            		db "AND "               ; A0..A7, E6
+  273/    37A6 : 58 4F 52 20            		db "XOR "               ; A8..AF, EE
+  274/    37AA : 4F 52 20 20            		db "OR  "               ; B0..B7, F6
+  275/    37AE : 43 4D 50 20            		db "CMP "               ; B8..BF, FE
+  276/    37B2 :                        ;
+  277/    37B2 : 50 55 53 48            aPush:		db "PUSH"
+  278/    37B6 : 50 4F 50 20            aPop:		db "POP "
+  279/    37BA : 52 53 54 20            aRst:		db "RST "
+  280/    37BE :                        ;Befehle C3,D3,DB,..F3,FB
+  281/    37BE : 4A 4D 50 20            aJmp:		db "JMP "
+  282/    37C2 : 45 58 58 20            aExx:		db "EXX "
+  283/    37C6 : 4F 55 54 20            aOut:		db "OUT "
+  284/    37CA : 49 4E 20 20            aIn:		db "IN  "
+  285/    37CE : 45 58 20 20            aEx:		db "EX  "
+  286/    37D2 : 45 58 20 20            aEx_0:		db "EX  "
+  287/    37D6 : 44 49 20 20            aDi:		db "DI  "
+  288/    37DA : 45 49 20 20            aEi:		db "EI  "
+  289/    37DE :                        ;
+  290/    37DE : 28 53 50 29 2C 48 4C   aSpHl:		db "(SP),HL",0
+          37E5 : 00                  
+  291/    37E6 : 44 45 2C 48 4C 00      aDeHl:		db "DE,HL",0
+  292/    37EC : 53 50 2C 48 4C 00      aSpHl_0:	db "SP,HL",0
+  293/    37F2 : 49 4E 43 20            aInc:		db "INC "
+  294/    37F6 : 44 45 43 20            aDec:		db "DEC "
+  295/    37FA : 52 4C 43 41            aRlca:		db "RLCA"		; 07
+  296/    37FE : 52 52 43 41            aRrca:		db "RRCA"               ; 0F
+  297/    3802 : 52 4C 41 20            aRla:		db "RLA "               ; 17
+  298/    3806 : 52 52 41 20            aRra:		db "RRA "               ; 1F
+  299/    380A : 44 41 41 20            aDaa:		db "DAA "               ; 27
+  300/    380E : 43 50 4C 20            aCpl:		db "CPL "               ; 2F
+  301/    3812 : 53 43 46 20            aScf:		db "SCF "               ; 37
+  302/    3816 : 43 43 46 20            aCcf:		db "CCF "               ; 3F
+  303/    381A :                        ;cJR, Reihenfolge ist wichtig!
+  304/    381A : 4E 4F 50 20            aNop:		db "NOP "
+  305/    381E : 45 58 41 46            		db "EXAF"
+  306/    3822 : 44 4A 4E 5A            		db "DJNZ"
+  307/    3826 : 4A 52 20 20            		db "JR  "
+  308/    382A : 4A 52 4E 5A            		db "JRNZ"
+  309/    382E : 4A 52 5A 20            		db "JRZ "
+  310/    3832 : 4A 52 4E 43            		db "JRNC"
+  311/    3836 : 4A 52 43 20            		db "JRC "
+  312/    383A :                        ;
+  313/    383A : 28 42 43 29            aBc:		db "(BC)"
+  314/    383E : 28 44 45 29            aDe:		db "(DE)"
+  315/    3842 :                        ;
+  316/    3842 : 52 4C 43 20            aRlc:		db "RLC "
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 7 - 8/15/2024 13:19:58
+
+
+  317/    3846 : 52 52 43 20            		db "RRC "
+  318/    384A : 52 4C 20 20            		db "RL  "
+  319/    384E : 52 52 20 20            		db "RR  "
+  320/    3852 : 53 4C 41 20            		db "SLA "
+  321/    3856 : 53 52 41 20            		db "SRA "
+  322/    385A : 53 4C 4C 20            		db "SLL "
+  323/    385E : 53 52 4C 20            		db "SRL "
+  324/    3862 : 42 49 54 20            aBit:		db "BIT "
+  325/    3866 : 52 45 53 20            aRes:		db "RES "
+  326/    386A : 53 45 54 20            aSet:		db "SET "
+  327/    386E : 28 53 50 29            aSp:		db "(SP)"
+  328/    3872 :                        ; ED44..ED5E Reihenfolge wichtig!
+  329/    3872 : 20 20 20 20            asc_3872:	db "    "
+  330/    3876 : 4E 45 47 20            aNeg:		db "NEG "               ; ED44
+  331/    387A : 52 45 54 4E            		db "RETN"               ; ED45
+  332/    387E : 49 4D 20 30            		db "IM 0"               ; ED46
+  333/    3882 : 52 45 54 49            		db "RETI"               ; ED4D
+  334/    3886 : 49 4D 20 31            		db "IM 1"               ; ED56
+  335/    388A : 20 20 20 20            		db "    "
+  336/    388E : 49 4D 20 32            		db "IM 2"               ; ED5E
+  337/    3892 :                        ;
+  338/    3892 : 52 52 44 20            aRrd:		db "RRD "		; ED67
+  339/    3896 : 52 4C 44 20            		db "RLD "               ; ED6F
+  340/    389A :                        ;
+  341/    389A : 49 2C 41 20            aIA:		db "I,A "		; ED47
+  342/    389E : 52 2C 41 20            		db "R,A "               ; ED4F
+  343/    38A2 : 41 2C 49 20            		db "A,I "               ; ED57
+  344/    38A6 : 41 2C 52 20            		db "A,R "               ; ED5F
+  345/    38AA :                        ;EDA0..EDBB
+  346/    38AA : 4C 44 49 20            aLdi:		db "LDI "
+  347/    38AE : 43 50 49 20            		db "CPI "
+  348/    38B2 : 49 4E 49 20            		db "INI "
+  349/    38B6 : 4F 55 54 49            		db "OUTI"
+  350/    38BA : 4C 44 49 52            		db "LDIR"
+  351/    38BE : 43 50 49 52            		db "CPIR"
+  352/    38C2 : 49 4E 49 52            		db "INIR"
+  353/    38C6 : 4F 54 49 52            		db "OTIR"
+  354/    38CA : 4C 44 44 20            		db "LDD "
+  355/    38CE : 43 50 44 20            		db "CPD "
+  356/    38D2 : 49 4E 44 20            		db "IND "
+  357/    38D6 : 4F 55 54 44            		db "OUTD"
+  358/    38DA : 4C 44 44 52            		db "LDDR"
+  359/    38DE : 43 50 44 52            		db "CPDR"
+  360/    38E2 : 49 4E 44 52            		db "INDR"
+  361/    38E6 : 4F 54 44 52            		db "OTDR"
+  362/    38EA :                        ;??
+  363/    38EA : 20                     		db  20h
+  364/    38EB : 4F                     		db  4Fh	; O
+  365/    38EC : 55                     		db  55h	; U
+  366/    38ED : 54                     		db  54h	; T
+  367/    38EE : 43                     		db  43h	; C
+  368/    38EF : 48                     		db  48h	; H
+  369/    38F0 : 43                     		db  43h	; C
+  370/    38F1 : 41                     		db  41h	; A
+  371/    38F2 : 52                     		db  52h	; R
+  372/    38F3 : 20                     		db  20h
+  373/    38F4 : 4C                     		db  4Ch	; L
+  374/    38F5 : 52                     		db  52h	; R
+  375/    38F6 : 20                     		db  20h
+  376/    38F7 : 20                     		db  20h
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 8 - 8/15/2024 13:19:58
+
+
+  377/    38F8 :                        
+  378/    38F8 :                        ;------------------------------------------------------------------------------
+  379/    38F8 :                        ; UPs
+  380/    38F8 :                        ;------------------------------------------------------------------------------
+  381/    38F8 :                        
+  382/    38F8 :                        ; Lookup in Tabelle HL,	Offset 2*A
+  383/    38F8 : CB 27                  out2c:		sla	a		; 2*A
+  384/    38FA : 85                     		add	a, l
+  385/    38FB : 6F                     		ld	l, a
+  386/    38FC : 7C                     		ld	a, h
+  387/    38FD : CE 00                  		adc	a, 0
+  388/    38FF : 67                     		ld	h, a		; HL+2*A
+  389/    3900 : 7E                     		ld	a, (hl)		; 1. Zeichen ausgeben
+  390/    3901 : (MACRO)                		OUTCH
+  390/    3901 : E7                                     rst     20h
+  390/    3902 : 00                                     db    0                 ; OUTCH
+  391/    3903 : 23                     		inc	hl
+  392/    3904 : 7E                     		ld	a, (hl)		; 2. Zeichen
+  393/    3905 : B7                     		or	a		; 0 -> Ende
+  394/    3906 : C8                     		ret	z
+  395/    3907 : (MACRO)                		OUTCH			; sonst ausgeben
+  395/    3907 : E7                                     rst     20h
+  395/    3908 : 00                                     db    0                 ; OUTCH
+  396/    3909 : C9                     		ret
+  397/    390A :                        
+  398/    390A :                        ; Ausgabe Einzelregister, Offs.	A
+  399/    390A : 21 23 39               out_r:		ld	hl, aReg	; "B"
+  400/    390D : 18 E9                  		jr	out2c		; Lookup in Tabelle HL,	Offset 2*A, Ausgabe
+  401/    390F :                        
+  402/    390F :                        ; Ausgabe Doppelregister, Offs.	A
+  403/    390F : 21 33 39               out_rr:		ld	hl, aRReg	; "BC"
+  404/    3912 : 18 E4                  		jr	out2c		; Lookup in Tabelle HL,	Offset 2*A, Ausgabe
+  405/    3914 :                        
+  406/    3914 :                        ; Ausgabe Sprungbedingung, Offs. A
+  407/    3914 : 21 3B 39               out_jpbed:	ld	hl, aJPBed	
+  408/    3917 : 18 DF                  		jr	out2c		; Lookup in Tabelle HL,	Offset 2*A, Ausgabe
+  409/    3919 :                        
+  410/    3919 :                        ; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  411/    3919 : 21 4B 39               out_divers:	ld	hl, aRet	; " R"
+  412/    391C : 18 DA                  		jr	out2c		; Lookup in Tabelle HL,	Offset 2*A, Ausgabe
+  413/    391E :                        
+  414/    391E : 21 5D 39               out_rr2:	ld	hl, aRReg2	; "BC"
+  415/    3921 : 18 D5                  		jr	out2c		; Lookup in Tabelle HL,	Offset 2*A, Ausgabe
+  416/    3923 :                        
+  417/    3923 :                        ;------------------------------------------------------------------------------
+  418/    3923 :                        ; 2 Zeichen-Texte (Register etc.)
+  419/    3923 :                        ; Reihenfolge ist wichtig!
+  420/    3923 :                        ;------------------------------------------------------------------------------
+  421/    3923 :                        
+  422/    3923 :                        ;s.a. Kieser/Meder 3.1.5.3 ff (S. 38ff)
+  423/    3923 :                        ;Liste Einzelregister r. Reihenfolge ist wichtig!
+  424/    3923 : 42 00                  aReg:		db 'B',0
+  425/    3925 : 43 00                  		db 'C',0
+  426/    3927 : 44 00                  		db 'D',0
+  427/    3929 : 45 00                  		db 'E',0
+  428/    392B : 48 00                  		db 'H',0
+  429/    392D : 4C 00                  		db 'L',0
+  430/    392F : 4D 00                  		db 'M',0
+  431/    3931 : 41 00                  		db 'A',0
+  432/    3933 :                        ;Liste Doppelregister qq. Reihenfolge ist wichtig!
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 9 - 8/15/2024 13:19:58
+
+
+  433/    3933 : 42 43                  aRReg:		db "BC"
+  434/    3935 : 44 45                  		db "DE"
+  435/    3937 : 48 4C                  		db "HL"
+  436/    3939 : 41 46                  		db "AF"
+  437/    393B :                        ;Liste Sprungbedingungen. Reihenfolge ist wichtig!
+  438/    393B : 4E 5A                  aJPBed:		db "NZ"
+  439/    393D : 5A 20                  		db "Z "
+  440/    393F : 4E 43                  		db "NC"
+  441/    3941 : 43 20                  		db "C "
+  442/    3943 : 50 4F                  		db "PO"
+  443/    3945 : 50 45                  		db "PE"
+  444/    3947 : 50 20                  		db "P "
+  445/    3949 : 4D 20                  		db "M "
+  446/    394B :                        ;Liste diverse Texte
+  447/    394B : 20 52                  aRet:		db " R"	; RET + bedingte RETs
+  448/    394D : 45 54                  		db "ET"
+  449/    394F : 4A 50                  		db "JP"
+  450/    3951 : 4A 52                  		db "JR"
+  451/    3953 : 43 41                  aCall:		db "CA"	; CALL + bedingte CALLs
+  452/    3955 : 4C 4C                  		db "LL"
+  453/    3957 : 2D 23                  		db "-#"
+  454/    3959 : 41 2C                  		db "A,"
+  455/    395B : 2C 41                  		db ",A"
+  456/    395D :                        ;Liste Doppelregister dd. Reihenfolge ist wichtig!
+  457/    395D : 42 43                  aRReg2:		db "BC"
+  458/    395F : 44 45                  		db "DE"
+  459/    3961 : 48 4C                  		db "HL"
+  460/    3963 : 53 50                  		db "SP"
+  461/    3965 :                        
+  462/    3965 :                        ;------------------------------------------------------------------------------
+  463/    3965 :                        ; UPs
+  464/    3965 :                        ;------------------------------------------------------------------------------
+  465/    3965 :                        
+  466/    3965 :                        ; Ende Code
+  467/    3965 : D9                     coderet:	exx			
+  468/    3966 : C9                     		ret
+  469/    3967 :                        
+  470/    3967 :                        ; Bits 5..3
+  471/    3967 : FD 7E 00               bits543:	ld	a, (iy+0)	; Codebyte
+  472/    396A : E6 38                  		and	38h
+  473/    396C : 0F                     		rrca
+  474/    396D : 0F                     		rrca
+  475/    396E : 0F                     		rrca
+  476/    396F : E6 07                  		and	7
+  477/    3971 : C9                     		ret
+  478/    3972 :                        
+  479/    3972 :                        ; Bits 6..4
+  480/    3972 : CD 67 39               bits654:	call	bits543		; Bits 5..3
+  481/    3975 : 0F                     		rrca
+  482/    3976 : E6 03                  		and	3
+  483/    3978 : C9                     		ret
+  484/    3979 :                        
+  485/    3979 :                        ; BC hexa ausgeben
+  486/    3979 : 78                     obchx:		ld	a, b
+  487/    397A : (MACRO)                		OUTHX
+  487/    397A : E7                                     rst     20h
+  487/    397B : 06                                     db    6                 ; OUTHX
+  488/    397C : 79                     		ld	a, c
+  489/    397D : (MACRO)                		OUTHX
+  489/    397D : E7                                     rst     20h
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 10 - 8/15/2024 13:19:58
+
+
+  489/    397E : 06                                     db    6                 ; OUTHX
+  490/    397F : C9                     		ret
+  491/    3980 :                        
+  492/    3980 :                        ; Ausgabe Komma
+  493/    3980 : 3E 2C                  ocomma:		ld	a, ','
+  494/    3982 : (MACRO)                		OUTCH
+  494/    3982 : E7                                     rst     20h
+  494/    3983 : 00                                     db    0                 ; OUTCH
+  495/    3984 : C9                     		ret
+  496/    3985 :                        
+  497/    3985 :                        ;------------------------------------------------------------------------------
+  498/    3985 :                        ; Befehls-Decoder
+  499/    3985 :                        ; in: aadr aktuelle Adr.
+  500/    3985 :                        ;------------------------------------------------------------------------------
+  501/    3985 :                        
+  502/    3985 : D9                     code:		exx
+  503/    3986 : FD 2A D8 3F            		ld	iy, (adr)	; IY=Pointer auf Befehl
+  504/    398A : FD 7E 00               		ld	a, (iy+0)	; 1.Byte
+  505/    398D : FE 40                  		cp	40h
+  506/    398F : DA 0E 3B               		jp	c, code003F	; 00.3F
+  507/    3992 : FE 80                  		cp	80h
+  508/    3994 : 38 06                  		jr	c, code407F	; Ladebebefehle
+  509/    3996 : FE C0                  		cp	0C0h
+  510/    3998 : 38 2A                  		jr	c, code80BF	; Arithmetik-Befehle
+  511/    399A : 18 42                  		jr	codec0FF
+  512/    399C :                        
+  513/    399C :                        ; Ladebebefehle
+  514/    399C :                        ;40..7F
+  515/    399C : FE 76                  code407F:	cp	76h
+  516/    399E : 28 1B                  		jr	z, cHalt
+  517/    39A0 : 21 8E 37               		ld	hl, aLd		; "LD  "
+  518/    39A3 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  519/    39A6 : CD 67 39               		call	bits543		; Bits 5..3
+  520/    39A9 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  521/    39AC : 3E 2C                  		ld	a, ','
+  522/    39AE : (MACRO)                		OUTCH
+  522/    39AE : E7                                     rst     20h
+  522/    39AF : 00                                     db    0                 ; OUTCH
+  523/    39B0 : FD 7E 00               		ld	a, (iy+0)	; Codebyte
+  524/    39B3 : E6 07                  		and	7		; Register aus Bit 2..0
+  525/    39B5 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  526/    39B8 : C3 65 39               		jp	coderet		; Ende Code
+  527/    39BB :                        
+  528/    39BB :                        ; HALT
+  529/    39BB : 21 8A 37               cHalt:		ld	hl, aHalt	; "HALT"
+  530/    39BE : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  531/    39C1 : C3 65 39               		jp	coderet		; Ende Code
+  532/    39C4 :                        
+  533/    39C4 :                        ; Arithmetik-Befehle
+  534/    39C4 :                        ; 80..BF add a,b..cp a
+  535/    39C4 : E6 38                  code80BF:	and	38h
+  536/    39C6 : 0F                     		rrca			; Befehle in 8er Bloecken. durch 2 (RR) macht 4 Zeichen
+  537/    39C7 : 21 92 37               		ld	hl, aAdd	; "ADD "
+  538/    39CA : 85                     		add	a, l		; HL+A berechnen
+  539/    39CB : 6F                     		ld	l, a
+  540/    39CC : 7C                     		ld	a, h
+  541/    39CD : CE 00                  		adc	a, 0
+  542/    39CF : 67                     		ld	h, a
+  543/    39D0 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  544/    39D3 : FD 7E 00               		ld	a, (iy+0)
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 11 - 8/15/2024 13:19:58
+
+
+  545/    39D6 : E6 07                  		and	7
+  546/    39D8 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  547/    39DB : C3 65 39               		jp	coderet		; Ende Code
+  548/    39DE :                        
+  549/    39DE :                        ; C0..FF 
+  550/    39DE : FE CB                  codec0FF:	cp	0CBh
+  551/    39E0 : CA 76 3C               		jp	z, code_cb
+  552/    39E3 : FE DD                  		cp	0DDh
+  553/    39E5 : CA FC 3C               		jp	z, code_ix
+  554/    39E8 : FE ED                  		cp	0EDh
+  555/    39EA : CA E8 3E               		jp	z, code_ed
+  556/    39ED : FE FD                  		cp	0FDh
+  557/    39EF : CA 00 3D               		jp	z, code_iy
+  558/    39F2 : FE CD                  		cp	0CDh
+  559/    39F4 : CA 68 3A               		jp	z, cCALL
+  560/    39F7 : E6 07                  		and	7
+  561/    39F9 : CA 7F 3A               		jp	z, cRETBed	; Offs.	f. " R"
+  562/    39FC : FE 06                  		cp	6
+  563/    39FE : 28 35                  		jr	z, cADDRR	; Codebyte
+  564/    3A00 : FE 07                  		cp	7
+  565/    3A02 : 28 4B                  		jr	z, cRST
+  566/    3A04 : FE 04                  		cp	4
+  567/    3A06 : CA 70 3A               		jp	z, cCALLBed	; Offs.	f. "CA"
+  568/    3A09 : FE 02                  		cp	2
+  569/    3A0B : CA 8D 3A               		jp	z, cJPBed	; Offs.	f. "JP"
+  570/    3A0E : FD 7E 00               		ld	a, (iy+0)	; Codebyte
+  571/    3A11 : E6 0F                  		and	0Fh
+  572/    3A13 : FE 01                  		cp	1
+  573/    3A15 : 28 16                  		jr	z, cPOP
+  574/    3A17 : FE 05                  		cp	5
+  575/    3A19 : 28 03                  		jr	z, cPUSH
+  576/    3A1B : C3 A1 3A               		jp	cSonst1
+  577/    3A1E :                        
+  578/    3A1E :                        ; PUSH rr		
+  579/    3A1E : 21 B2 37               cPUSH:		ld	hl, aPush	; "PUSH"
+  580/    3A21 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  581/    3A24 : CD 72 39               cPUSH1:		call	bits654		; Bits 6..4
+  582/    3A27 : CD 0F 39               		call	out_rr		; Ausgabe Doppelregister, Offs.	A
+  583/    3A2A : C3 65 39               		jp	coderet		; Ende Code
+  584/    3A2D :                        
+  585/    3A2D :                        ; POP rr
+  586/    3A2D : 21 B6 37               cPOP:		ld	hl, aPop	; "POP "
+  587/    3A30 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  588/    3A33 : 18 EF                  		jr	cPUSH1
+  589/    3A35 :                        
+  590/    3A35 :                        ; ADD rr,rr
+  591/    3A35 : FD 7E 00               cADDRR:		ld	a, (iy+0)	; Codebyte
+  592/    3A38 : E6 38                  		and	38h
+  593/    3A3A : 0F                     		rrca			; Befehle in 8er Bloecken. durch 2 (RR) macht 4 Zeichen
+  594/    3A3B : 21 92 37               		ld	hl, aAdd	; "ADD "
+  595/    3A3E : 85                     		add	a, l		; HL+A berechnen
+  596/    3A3F : 6F                     		ld	l, a
+  597/    3A40 : 7C                     		ld	a, h
+  598/    3A41 : CE 00                  		adc	a, 0
+  599/    3A43 : 67                     		ld	h, a
+  600/    3A44 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  601/    3A47 : FD 7E 01               		ld	a, (iy+1)	; 2. Codebyte
+  602/    3A4A : (MACRO)                		OUTHX
+  602/    3A4A : E7                                     rst     20h
+  602/    3A4B : 06                                     db    6                 ; OUTHX
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 12 - 8/15/2024 13:19:58
+
+
+  603/    3A4C : C3 65 39               		jp	coderet		; Ende Code
+  604/    3A4F :                        
+  605/    3A4F :                        ; RST n
+  606/    3A4F : 21 BA 37               cRST:		ld	hl, aRst	; "RST "
+  607/    3A52 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  608/    3A55 : CD 72 39               		call	bits654		; RST codiert in Bit 5..3, hier	Bit (6)+5+4 schieben
+  609/    3A58 : C6 30                  		add	a, '0'          ; "0".."3'
+  610/    3A5A : (MACRO)                		OUTCH
+  610/    3A5A : E7                                     rst     20h
+  610/    3A5B : 00                                     db    0                 ; OUTCH
+  611/    3A5C : FD 7E 00               		ld	a, (iy+0)	; Codebyte
+  612/    3A5F : E6 08                  		and	8		; Bit 3
+  613/    3A61 : C6 30                  		add	a, '0'          ; "0" oder "8'
+  614/    3A63 : (MACRO)                		OUTCH
+  614/    3A63 : E7                                     rst     20h
+  614/    3A64 : 00                                     db    0                 ; OUTCH
+  615/    3A65 : C3 65 39               		jp	coderet		; Ende Code
+  616/    3A68 :                        
+  617/    3A68 :                        ; CALL nn
+  618/    3A68 : 21 53 39               cCALL:		ld	hl, aCall	; "CALL"
+  619/    3A6B : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  620/    3A6E : 18 21                  		jr	outAdr		; Adresse ausgeben
+  621/    3A70 :                        
+  622/    3A70 :                        ; bedingter CALL
+  623/    3A70 : 3E 04                  cCALLBed:	ld	a, 4		; Offs.	f. "CA"
+  624/    3A72 : CD 19 39               cALLBed1:	call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  625/    3A75 : CD 67 39               		call	bits543		; Bits 5..3
+  626/    3A78 : CD 14 39               		call	out_jpbed	; Ausgabe Sprungbedingung, Offs. A
+  627/    3A7B : (MACRO)                		OUTSP
+  627/    3A7B : E7                                     rst     20h
+  627/    3A7C : 0E                                     db  0Eh                 ; OUTSP
+  628/    3A7D : 18 12                  		jr	outAdr		; Adresse ausgeben
+  629/    3A7F :                        
+  630/    3A7F :                        ; bedingtes RET
+  631/    3A7F : 3E 00                  cRETBed:	ld	a, 0		; Offs.	f. " R"
+  632/    3A81 : CD 19 39               		call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  633/    3A84 : CD 67 39               		call	bits543		; Bits 5..3
+  634/    3A87 : CD 14 39               		call	out_jpbed	; Ausgabe Sprungbedingung, Offs. A
+  635/    3A8A : C3 65 39               		jp	coderet		; Ende Code
+  636/    3A8D :                        
+  637/    3A8D :                        ; bedingter JP
+  638/    3A8D : 3E 02                  cJPBed:		ld	a, 2		; Offs.	f. "JP"
+  639/    3A8F : 18 E1                  		jr	cALLBed1
+  640/    3A91 :                        
+  641/    3A91 :                        ;
+  642/    3A91 : FD 4E 01               outAdr:		ld	c, (iy+1)	; Adresse ausgeben
+  643/    3A94 : FD 46 02               		ld	b, (iy+2)
+  644/    3A97 : ED 43 DA 3F            		ld	(vadr),	bc	; tmp. Speicher	f. Adresse
+  645/    3A9B : CD 79 39               		call	obchx		; BC hexa ausgeben
+  646/    3A9E : C3 65 39               		jp	coderet		; Ende Code
+  647/    3AA1 :                        
+  648/    3AA1 :                        ;sonstige Befehle C0..FF
+  649/    3AA1 : 11 00 00               cSonst1:	ld	de, 0
+  650/    3AA4 : E6 07                  		and	7
+  651/    3AA6 : FE 03                  		cp	3
+  652/    3AA8 : 20 33                  		jr	nz, cSonst11
+  653/    3AAA :                        
+  654/    3AAA :                        ;C3,D3,DB,..,F3,FB
+  655/    3AAA : CD 67 39               		call	bits543		; Bits 5..3
+  656/    3AAD : F5                     		push	af
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 13 - 8/15/2024 13:19:58
+
+
+  657/    3AAE : 21 BE 37               		ld	hl, aJmp	; "JMP "
+  658/    3AB1 : CD 34 3F               		call	out4c1
+  659/    3AB4 : D9                     		exx			; undo coderet EXX
+  660/    3AB5 : F1                     		pop	af
+  661/    3AB6 : FE 00                  		cp	0		; C3 = jmp
+  662/    3AB8 : 28 D7                  		jr	z, outAdr	; Adresse ausgeben
+  663/    3ABA : FE 04                  		cp	4
+  664/    3ABC : 38 09                  		jr	c, cINOUTn	; D3..DB out/in
+  665/    3ABE : 28 0F                  		jr	z, cEXSPHL	; E3 = ex (sp),hl
+  666/    3AC0 : FE 05                  		cp	5
+  667/    3AC2 : 28 14                  		jr	z, cEXDEHL	; EB = ex de,hl
+  668/    3AC4 : C3 65 39               		jp	coderet		; Ende Code
+  669/    3AC7 :                        
+  670/    3AC7 :                        ; 
+  671/    3AC7 : FD 7E 01               cINOUTn:	ld	a, (iy+1)	;  2. Codebyte
+  672/    3ACA : (MACRO)                		OUTHX
+  672/    3ACA : E7                                     rst     20h
+  672/    3ACB : 06                                     db    6                 ; OUTHX
+  673/    3ACC : C3 65 39               		jp	coderet		; Ende Code
+  674/    3ACF :                        
+  675/    3ACF :                        ; EX (SP),HL
+  676/    3ACF : 21 DE 37               cEXSPHL:	ld	hl, aSpHl	; "(SP),HL"
+  677/    3AD2 : CD D0 3F               cEXSPHL1:	call	oStrng0		; Ausgabe nullterminierten String
+  678/    3AD5 : C3 65 39               		jp	coderet		; Ende Code
+  679/    3AD8 :                        
+  680/    3AD8 :                        ; EX DE,HL
+  681/    3AD8 : 21 E6 37               cEXDEHL:	ld	hl, aDeHl	; "DE,HL"
+  682/    3ADB : 18 F5                  		jr	cEXSPHL1
+  683/    3ADD :                        
+  684/    3ADD :                        ; 
+  685/    3ADD : CD 72 39               cSonst11:	call	bits654		; Bits 6..4
+  686/    3AE0 : 28 11                  		jr	z, cRET		; C9=ret
+  687/    3AE2 : FE 02                  		cp	2
+  688/    3AE4 : 38 16                  		jr	c, cEXX		; D9 = exx
+  689/    3AE6 : 28 19                  		jr	z, cJMPM	; E9 = jmp m
+  690/    3AE8 :                        
+  691/    3AE8 :                        ; F9 ld sp.hl
+  692/    3AE8 : 21 8E 37               		ld	hl, aLd		; "LD  "
+  693/    3AEB : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  694/    3AEE : 21 EC 37               		ld	hl, aSpHl_0	; "SP,HL"
+  695/    3AF1 : 18 DF                  		jr	cEXSPHL1
+  696/    3AF3 :                        
+  697/    3AF3 :                        ; RET
+  698/    3AF3 : 21 4B 39               cRET:		ld	hl, aRet	; " R"
+  699/    3AF6 : CD 78 37               cRET1:		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  700/    3AF9 : C3 65 39               		jp	coderet		; Ende Code
+  701/    3AFC :                        
+  702/    3AFC :                        ; EXX
+  703/    3AFC : 21 C2 37               cEXX:		ld	hl, aExx	; "EXX "
+  704/    3AFF : 18 F5                  		jr	cRET1
+  705/    3B01 :                        
+  706/    3B01 :                        ; JMP M
+  707/    3B01 : 21 BE 37               cJMPM:		ld	hl, aJmp	; "JMP "
+  708/    3B04 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  709/    3B07 : 3E 4D                  		ld	a, 'M'
+  710/    3B09 : (MACRO)                		OUTCH
+  710/    3B09 : E7                                     rst     20h
+  710/    3B0A : 00                                     db    0                 ; OUTCH
+  711/    3B0B : C3 65 39               		jp	coderet		; Ende Code
+  712/    3B0E :                        
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 14 - 8/15/2024 13:19:58
+
+
+  713/    3B0E :                        ;00..3F
+  714/    3B0E : E6 0F                  code003F:	and	0Fh
+  715/    3B10 : FE 03                  		cp	3
+  716/    3B12 : 28 23                  		jr	z, cinc_rr	; 03,13,23,33
+  717/    3B14 : FE 0B                  		cp	0Bh
+  718/    3B16 : 28 2E                  		jr	z, cdec_rr	; 0B,1B,2B,3B
+  719/    3B18 : E6 07                  		and	7
+  720/    3B1A : 28 5B                  		jr	z, cJR		; 00,08,10,18,20,28,30,38
+  721/    3B1C : FE 02                  		cp	2
+  722/    3B1E : DA A7 3B               		jp	c, c_ld_add_rr	; 01,09,11,19,21,29,31,39
+  723/    3B21 : CA E6 3B               		jp	z, cld_a_irr	; 02,0A,12,1A,22,2A,32,3A
+  724/    3B24 : FE 05                  		cp	5
+  725/    3B26 : 38 23                  		jr	c, cINCr	; 04,0C,14,1C,24,2C,34,3C
+  726/    3B28 : 28 30                  		jr	z, cDECr	; 05,0D,15,1D,25,2D,35,3D
+  727/    3B2A : FE 07                  		cp	7
+  728/    3B2C : 38 31                  		jr	c, cLDrn	; 06,0E,16,1E,26,2E,36,3E
+  729/    3B2E :                        ;07..3F
+  730/    3B2E : 21 FA 37               		ld	hl, aRlca	; "RLCA"
+  731/    3B31 :                        ; Ausgabe Befehl via Bits543
+  732/    3B31 : CD 67 39               out4c_0:	call	bits543		; Bits 5..3
+  733/    3B34 : C3 34 3F               		jp	out4c1
+  734/    3B37 :                        
+  735/    3B37 :                        ; 03,13,23,33 INC rr
+  736/    3B37 : 21 F2 37               cinc_rr:	ld	hl, aInc	; "INC "
+  737/    3B3A : CD 78 37               cinc_rr1:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  738/    3B3D : CD 72 39               		call	bits654		; Bits 6..4
+  739/    3B40 : CD 1E 39               		call	out_rr2
+  740/    3B43 : C3 65 39               		jp	coderet		; Ende Code
+  741/    3B46 :                        
+  742/    3B46 :                        ; 0B,1B,2B,3B DEC rr
+  743/    3B46 : 21 F6 37               cdec_rr:	ld	hl, aDec	; 0B,1B,2B,3B
+  744/    3B49 : 18 EF                  		jr	cinc_rr1
+  745/    3B4B :                        
+  746/    3B4B :                        ; 04,0C,14,1C,24,2C,34,3C INC r
+  747/    3B4B : 21 F2 37               cINCr:		ld	hl, aInc	; "INC "
+  748/    3B4E : CD 78 37               cINCr1:		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  749/    3B51 : CD 67 39               		call	bits543		; Bits 5..3
+  750/    3B54 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  751/    3B57 : C3 65 39               		jp	coderet		; Ende Code
+  752/    3B5A :                        
+  753/    3B5A :                        ; 05,0D,15,1D,25,2D,35,3D DEC r
+  754/    3B5A : 21 F6 37               cDECr:		ld	hl, aDec	; "DEC "
+  755/    3B5D : 18 EF                  		jr	cINCr1
+  756/    3B5F :                        
+  757/    3B5F :                        ; 06,0E,16,1E,26,2E,36,3E LD r,n
+  758/    3B5F : 21 8E 37               cLDrn:		ld	hl, aLd		; "LD  "
+  759/    3B62 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  760/    3B65 : CD 67 39               		call	bits543		; Bits 5..3
+  761/    3B68 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  762/    3B6B : 3E 2C                  		ld	a, ','
+  763/    3B6D : (MACRO)                		OUTCH
+  763/    3B6D : E7                                     rst     20h
+  763/    3B6E : 00                                     db    0                 ; OUTCH
+  764/    3B6F : FD 7E 01               		ld	a, (iy+1)	; 2. Codebyte
+  765/    3B72 : (MACRO)                		OUTHX
+  765/    3B72 : E7                                     rst     20h
+  765/    3B73 : 06                                     db    6                 ; OUTHX
+  766/    3B74 : C3 65 39               		jp	coderet		; Ende Code
+  767/    3B77 :                        
+  768/    3B77 :                        ; 00,08,10,18,20,28,30,38 JR + bedingte JR
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 15 - 8/15/2024 13:19:58
+
+
+  769/    3B77 : 21 1A 38               cJR:		ld	hl, aNop	
+  770/    3B7A : CD 31 3B               		call	out4c_0		; Ausgabe Befehl via Bits543
+  771/    3B7D : D9                     		exx
+  772/    3B7E : CD 67 39               		call	bits543		; Bits 5..3
+  773/    3B81 : FE 02                  		cp	2
+  774/    3B83 : DA 65 39               		jp	c, coderet	; Ende Code
+  775/    3B86 : AF                     		xor	a
+  776/    3B87 : 47                     		ld	b, a
+  777/    3B88 : FD 4E 01               		ld	c, (iy+1)
+  778/    3B8B : CB 79                  		bit	7, c
+  779/    3B8D : 28 01                  		jr	z, cJR1
+  780/    3B8F : 05                     		dec	b
+  781/    3B90 : 2A E0 3F               cJR1:		ld	hl, (oadr)	; Offset-Adr.
+  782/    3B93 : 09                     		add	hl, bc
+  783/    3B94 : E5                     		push	hl
+  784/    3B95 : C1                     		pop	bc
+  785/    3B96 : 03                     		inc	bc
+  786/    3B97 : 03                     		inc	bc
+  787/    3B98 : ED 43 DA 3F            		ld	(vadr),	bc	; tmp. Speicher	f. Adresse
+  788/    3B9C : CD 79 39               		call	obchx		; BC hexa ausgeben
+  789/    3B9F : 3E 06                  		ld	a, 6
+  790/    3BA1 : CD 19 39               		call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  791/    3BA4 : C3 65 39               		jp	coderet		; Ende Code
+  792/    3BA7 :                        
+  793/    3BA7 :                        ;01,09,11,19,21,29,31,39 
+  794/    3BA7 : CD 67 39               c_ld_add_rr:	call	bits543		; Bits 5..3
+  795/    3BAA : CB 47                  		bit	0, a
+  796/    3BAC : 28 1A                  		jr	z, c_ld_rr
+  797/    3BAE : 0F                     		rrca
+  798/    3BAF : E6 03                  		and	3
+  799/    3BB1 : F5                     		push	af
+  800/    3BB2 : 21 92 37               		ld	hl, aAdd	; "ADD "
+  801/    3BB5 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  802/    3BB8 : 3E 02                  		ld	a, 2
+  803/    3BBA : CD 0F 39               		call	out_rr		; Ausgabe Doppelregister, Offs.	A
+  804/    3BBD : 3E 2C                  		ld	a, ','
+  805/    3BBF : (MACRO)                		OUTCH
+  805/    3BBF : E7                                     rst     20h
+  805/    3BC0 : 00                                     db    0                 ; OUTCH
+  806/    3BC1 : F1                     		pop	af
+  807/    3BC2 : CD 1E 39               		call	out_rr2
+  808/    3BC5 : C3 65 39               		jp	coderet		; Ende Code
+  809/    3BC8 :                        
+  810/    3BC8 :                        ; LD rr,nn
+  811/    3BC8 : 0F                     c_ld_rr:	rrca
+  812/    3BC9 : E6 03                  		and	3
+  813/    3BCB : F5                     		push	af
+  814/    3BCC : 21 8E 37               		ld	hl, aLd		; "LD  "
+  815/    3BCF : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  816/    3BD2 : F1                     		pop	af
+  817/    3BD3 : CD 1E 39               		call	out_rr2
+  818/    3BD6 : 3E 2C                  		ld	a, ','
+  819/    3BD8 : (MACRO)                		OUTCH
+  819/    3BD8 : E7                                     rst     20h
+  819/    3BD9 : 00                                     db    0                 ; OUTCH
+  820/    3BDA : FD 4E 01               		ld	c, (iy+1)
+  821/    3BDD : FD 46 02               		ld	b, (iy+2)
+  822/    3BE0 : CD 79 39               		call	obchx		; BC hexa ausgeben
+  823/    3BE3 : C3 65 39               		jp	coderet		; Ende Code
+  824/    3BE6 :                        
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 16 - 8/15/2024 13:19:58
+
+
+  825/    3BE6 :                        ;02,0A,12,1A,22,2A,32,3A
+  826/    3BE6 : 21 8E 37               cld_a_irr:	ld	hl, aLd		; "LD  "
+  827/    3BE9 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  828/    3BEC : CD 67 39               		call	bits543		; Bits 5..3
+  829/    3BEF : FE 04                  		cp	4
+  830/    3BF1 : 30 34                  		jr	nc, cLDnn	; 22,2A,32,3A
+  831/    3BF3 : A7                     		and	a
+  832/    3BF4 : 28 23                  		jr	z, cld_bc_a	; 02
+  833/    3BF6 : FE 02                  		cp	2
+  834/    3BF8 : 28 1A                  		jr	z, cld_de_a	; 12
+  835/    3BFA : 38 0E                  		jr	c, ld_a_bc	; 0A
+  836/    3BFC :                        ; 1A ld a,(de)
+  837/    3BFC : 3E 07                  		ld	a, 7		; "A,"
+  838/    3BFE : CD 19 39               		call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  839/    3C01 : 21 3E 38               		ld	hl, aDe		; "(DE)"
+  840/    3C04 : CD 78 37               ld_a_de1:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  841/    3C07 : C3 65 39               		jp	coderet		; Ende Code
+  842/    3C0A :                        
+  843/    3C0A :                        ; LD A,(BC)
+  844/    3C0A : 3E 07                  ld_a_bc:	ld	a, 7		; "A,"
+  845/    3C0C : CD 19 39               		call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  846/    3C0F : 21 3A 38               		ld	hl, aBc		; "(BC)"
+  847/    3C12 : 18 F0                  		jr	ld_a_de1
+  848/    3C14 :                        
+  849/    3C14 :                        ; LD A,(DE)
+  850/    3C14 : 21 3E 38               cld_de_a:	ld	hl, aDe		; "(DE)"
+  851/    3C17 : 18 03                  		jr	cld_bc1
+  852/    3C19 :                        
+  853/    3C19 :                        ; LD (BC),A
+  854/    3C19 : 21 3A 38               cld_bc_a:	ld	hl, aBc		; "(BC)"
+  855/    3C1C : CD 78 37               cld_bc1:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  856/    3C1F : 3E 08                  		ld	a, 8		; ",A"
+  857/    3C21 : CD 19 39               		call	out_divers	; Ausgabe diverse Texte, 2 Zeichen, Offs. A
+  858/    3C24 : C3 65 39               		jp	coderet		; Ende Code
+  859/    3C27 :                        
+  860/    3C27 :                        ; 22,2A,32,3A LD (nn),rr
+  861/    3C27 : FD 46 02               cLDnn:		ld	b, (iy+2)	; Adr. aus Codebyte 2+3
+  862/    3C2A : FD 4E 01               		ld	c, (iy+1)
+  863/    3C2D : CD 67 39               		call	bits543		; Bits 5..3
+  864/    3C30 : D6 04                  		sub	4
+  865/    3C32 : 28 24                  		jr	z, cld_nn_hl	; 22 ld	(nn),hl
+  866/    3C34 : 57                     		ld	d, a
+  867/    3C35 : FE 02                  		cp	2
+  868/    3C37 : 28 2E                  		jr	z, cld_nn_a	; 32 ld	(nn),a
+  869/    3C39 : 30 16                  		jr	nc, cld_a_nn	; 3A ld	a,(nn)
+  870/    3C3B :                        
+  871/    3C3B :                        ;2A LD HL,(nn)
+  872/    3C3B : 3E 02                  		ld	a, 2		; "HL"
+  873/    3C3D : CD 0F 39               		call	out_rr		; Ausgabe Doppelregister, Offs.	A
+  874/    3C40 : CD 80 39               cld_hl_nn1:	call	ocomma		; Ausgabe Komma
+  875/    3C43 :                        
+  876/    3C43 :                        
+  877/    3C43 :                        ; BC hexa in Klammern ausgeben
+  878/    3C43 : 3E 28                  outIBC:		ld	a, '('
+  879/    3C45 : (MACRO)                		OUTCH
+  879/    3C45 : E7                                     rst     20h
+  879/    3C46 : 00                                     db    0                 ; OUTCH
+  880/    3C47 : CD 79 39               		call	obchx		; BC hexa ausgeben
+  881/    3C4A : 3E 29                  		ld	a, ')'
+  882/    3C4C : (MACRO)                		OUTCH
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 17 - 8/15/2024 13:19:58
+
+
+  882/    3C4C : E7                                     rst     20h
+  882/    3C4D : 00                                     db    0                 ; OUTCH
+  883/    3C4E : C3 65 39               		jp	coderet		; Ende Code
+  884/    3C51 :                        
+  885/    3C51 :                        ; 3A LD A,(nn)
+  886/    3C51 : 3E 07                  cld_a_nn:	ld	a, 7		; "A"
+  887/    3C53 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  888/    3C56 : 18 E8                  		jr	cld_hl_nn1
+  889/    3C58 :                        
+  890/    3C58 :                        ; LD (nn),HL
+  891/    3C58 : CD 43 3C               cld_nn_hl:	call	outIBC		; BC hexa in Klammern ausgeben
+  892/    3C5B : D9                     		exx
+  893/    3C5C : CD 80 39               		call	ocomma		; Ausgabe Komma
+  894/    3C5F : 3E 02                  		ld	a, 2		; "HL"
+  895/    3C61 : CD 0F 39               		call	out_rr		; Ausgabe Doppelregister, Offs.	A
+  896/    3C64 : C3 65 39               		jp	coderet		; Ende Code
+  897/    3C67 :                        
+  898/    3C67 :                        ; 32 LD	(nn),A
+  899/    3C67 : CD 43 3C               cld_nn_a:	call	outIBC		; BC hexa in Klammern ausgeben
+  900/    3C6A : D9                     		exx
+  901/    3C6B : CD 80 39               		call	ocomma		; Ausgabe Komma
+  902/    3C6E : 3E 07                  		ld	a, 7		; "A"
+  903/    3C70 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  904/    3C73 : C3 65 39               		jp	coderet		; Ende Code
+  905/    3C76 :                        
+  906/    3C76 :                        ;------------------------------------------------------------------------------
+  907/    3C76 :                        ; CB-Befehle (Bit-Operationen)
+  908/    3C76 :                        ;------------------------------------------------------------------------------
+  909/    3C76 :                        ;
+  910/    3C76 : FD 23                  code_cb:	inc	iy		; CB übergehen
+  911/    3C78 : FD 7E 00               		ld	a, (iy+0)
+  912/    3C7B : FE 40                  		cp	40h
+  913/    3C7D : 30 12                  		jr	nc, code_cb1
+  914/    3C7F :                        ; CB00.CB3F RLC..SRL r
+  915/    3C7F : 21 42 38               		ld	hl, aRlc	; "RLC "
+  916/    3C82 : CD 31 3B               		call	out4c_0		; Ausgabe Befehl via Bits543
+  917/    3C85 : D9                     		exx
+  918/    3C86 : FD 7E 00               		ld	a, (iy+0)
+  919/    3C89 : E6 07                  		and	7
+  920/    3C8B : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  921/    3C8E : C3 65 39               		jp	coderet		; Ende Code
+  922/    3C91 :                        
+  923/    3C91 :                        ;
+  924/    3C91 : FE 80                  code_cb1:	cp	80h
+  925/    3C93 : 38 0E                  		jr	c, cBIT		; CB40..CB7F
+  926/    3C95 : FE C0                  		cp	0C0h
+  927/    3C97 : 38 05                  		jr	c, cRES		; CB80..CBBF
+  928/    3C99 :                        
+  929/    3C99 :                        ; CBC0..CBFF SET n,r
+  930/    3C99 : 21 6A 38               		ld	hl, aSet	; "SET "
+  931/    3C9C : 18 08                  		jr	cBIT1
+  932/    3C9E :                        
+  933/    3C9E :                        ; CB80..CBBF RES n,r
+  934/    3C9E : 21 66 38               cRES:		ld	hl, aRes	; CB80..CBBF
+  935/    3CA1 : 18 03                  		jr	cBIT1
+  936/    3CA3 :                        
+  937/    3CA3 :                        ; CB40..CB7F BIT n,r
+  938/    3CA3 : 21 62 38               cBIT:		ld	hl, aBit	; CB40..CB7F
+  939/    3CA6 : CD 78 37               cBIT1:		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+  940/    3CA9 : CD 67 39               		call	bits543		; Bits 5..3
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 18 - 8/15/2024 13:19:58
+
+
+  941/    3CAC : C6 30                  		add	a, '0'          ; Bitnummer "0".."7"
+  942/    3CAE : (MACRO)                		OUTCH
+  942/    3CAE : E7                                     rst     20h
+  942/    3CAF : 00                                     db    0                 ; OUTCH
+  943/    3CB0 : 3E 2C                  		ld	a, ','
+  944/    3CB2 : (MACRO)                		OUTCH
+  944/    3CB2 : E7                                     rst     20h
+  944/    3CB3 : 00                                     db    0                 ; OUTCH
+  945/    3CB4 : FD 7E 00               		ld	a, (iy+0)
+  946/    3CB7 : E6 07                  		and	7		; Register
+  947/    3CB9 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+  948/    3CBC : C3 65 39               		jp	coderet		; Ende Code
+  949/    3CBF :                        
+  950/    3CBF :                        ;------------------------------------------------------------------------------
+  951/    3CBF :                        ; UPs IX+IY-Befehle
+  952/    3CBF :                        ;------------------------------------------------------------------------------
+  953/    3CBF :                        
+  954/    3CBF :                        ;Fehler:negativer Offset falsch
+  955/    3CBF :                        ;FF ->  IX-00 muss sein IX-01
+  956/    3CBF :                        ; Ausgabe "(IC+d)"
+  957/    3CBF : 3E 28                  outICpd:	ld	a, '('
+  958/    3CC1 : (MACRO)                		OUTCH
+  958/    3CC1 : E7                                     rst     20h
+  958/    3CC2 : 00                                     db    0                 ; OUTCH
+  959/    3CC3 : 3E 49                  		ld	a, 'I'
+  960/    3CC5 : (MACRO)                		OUTCH
+  960/    3CC5 : E7                                     rst     20h
+  960/    3CC6 : 00                                     db    0                 ; OUTCH
+  961/    3CC7 : 79                     		ld	a, c
+  962/    3CC8 : (MACRO)                		OUTCH
+  962/    3CC8 : E7                                     rst     20h
+  962/    3CC9 : 00                                     db    0                 ; OUTCH
+  963/    3CCA : 3E 2B                  		ld	a, '+'
+  964/    3CCC : CB 78                  		bit	7, b
+  965/    3CCE : 28 08                  		jr	z, outICpd1
+  966/    3CD0 : 3C                     		inc	a
+  967/    3CD1 : 3C                     		inc	a		; A = "-"
+  968/    3CD2 : (MACRO)                		OUTCH
+  968/    3CD2 : E7                                     rst     20h
+  968/    3CD3 : 00                                     db    0                 ; OUTCH
+  969/    3CD4 : 78                     		ld	a, b
+  970/    3CD5 : 2F                     		cpl			; neg. Offs
+  971/    3CD6 : 18 03                  		jr	outICpd2
+  972/    3CD8 : (MACRO)                outICpd1:	OUTCH
+  972/    3CD8 : E7                                     rst     20h
+  972/    3CD9 : 00                                     db    0                 ; OUTCH
+  973/    3CDA : 78                     		ld	a, b		; d
+  974/    3CDB : (MACRO)                outICpd2:	OUTHX
+  974/    3CDB : E7                                     rst     20h
+  974/    3CDC : 06                                     db    6                 ; OUTHX
+  975/    3CDD : 3E 29                  		ld	a, ')'
+  976/    3CDF : (MACRO)                		OUTCH
+  976/    3CDF : E7                                     rst     20h
+  976/    3CE0 : 00                                     db    0                 ; OUTCH
+  977/    3CE1 : C9                     		ret
+  978/    3CE2 : 7A                     		db  7Ah			; ???
+  979/    3CE3 :                        
+  980/    3CE3 :                        ;Ausgabe 2 Zeichen A und C
+  981/    3CE3 : (MACRO)                outAC:		OUTCH			; Ausgabe 2 Zeichen A und C
+  981/    3CE3 : E7                                     rst     20h
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 19 - 8/15/2024 13:19:58
+
+
+  981/    3CE4 : 00                                     db    0                 ; OUTCH
+  982/    3CE5 : 79                     		ld	a, c
+  983/    3CE6 : (MACRO)                		OUTCH
+  983/    3CE6 : E7                                     rst     20h
+  983/    3CE7 : 00                                     db    0                 ; OUTCH
+  984/    3CE8 : C9                     		ret
+  985/    3CE9 :                        
+  986/    3CE9 :                        ; Ausgabe IX,IY
+  987/    3CE9 :                        outIC:	; FUNCTION CHUNK AT 3CE3 SIZE 00000006 BYTES
+  988/    3CE9 : 3E 49                  		ld	a, 'I'
+  989/    3CEB : 18 F6                  		jr	outAC
+  990/    3CED :                        
+  991/    3CED :                        ; Ausgabe HX, HY
+  992/    3CED : 3E 48                  outHC:		ld	a, 'H'
+  993/    3CEF : 18 F2                  		jr	outAC
+  994/    3CF1 :                        ; Ausgabe LX, LY
+  995/    3CF1 : 3E 4C                  outLC:		ld	a, 'L'
+  996/    3CF3 : 18 EE                  		jr	outAC
+  997/    3CF5 :                        
+  998/    3CF5 :                        ; Ausgabe " ,"
+  999/    3CF5 : (MACRO)                outSPC:		OUTSP
+  999/    3CF5 : E7                                     rst     20h
+  999/    3CF6 : 0E                                     db  0Eh                 ; OUTSP
+ 1000/    3CF7 : 3E 2C                  		ld	a, ','
+ 1001/    3CF9 : (MACRO)                		OUTCH
+ 1001/    3CF9 : E7                                     rst     20h
+ 1001/    3CFA : 00                                     db    0                 ; OUTCH
+ 1002/    3CFB : C9                     		ret
+ 1003/    3CFC :                        
+ 1004/    3CFC :                        ;------------------------------------------------------------------------------
+ 1005/    3CFC :                        ; IX+IY-Befehle
+ 1006/    3CFC :                        ;------------------------------------------------------------------------------
+ 1007/    3CFC :                        
+ 1008/    3CFC : 0E 58                  code_ix:	ld	c, 'X'
+ 1009/    3CFE : 18 02                  		jr	code_iy1
+ 1010/    3D00 :                        ;
+ 1011/    3D00 : 0E 59                  code_iy:	ld	c, 'Y'
+ 1012/    3D02 : FD 23                  code_iy1:	inc	iy		; Vorbyte uebergehen
+ 1013/    3D04 : FD 7E 00               		ld	a, (iy+0)
+ 1014/    3D07 : FD 46 01               		ld	b, (iy+1)
+ 1015/    3D0A : FE 76                  		cp	76h
+ 1016/    3D0C : CA 65 39               		jp	z, coderet	; Ende Code
+ 1017/    3D0F : FE 40                  		cp	40h
+ 1018/    3D11 : DA F5 3D               		jp	c, codei003F
+ 1019/    3D14 : FE 80                  		cp	80h
+ 1020/    3D16 : DA C2 3D               		jp	c, codei407F
+ 1021/    3D19 : FE C0                  		cp	0C0h
+ 1022/    3D1B : DA 9C 3D               		jp	c, codei80BF
+ 1023/    3D1E : FE CB                  		cp	0CBh
+ 1024/    3D20 : 28 62                  		jr	z, codeiCB
+ 1025/    3D22 : FE E1                  		cp	0E1h
+ 1026/    3D24 : 28 13                  		jr	z, codeiPOP
+ 1027/    3D26 : FE E3                  		cp	0E3h
+ 1028/    3D28 : 28 1F                  		jr	z, codeiEX
+ 1029/    3D2A : FE E5                  		cp	0E5h
+ 1030/    3D2C : 28 10                  		jr	z, codeiPUSH
+ 1031/    3D2E : FE E9                  		cp	0E9h
+ 1032/    3D30 : 28 2B                  		jr	z, codeiJP
+ 1033/    3D32 : FE F9                  		cp	0F9h
+ 1034/    3D34 : 28 3A                  		jr	z, codeiLDSP
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 20 - 8/15/2024 13:19:58
+
+
+ 1035/    3D36 : C3 65 39               codret2:	jp	coderet		; Ende Code
+ 1036/    3D39 :                        
+ 1037/    3D39 :                        ; e1 POP IX
+ 1038/    3D39 : 21 B6 37               codeiPOP:	ld	hl, aPop	; "POP "
+ 1039/    3D3C : 18 03                  		jr	codeiPUSH1
+ 1040/    3D3E :                        
+ 1041/    3D3E :                        ; e5 PUSH IX
+ 1042/    3D3E : 21 B2 37               codeiPUSH:	ld	hl, aPush	; "PUSH"
+ 1043/    3D41 : CD 78 37               codeiPUSH1:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1044/    3D44 : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1045/    3D47 : 18 ED                  		jr	codret2
+ 1046/    3D49 :                        
+ 1047/    3D49 :                        ; e3 EX (SP),IX
+ 1048/    3D49 : 21 CE 37               codeiEX:	ld	hl, aEx		; "EX  "
+ 1049/    3D4C : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1050/    3D4F : 21 6E 38               		ld	hl, aSp		; "(SP)"
+ 1051/    3D52 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1052/    3D55 : CD F5 3C               		call	outSPC		; Ausgabe " ,"
+ 1053/    3D58 : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1054/    3D5B : 18 D9                  		jr	codret2
+ 1055/    3D5D :                        
+ 1056/    3D5D :                        ; e9 JMP (IX)
+ 1057/    3D5D : 21 BE 37               codeiJP:	ld	hl, aJmp	; "JMP "
+ 1058/    3D60 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1059/    3D63 : 3E 28                  		ld	a, '('
+ 1060/    3D65 : (MACRO)                		OUTCH
+ 1060/    3D65 : E7                                     rst     20h
+ 1060/    3D66 : 00                                     db    0                 ; OUTCH
+ 1061/    3D67 : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1062/    3D6A : 3E 29                  		ld	a, ')'
+ 1063/    3D6C : (MACRO)                		OUTCH
+ 1063/    3D6C : E7                                     rst     20h
+ 1063/    3D6D : 00                                     db    0                 ; OUTCH
+ 1064/    3D6E : 18 C6                  		jr	codret2
+ 1065/    3D70 :                        
+ 1066/    3D70 :                        ; f9 LD SP,IX
+ 1067/    3D70 : 21 8E 37               codeiLDSP:	ld	hl, aLd		; "LD  "
+ 1068/    3D73 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1069/    3D76 : 3E 03                  		ld	a, 3		; "SP"
+ 1070/    3D78 : CD 1E 39               		call	out_rr2
+ 1071/    3D7B : 3E 2C                  		ld	a, ','
+ 1072/    3D7D : (MACRO)                		OUTCH
+ 1072/    3D7D : E7                                     rst     20h
+ 1072/    3D7E : 00                                     db    0                 ; OUTCH
+ 1073/    3D7F : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1074/    3D82 : 18 B2                  		jr	codret2
+ 1075/    3D84 :                        
+ 1076/    3D84 :                        ; IX-Bitfehle 
+ 1077/    3D84 :                        ;fehler: Es wird erst das allg. Register M angezeigt, dann ",(IX+d)"
+ 1078/    3D84 : FD 23                  codeiCB:	inc	iy		; CB uebergehen
+ 1079/    3D86 : FD 7E 01               		ld	a, (iy+1)
+ 1080/    3D89 : E6 07                  		and	7
+ 1081/    3D8B : FE 06                  		cp	6		; nur gueltig f. (HL)
+ 1082/    3D8D : C2 65 39               		jp	nz, coderet	; Ende Code
+ 1083/    3D90 : CD 76 3C               		call	code_cb
+ 1084/    3D93 : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1085/    3D96 : CD BF 3C               		call	outICpd		; Ausgabe "(IC+d)"
+ 1086/    3D99 : C3 65 39               		jp	coderet		; Ende Code
+ 1087/    3D9C :                        
+ 1088/    3D9C :                        ; IX-Arithmetikbefehle
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 21 - 8/15/2024 13:19:58
+
+
+ 1089/    3D9C : 21 92 37               codei80BF:	ld	hl, aAdd	; "ADD "
+ 1090/    3D9F : CD 31 3B               		call	out4c_0		; Ausgabe Befehl via Bits543
+ 1091/    3DA2 : D9                     		exx
+ 1092/    3DA3 : FD 7E 00               		ld	a, (iy+0)
+ 1093/    3DA6 : E6 07                  		and	7
+ 1094/    3DA8 : FE 04                  		cp	4		; ",H"
+ 1095/    3DAA : 28 0C                  		jr	z, outHCr
+ 1096/    3DAC : FE 05                  		cp	5		; ",L"
+ 1097/    3DAE : 28 0D                  		jr	z, outLCr
+ 1098/    3DB0 : FE 06                  		cp	6		; ",M"
+ 1099/    3DB2 : CC BF 3C               		call	z, outICpd	; Ausgabe "(IC+d)"
+ 1100/    3DB5 : C3 65 39               coderet2:	jp	coderet		; Ende Code
+ 1101/    3DB8 :                        
+ 1102/    3DB8 :                        ;
+ 1103/    3DB8 : CD ED 3C               outHCr:		call	outHC		; Ausgabe HX, HY
+ 1104/    3DBB : 18 F8                  		jr	coderet2
+ 1105/    3DBD :                        
+ 1106/    3DBD :                        ;
+ 1107/    3DBD : CD F1 3C               outLCr:		call	outLC		; Ausgabe LX, LY
+ 1108/    3DC0 : 18 F3                  		jr	coderet2
+ 1109/    3DC2 :                        
+ 1110/    3DC2 :                        ; IX-Ladebfehle
+ 1111/    3DC2 : 21 8E 37               codei407F:	ld	hl, aLd		; "LD  "
+ 1112/    3DC5 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1113/    3DC8 : CD 67 39               		call	bits543		; Bits 5..3
+ 1114/    3DCB : FE 06                  		cp	6		; "H," o. "L,"
+ 1115/    3DCD : 28 08                  		jr	z, codei407Fx
+ 1116/    3DCF :                        ;fehler: bei ld r,HX etc. fehlt das Komma, und das 2. Register wird nicht als HX, LX geschrieben
+ 1117/    3DCF :                        ;47D8 DD	5C	 LD   EH  -> ld	e,hx
+ 1118/    3DCF :                        ;47DA DD	5D	 LD   EL  --> ld e,lx
+ 1119/    3DCF : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+ 1120/    3DD2 : CD 67 39               		call	bits543		; Bits 5..3
+ 1121/    3DD5 : 18 06                  		jr	codei407Fs
+ 1122/    3DD7 : CD BF 3C               codei407Fx:	call	outICpd		; Ausgabe "(IC+d)"
+ 1123/    3DDA : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1124/    3DDD : FD 7E 00               codei407Fs:	ld	a, (iy+0)
+ 1125/    3DE0 : E6 07                  		and	7
+ 1126/    3DE2 : FE 06                  		cp	6		; ",M"?
+ 1127/    3DE4 : 28 06                  		jr	z, codei407Fm
+ 1128/    3DE6 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+ 1129/    3DE9 : C3 65 39               		jp	coderet		; Ende Code
+ 1130/    3DEC : CD 80 39               codei407Fm:	call	ocomma		; Ausgabe Komma
+ 1131/    3DEF : CD BF 3C               		call	outICpd		; Ausgabe "(IC+d)"
+ 1132/    3DF2 : C3 65 39               		jp	coderet		; Ende Code
+ 1133/    3DF5 :                        
+ 1134/    3DF5 :                        ;IX sonstige
+ 1135/    3DF5 : E6 0F                  codei003F:	and	0Fh
+ 1136/    3DF7 : FE 09                  		cp	9		; 09,19,29,39 add ix,rr
+ 1137/    3DF9 : CA C8 3E               		jp	z, codeiADDrr
+ 1138/    3DFC : FD 7E 00               		ld	a, (iy+0)
+ 1139/    3DFF : FE 21                  		cp	21h
+ 1140/    3E01 : DA 65 39               		jp	c, coderet	; Ende Code
+ 1141/    3E04 : CA B0 3E               		jp	z, codei21	; 21 ld	ix,nn
+ 1142/    3E07 : E6 0F                  		and	0Fh
+ 1143/    3E09 : FE 03                  		cp	3		; 23 inc ix
+ 1144/    3E0B : CA A4 3E               		jp	z, codei23
+ 1145/    3E0E : FE 0B                  		cp	0Bh
+ 1146/    3E10 : CA 9F 3E               		jp	z, codei2B	; 2b dec ix
+ 1147/    3E13 : E6 07                  		and	7
+ 1148/    3E15 : FE 04                  		cp	4		; 24 inc hx, 2C	inc lx
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 22 - 8/15/2024 13:19:58
+
+
+ 1149/    3E17 : 28 6E                  		jr	z, codeincx
+ 1150/    3E19 : FE 05                  		cp	5		; 25 dec hx, 2d	dec lx
+ 1151/    3E1B : 28 65                  		jr	z, codeidecx
+ 1152/    3E1D : 21 8E 37               		ld	hl, aLd		; "LD  "
+ 1153/    3E20 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1154/    3E23 : FD 7E 00               		ld	a, (iy+0)
+ 1155/    3E26 : FE 22                  		cp	22h		; 22 ld (ix),nn
+ 1156/    3E28 : 28 4A                  		jr	z, codei22
+ 1157/    3E2A : FE 26                  		cp	26h		; 26 ld hx,n
+ 1158/    3E2C : 28 28                  		jr	z, codei26
+ 1159/    3E2E : FE 2A                  		cp	2Ah		; 2a ld ix,(nn)
+ 1160/    3E30 : 28 29                  		jr	z, codei2A
+ 1161/    3E32 : FE 2E                  		cp	2Eh		; 2e ld lx,n
+ 1162/    3E34 : 28 11                  		jr	z, codei2E
+ 1163/    3E36 : FE 36                  		cp	36h		; 2e ld (ix),n
+ 1164/    3E38 : 20 19                  		jr	nz, coderet3
+ 1165/    3E3A : CD BF 3C               		call	outICpd		; Ausgabe "(IC+d)"
+ 1166/    3E3D : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1167/    3E40 : FD 7E 02               		ld	a, (iy+2)
+ 1168/    3E43 : (MACRO)                		OUTHX
+ 1168/    3E43 : E7                                     rst     20h
+ 1168/    3E44 : 06                                     db    6                 ; OUTHX
+ 1169/    3E45 : 18 0C                  		jr	coderet3
+ 1170/    3E47 :                        
+ 1171/    3E47 :                        ;2e LD (IX),n
+ 1172/    3E47 : CD F1 3C               codei2E:	call	outLC		; Ausgabe LX, LY
+ 1173/    3E4A : 3E 2C                  OUTcn:		ld	a, ','          ; Ausgabe ",n"
+ 1174/    3E4C : (MACRO)                		OUTCH
+ 1174/    3E4C : E7                                     rst     20h
+ 1174/    3E4D : 00                                     db    0                 ; OUTCH
+ 1175/    3E4E : FD 7E 01               		ld	a, (iy+1)
+ 1176/    3E51 : (MACRO)                		OUTHX
+ 1176/    3E51 : E7                                     rst     20h
+ 1176/    3E52 : 06                                     db    6                 ; OUTHX
+ 1177/    3E53 : C3 65 39               coderet3:	jp	coderet		; Ende Code
+ 1178/    3E56 :                        
+ 1179/    3E56 :                        ;26 LD HX,n
+ 1180/    3E56 : CD ED 3C               codei26:	call	outHC		; Ausgabe HX, HY
+ 1181/    3E59 : 18 EF                  		jr	OUTcn		; Ausgabe ",n"
+ 1182/    3E5B :                        
+ 1183/    3E5B :                        ;2a LD IX,(nn)
+ 1184/    3E5B : CD E9 3C               codei2A:	call	outIC		; Ausgabe IX,IY
+ 1185/    3E5E : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1186/    3E61 :                        ; Ausgabe "(nn)"
+ 1187/    3E61 : 3E 28                  outcnn:		ld	a, '('
+ 1188/    3E63 : (MACRO)                		OUTCH
+ 1188/    3E63 : E7                                     rst     20h
+ 1188/    3E64 : 00                                     db    0                 ; OUTCH
+ 1189/    3E65 : FD 4E 01               		ld	c, (iy+1)
+ 1190/    3E68 : FD 46 02               		ld	b, (iy+2)
+ 1191/    3E6B : CD 79 39               		call	obchx		; BC hexa ausgeben
+ 1192/    3E6E : 3E 29                  		ld	a, ')'
+ 1193/    3E70 : (MACRO)                		OUTCH
+ 1193/    3E70 : E7                                     rst     20h
+ 1193/    3E71 : 00                                     db    0                 ; OUTCH
+ 1194/    3E72 : 18 DF                  		jr	coderet3
+ 1195/    3E74 :                        
+ 1196/    3E74 :                        ; 22 LD	(IX),nn
+ 1197/    3E74 : C5                     codei22:	push	bc
+ 1198/    3E75 : CD 61 3E               		call	outcnn		; Ausgabe "(nn)"
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 23 - 8/15/2024 13:19:58
+
+
+ 1199/    3E78 : D9                     		exx
+ 1200/    3E79 : C1                     		pop	bc
+ 1201/    3E7A : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1202/    3E7D : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1203/    3E80 : 18 D1                  		jr	coderet3
+ 1204/    3E82 :                        
+ 1205/    3E82 :                        ; 25 DEC HX, 2d	DEC LX
+ 1206/    3E82 : 21 F6 37               codeidecx:	ld	hl, aDec	; "DEC "
+ 1207/    3E85 : 18 03                  		jr	codeinx2
+ 1208/    3E87 :                        
+ 1209/    3E87 :                        ; 24 INC HX, 2C	INC LX
+ 1210/    3E87 : 21 F2 37               codeincx:	ld	hl, aInc	; "INC "
+ 1211/    3E8A : CD 78 37               codeinx2:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1212/    3E8D : FD 7E 00               		ld	a, (iy+0)
+ 1213/    3E90 : FE 27                  		cp	27h		; ??
+ 1214/    3E92 : DA B8 3D               		jp	c, outHCr
+ 1215/    3E95 : FE 30                  		cp	30h		; ??
+ 1216/    3E97 : DA BD 3D               		jp	c, outLCr
+ 1217/    3E9A : CD BF 3C               		call	outICpd		; Ausgabe "(IC+d)"
+ 1218/    3E9D : 18 B4                  		jr	coderet3
+ 1219/    3E9F :                        
+ 1220/    3E9F :                        ; 2b DEC IX
+ 1221/    3E9F : 21 F6 37               codei2B:	ld	hl, aDec	; "DEC "
+ 1222/    3EA2 : 18 03                  		jr	codei232
+ 1223/    3EA4 :                        
+ 1224/    3EA4 :                        ; 23 INC IX
+ 1225/    3EA4 : 21 F2 37               codei23:	ld	hl, aInc	; "INC "
+ 1226/    3EA7 : CD 78 37               codei232:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1227/    3EAA : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1228/    3EAD : C3 65 39               		jp	coderet		; Ende Code
+ 1229/    3EB0 :                        
+ 1230/    3EB0 :                        ; 21 LD	IX,nn
+ 1231/    3EB0 : 21 8E 37               codei21:	ld	hl, aLd		; "LD  "
+ 1232/    3EB3 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1233/    3EB6 : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1234/    3EB9 : 3E 2C                  		ld	a, ','
+ 1235/    3EBB : (MACRO)                		OUTCH
+ 1235/    3EBB : E7                                     rst     20h
+ 1235/    3EBC : 00                                     db    0                 ; OUTCH
+ 1236/    3EBD : FD 4E 01               		ld	c, (iy+1)
+ 1237/    3EC0 : FD 46 02               		ld	b, (iy+2)
+ 1238/    3EC3 : CD 79 39               		call	obchx		; BC hexa ausgeben
+ 1239/    3EC6 : 18 8B                  		jr	coderet3
+ 1240/    3EC8 :                        
+ 1241/    3EC8 :                        ;
+ 1242/    3EC8 : 21 92 37               codeiADDrr:	ld	hl, aAdd	; "ADD "
+ 1243/    3ECB : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1244/    3ECE : CD E9 3C               		call	outIC		; Ausgabe IX,IY
+ 1245/    3ED1 : 3E 2C                  		ld	a, ','
+ 1246/    3ED3 : (MACRO)                		OUTCH
+ 1246/    3ED3 : E7                                     rst     20h
+ 1246/    3ED4 : 00                                     db    0                 ; OUTCH
+ 1247/    3ED5 : CD 72 39               		call	bits654		; Bits 6..4
+ 1248/    3ED8 : FE 02                  		cp	2
+ 1249/    3EDA : 28 06                  		jr	z, codeiADDrr2
+ 1250/    3EDC : CD 1E 39               		call	out_rr2
+ 1251/    3EDF : C3 65 39               		jp	coderet		; Ende Code
+ 1252/    3EE2 :                        ;
+ 1253/    3EE2 : CD E9 3C               codeiADDrr2:	call	outIC		; Ausgabe IX,IY
+ 1254/    3EE5 : C3 65 39               		jp	coderet		; Ende Code
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 24 - 8/15/2024 13:19:58
+
+
+ 1255/    3EE8 :                        
+ 1256/    3EE8 :                        
+ 1257/    3EE8 :                        ;------------------------------------------------------------------------------
+ 1258/    3EE8 :                        ; EB-Befehlsgruppe 
+ 1259/    3EE8 :                        ;------------------------------------------------------------------------------
+ 1260/    3EE8 :                        
+ 1261/    3EE8 : FD 23                  code_ed:	inc	iy		; ED uebergehen
+ 1262/    3EEA : FD 7E 00               		ld	a, (iy+0)
+ 1263/    3EED : FE 80                  		cp	80h
+ 1264/    3EEF : D2 AE 3F               		jp	nc, cblock	; EDA0..EDBB
+ 1265/    3EF2 : FE 40                  		cp	40h		; <40 kein gueltiger Code
+ 1266/    3EF4 : DA 65 39               		jp	c, coderet	; Ende Code
+ 1267/    3EF7 : E6 07                  		and	7		; 40,48,..,78 IN
+ 1268/    3EF9 : 28 5B                  		jr	z, cin
+ 1269/    3EFB : FE 01                  		cp	1		; 41,49,..,79 OUT
+ 1270/    3EFD : 28 6F                  		jr	z, cout
+ 1271/    3EFF : FD 7E 00               		ld	a, (iy+0)
+ 1272/    3F02 : E6 0F                  		and	0Fh
+ 1273/    3F04 : FE 03                  		cp	3		; 43,53,..,73 ld (nn),rr
+ 1274/    3F06 : CA 8F 3F               		jp	z, cldcnnrr
+ 1275/    3F09 : DA 73 3F               		jp	c, csbchl	; 42,52,..,72 sbc hl,rr
+ 1276/    3F0C : FE 0A                  		cp	0Ah
+ 1277/    3F0E : 28 68                  		jr	z, cadchl	; 4A,5A,..,7A adc hl,rr
+ 1278/    3F10 : FE 0B                  		cp	0Bh
+ 1279/    3F12 : CA 9E 3F               		jp	z, cldrrcnn	; 4B,5B,..,7B ld rr,(nn)
+ 1280/    3F15 : FD 7E 00               		ld	a, (iy+0)
+ 1281/    3F18 : FE 60                  		cp	60h
+ 1282/    3F1A : 30 24                  		jr	nc, crrd	; 67 rrd
+ 1283/    3F1C :                        ;40..5F Rest
+ 1284/    3F1C : E6 07                  		and	7
+ 1285/    3F1E : FE 07                  		cp	7
+ 1286/    3F20 : 28 26                  		jr	z, ldspez	; 57 ld	a,i; 5F	ld a,r
+ 1287/    3F22 : CD 67 39               		call	bits543		; Bits 5..3
+ 1288/    3F25 : 47                     		ld	b, a
+ 1289/    3F26 : E6 01                  		and	1
+ 1290/    3F28 : 4F                     		ld	c, a
+ 1291/    3F29 : 04                     		inc	b
+ 1292/    3F2A : FD 7E 00               		ld	a, (iy+0)
+ 1293/    3F2D : E6 03                  		and	3
+ 1294/    3F2F : 80                     		add	a, b
+ 1295/    3F30 : 81                     		add	a, c
+ 1296/    3F31 : 21 72 38               		ld	hl, asc_3872	; "    "
+ 1297/    3F34 :                        ; Lookup in Tabelle HL,	Offset 2*A, Ausg. 4 Zeichen
+ 1298/    3F34 : 07                     out4c1:		rlca
+ 1299/    3F35 : 07                     		rlca
+ 1300/    3F36 : 16 00                  out4c:		ld	d, 0
+ 1301/    3F38 : 5F                     		ld	e, a
+ 1302/    3F39 : 19                     		add	hl, de
+ 1303/    3F3A : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1304/    3F3D : C3 65 39               coderet1:	jp	coderet		; Ende Code
+ 1305/    3F40 :                        
+ 1306/    3F40 :                        ; 67 RRD
+ 1307/    3F40 : E6 08                  crrd:		and	8
+ 1308/    3F42 : 0F                     		rrca
+ 1309/    3F43 : 21 92 38               		ld	hl, aRrd	; "RRD "
+ 1310/    3F46 : 18 EE                  		jr	out4c
+ 1311/    3F48 :                        
+ 1312/    3F48 :                        ; 57 ld	a,i; 5F	ld a,r
+ 1313/    3F48 : 21 8E 37               ldspez:		ld	hl, aLd		; "LD  "
+ 1314/    3F4B : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 25 - 8/15/2024 13:19:58
+
+
+ 1315/    3F4E : CD 67 39               		call	bits543		; Bits 5..3
+ 1316/    3F51 : 21 9A 38               		ld	hl, aIA		; "I,A "
+ 1317/    3F54 : 18 DE                  		jr	out4c1
+ 1318/    3F56 :                        
+ 1319/    3F56 :                        ; 40,48,..,78 IN
+ 1320/    3F56 : 21 CA 37               cin:		ld	hl, aIn		; "IN  "
+ 1321/    3F59 : CD 78 37               cin1:		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1322/    3F5C : CD 67 39               		call	bits543		; Bits 5..3
+ 1323/    3F5F : FE 06                  		cp	6
+ 1324/    3F61 : 28 05                  		jr	z, cin2		; ED70 -> in f
+ 1325/    3F63 : CD 0A 39               		call	out_r		; Ausgabe Einzelregister, Offs.	A
+ 1326/    3F66 : 18 D5                  		jr	coderet1
+ 1327/    3F68 : 3E 46                  cin2:		ld	a, 'F'
+ 1328/    3F6A : (MACRO)                		OUTCH
+ 1328/    3F6A : E7                                     rst     20h
+ 1328/    3F6B : 00                                     db    0                 ; OUTCH
+ 1329/    3F6C : 18 CF                  		jr	coderet1
+ 1330/    3F6E :                        
+ 1331/    3F6E :                        ; 41,49,..,79 OUT
+ 1332/    3F6E : 21 C6 37               cout:		ld	hl, aOut	; "OUT "
+ 1333/    3F71 : 18 E6                  		jr	cin1
+ 1334/    3F73 :                        
+ 1335/    3F73 :                        ; 42,52,..,72 SBC HL,rr
+ 1336/    3F73 : 21 9E 37               csbchl:		ld	hl, aSbc	; "SBC "
+ 1337/    3F76 : 18 03                  		jr	cadchl1
+ 1338/    3F78 :                        
+ 1339/    3F78 :                        
+ 1340/    3F78 :                        ; 4A,5A,..,7A ADC HL,rr
+ 1341/    3F78 : 21 96 37               cadchl:		ld	hl, aAdc	; "ADC "
+ 1342/    3F7B : CD 78 37               cadchl1:	call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1343/    3F7E : 3E 02                  		ld	a, 2		; "HL"
+ 1344/    3F80 : CD 0F 39               		call	out_rr		; Ausgabe Doppelregister, Offs.	A
+ 1345/    3F83 : 3E 2C                  		ld	a, ','
+ 1346/    3F85 : (MACRO)                		OUTCH
+ 1346/    3F85 : E7                                     rst     20h
+ 1346/    3F86 : 00                                     db    0                 ; OUTCH
+ 1347/    3F87 : CD 72 39               cadchl2:	call	bits654		; Bits 6..4
+ 1348/    3F8A : CD 1E 39               		call	out_rr2
+ 1349/    3F8D : 18 AE                  		jr	coderet1
+ 1350/    3F8F :                        
+ 1351/    3F8F :                        ; 43,53,..,73 LD (nn),rr
+ 1352/    3F8F : 21 8E 37               cldcnnrr:	ld	hl, aLd		; "LD  "
+ 1353/    3F92 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1354/    3F95 : CD 61 3E               		call	outcnn		; Ausgabe "(nn)"
+ 1355/    3F98 : D9                     		exx			; wg coderet
+ 1356/    3F99 : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1357/    3F9C : 18 E9                  		jr	cadchl2
+ 1358/    3F9E :                        
+ 1359/    3F9E :                        ; 4B,5B,..,7B LD rr,(nn)
+ 1360/    3F9E : 21 8E 37               cldrrcnn:	ld	hl, aLd		; "LD  "
+ 1361/    3FA1 : CD 78 37               		call	out4		; Ausgabe 4 Zeichen + Leerzeichen
+ 1362/    3FA4 : CD 87 3F               		call	cadchl2
+ 1363/    3FA7 : D9                     		exx			; wg coderet
+ 1364/    3FA8 : CD 80 39               		call	ocomma		; Ausgabe Komma
+ 1365/    3FAB : C3 61 3E               		jp	outcnn		; Ausgabe "(nn)"
+ 1366/    3FAE :                        
+ 1367/    3FAE :                        ;EDA0..EDBB Blockbefehle LDI..OTDR
+ 1368/    3FAE : FE A0                  cblock:		cp	0A0h		
+ 1369/    3FB0 : DA 65 39               		jp	c, coderet	; Ende Code
+ 1370/    3FB3 : FE BC                  		cp	0BCh
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 26 - 8/15/2024 13:19:58
+
+
+ 1371/    3FB5 : D2 65 39               		jp	nc, coderet	; Ende Code
+ 1372/    3FB8 : E6 07                  		and	7
+ 1373/    3FBA : FE 04                  		cp	4
+ 1374/    3FBC : D2 65 39               		jp	nc, coderet	; Ende Code
+ 1375/    3FBF : FD 7E 00               		ld	a, (iy+0)
+ 1376/    3FC2 : FE B0                  		cp	0B0h
+ 1377/    3FC4 : 38 02                  		jr	c, cblock1
+ 1378/    3FC6 : C6 04                  		add	a, 4		; AC..AF gibt es nicht
+ 1379/    3FC8 : E6 0F                  cblock1:	and	0Fh
+ 1380/    3FCA : 21 AA 38               		ld	hl, aLdi	; "LDI "
+ 1381/    3FCD : C3 34 3F               		jp	out4c1
+ 1382/    3FD0 :                        
+ 1383/    3FD0 :                        ;------------------------------------------------------------------------------
+ 1384/    3FD0 :                        ; UP
+ 1385/    3FD0 :                        ;------------------------------------------------------------------------------
+ 1386/    3FD0 :                        
+ 1387/    3FD0 :                        ; Ausgabe nullterminierten String
+ 1388/    3FD0 : 7E                     oStrng0:	ld	a, (hl)
+ 1389/    3FD1 : B7                     		or	a
+ 1390/    3FD2 : C8                     		ret	z
+ 1391/    3FD3 : (MACRO)                		OUTCH
+ 1391/    3FD3 : E7                                     rst     20h
+ 1391/    3FD4 : 00                                     db    0                 ; OUTCH
+ 1392/    3FD5 : 23                     		inc	hl
+ 1393/    3FD6 : 18 F8                  		jr	oStrng0		; Ausgabe nullterminierten String
+ 1394/    3FD8 :                        
+ 1395/    3FD8 :                        ;------------------------------------------------------------------------------
+ 1396/    3FD8 :                        ; 
+ 1397/    3FD8 :                        ;------------------------------------------------------------------------------
+ 1398/    3FD8 :                        
+ 1399/    3FD8 : FF FF                  adr:		dw 0FFFFh
+ 1400/    3FDA : FF FF                  vadr:		dw 0FFFFh		; tmp. Speicher	f. Adresse
+ 1401/    3FDC :                        					; (wird nur bweschrieben, nicht genutzt)
+ 1402/    3FDC : FF FF                  laen:		dw 0FFFFh
+ 1403/    3FDE : FF FF                  eadr:		dw 0FFFFh		; End-Adresse
+ 1404/    3FE0 : 00 00                  oadr:		dw 0			; Offset-Adr., wird bei JR beachtet
+ 1405/    3FE2 : 00 00                  cupos:		dw 0			; Cursor-Adresse
+ 1406/    3FE4 :                        					; (wird nur bweschrieben, nicht genutzt)
+ 1407/    3FE4 :                        		
+ 1408/    3FE4 :                        		end
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 27 - 8/15/2024 13:19:58
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+ AADC :                        3796 C |  AADD :                        3792 C |
+ ABC :                         383A C |  ABIT :                        3862 C |
+ ACALL :                       3953 C | *ACCF :                        3816 C |
+*ACPL :                        380E C | *ADAA :                        380A C |
+ ADE :                         383E C |  ADEC :                        37F6 C |
+ ADEHL :                       37E6 C | *ADI :                         37D6 C |
+ ADR :                         3FD8 C | *AEI :                         37DA C |
+ AEX :                         37CE C |  AEXX :                        37C2 C |
+*AEX_0 :                       37D2 C |  AHALT :                       378A C |
+ AIA :                         389A C |  AIN :                         37CA C |
+ AINC :                        37F2 C |  AJMP :                        37BE C |
+ AJPBED :                      393B C |  ALD :                         378E C |
+ ALDI :                        38AA C | *ANEG :                        3876 C |
+ ANOP :                        381A C |  AOUT :                        37C6 C |
+ APOP :                        37B6 C |  APUSH :                       37B2 C |
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+ AREG :                        3923 C |  ARES :                        3866 C |
+ ARET :                        394B C | *ARLA :                        3802 C |
+ ARLC :                        3842 C |  ARLCA :                       37FA C |
+*ARRA :                        3806 C | *ARRCA :                       37FE C |
+ ARRD :                        3892 C |  ARREG :                       3933 C |
+ ARREG2 :                      395D C |  ARST :                        37BA C |
+ ASBC :                        379E C | *ASCF :                        3812 C |
+ ASC_3872 :                    3872 C |  ASET :                        386A C |
+ ASP :                         386E C |  ASPHL :                       37DE C |
+ ASPHL_0 :                     37EC C | *ASUB :                        379A C |
+ BITS543 :                     3967 C |  BITS654 :                     3972 C |
+ CADCHL :                      3F78 C |  CADCHL1 :                     3F7B C |
+ CADCHL2 :                     3F87 C |  CADDRR :                      3A35 C |
+ CALLBED1 :                    3A72 C | *CASESENSITIVE :                  0 - |
+ CBIT :                        3CA3 C |  CBIT1 :                       3CA6 C |
+ CBLOCK :                      3FAE C |  CBLOCK1 :                     3FC8 C |
+ CCALL :                       3A68 C |  CCALLBED :                    3A70 C |
+ CDECR :                       3B5A C |  CDEC_RR :                     3B46 C |
+ CEXDEHL :                     3AD8 C |  CEXSPHL :                     3ACF C |
+ CEXSPHL1 :                    3AD2 C |  CEXX :                        3AFC C |
+ CHALT :                       39BB C |  CIN :                         3F56 C |
+ CIN1 :                        3F59 C |  CIN2 :                        3F68 C |
+ CINCR :                       3B4B C |  CINCR1 :                      3B4E C |
+ CINC_RR :                     3B37 C |  CINC_RR1 :                    3B3A C |
+ CINOUTN :                     3AC7 C |  CJMPM :                       3B01 C |
+ CJPBED :                      3A8D C |  CJR :                         3B77 C |
+ CJR1 :                        3B90 C |  CLDCNNRR :                    3F8F C |
+ CLDNN :                       3C27 C |  CLDRN :                       3B5F C |
+ CLDRRCNN :                    3F9E C |  CLD_A_IRR :                   3BE6 C |
+ CLD_A_NN :                    3C51 C |  CLD_BC1 :                     3C1C C |
+ CLD_BC_A :                    3C19 C |  CLD_DE_A :                    3C14 C |
+ CLD_HL_NN1 :                  3C40 C |  CLD_NN_A :                    3C67 C |
+ CLD_NN_HL :                   3C58 C |  CODE :                        3985 C |
+ CODE003F :                    3B0E C |  CODE407F :                    399C C |
+ CODE80BF :                    39C4 C |  CODEC0FF :                    39DE C |
+ CODEI003F :                   3DF5 C |  CODEI21 :                     3EB0 C |
+ CODEI22 :                     3E74 C |  CODEI23 :                     3EA4 C |
+ CODEI232 :                    3EA7 C |  CODEI26 :                     3E56 C |
+ CODEI2A :                     3E5B C |  CODEI2B :                     3E9F C |
+ CODEI2E :                     3E47 C |  CODEI407F :                   3DC2 C |
+ CODEI407FM :                  3DEC C |  CODEI407FS :                  3DDD C |
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 28 - 8/15/2024 13:19:58
+
+
+ CODEI407FX :                  3DD7 C |  CODEI80BF :                   3D9C C |
+ CODEIADDRR :                  3EC8 C |  CODEIADDRR2 :                 3EE2 C |
+ CODEICB :                     3D84 C |  CODEIDECX :                   3E82 C |
+ CODEIEX :                     3D49 C |  CODEIJP :                     3D5D C |
+ CODEILDSP :                   3D70 C |  CODEINCX :                    3E87 C |
+ CODEINX2 :                    3E8A C |  CODEIPOP :                    3D39 C |
+ CODEIPUSH :                   3D3E C |  CODEIPUSH1 :                  3D41 C |
+ CODELEN_XX :                  3701 C |  CODERET :                     3965 C |
+ CODERET1 :                    3F3D C |  CODERET2 :                    3DB5 C |
+ CODERET3 :                    3E53 C |  CODE_CB :                     3C76 C |
+ CODE_CB1 :                    3C91 C |  CODE_ED :                     3EE8 C |
+ CODE_IX :                     3CFC C |  CODE_IY :                     3D00 C |
+ CODE_IY1 :                    3D02 C |  CODLEN :                      36C0 C |
+ CODLEN_ED :                   376A C |  CODLEN_XY :                   372D C |
+ CODRET2 :                     3D36 C | *CONSTPI :        3.141592653589793 - |
+ COUT :                        3F6E C |  CPOP :                        3A2D C |
+ CPUSH :                       3A1E C |  CPUSH1 :                      3A24 C |
+ CRES :                        3C9E C |  CRET :                        3AF3 C |
+ CRET1 :                       3AF6 C |  CRETBED :                     3A7F C |
+ CRRD :                        3F40 C |  CRST :                        3A4F C |
+ CSBCHL :                      3F73 C |  CSONST1 :                     3AA1 C |
+ CSONST11 :                    3ADD C |  CUPOS :                       3FE2 C |
+ CURSR :                         2B - |  C_LD_ADD_RR :                 3BA7 C |
+ C_LD_RR :                     3BC8 C | *DATE :                 "8/15/2024" - |
+ EADR :                        3FDE C | *FALSE :                          0 - |
+*FULLPMMU :                       1 - | *HAS64 :                          0 - |
+*HASFPU :                         0 - | *HASPMMU :                        0 - |
+*INSUPMODE :                      0 - |  LAEN :                        3FDC C |
+ LDSPEZ :                      3F48 C |  LD_A_BC :                     3C0A C |
+ LD_A_DE1 :                    3C04 C |  LEN0 :                        372B C |
+ LEN_1 :                       3729 C |  LEN_2 :                       3725 C |
+ LEN_3 :                       3721 C |  LEN_4 :                       371D C |
+*LISTON :                         1 - | *MACEXP :                         7 - |
+*MOMCPU :                      80DC - | *MOMCPUNAME :            "Z80UNDOC" - |
+*NESTMAX :                      100 - |  OADR :                        3FE0 C |
+ OBCHX :                       3979 C |  OCOMMA :                      3980 C |
+ OSTRNG0 :                     3FD0 C |  OUT2C :                       38F8 C |
+ OUT4 :                        3778 C |  OUT4C :                       3F36 C |
+ OUT4C1 :                      3F34 C |  OUT4C_0 :                     3B31 C |
+ OUTAC :                       3CE3 C |  OUTADR :                      3A91 C |
+ OUTCN :                       3E4A C |  OUTCNN :                      3E61 C |
+ OUTHC :                       3CED C |  OUTHCR :                      3DB8 C |
+ OUTIBC :                      3C43 C |  OUTIC :                       3CE9 C |
+ OUTICPD :                     3CBF C |  OUTICPD1 :                    3CD8 C |
+ OUTICPD2 :                    3CDB C |  OUTLC :                       3CF1 C |
+ OUTLCR :                      3DBD C |  OUTSPC :                      3CF5 C |
+ OUT_DIVERS :                  3919 C |  OUT_JPBED :                   3914 C |
+ OUT_R :                       390A C |  OUT_RR :                      390F C |
+ OUT_RR2 :                     391E C | *PADDING :                        1 - |
+*REAS :                        3600 C |  REAS0 :                       3625 C |
+ REAS1 :                       365D C | *REAS2 :                       366B C |
+ REAS3 :                       367A C |  REAS4 :                       3686 C |
+ REAS5 :                       368D C |  REAS6 :                       36B1 C |
+*RELAXED :                        0 - |  SOIL :                          16 - |
+*TIME :                  "13:19:58" - | *TRUE :                           1 - |
+ VADR :                        3FDA C | *VERSION :                     142F - |
+*XXXX :                          73 - |
+
+    226 symbols
+     35 unused symbols
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 29 - 8/15/2024 13:19:58
+
+
+
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 30 - 8/15/2024 13:19:58
+
+
+  Defined Macros:
+  ---------------
+
+INCH                                  | INHEX                                
+INSTR                                 | OUTCH                                
+OUTHL                                 | OUTHX                                
+OUTSP                                 | PRST7                                
+
+      8 macros
+
+ AS V1.42 Beta [Bld 249] - Source File REASS_102.asm - Page 31 - 8/15/2024 13:19:58
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.02 seconds assembly time
+
+   1410 lines source file
+   1534 lines incl. macro expansions
+      2 passes
+      0 errors
+      0 warnings

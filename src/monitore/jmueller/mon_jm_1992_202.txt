@@ -1,0 +1,129 @@
+Monitorprogramm "Z1013-OS J.Mueller 1990-1992"
+==============================================
+
+Autor: Jens Mueller
+
+
+1. Allgemeines
+
+Das Monitorprogramm wurde mit dem Ziel entwickelt,
+den originalen Monitor 2.02 durch eine komfortablere Version
+zu ersetzen.
+Die Hardware-Vorausetzungen sollten beibehalten werden
+(2 kByte ROM, Folientastatur).
+
+
+2. Eigenschaften
+
+Der Hauptzweck des neuen Monitorprogramms ist,
+dass das Headersave in den ROM integriert wird und
+ueber die Kommandos L und S verwendet werden kann.
+Ausserdem koennen diese Funktionen ueber den Sprungverteiler
+aufgerufen werden.
+Die alten Lade- und Save-Funktionen stehen aber weiterhin
+zur Verfuegung
+(Kommandos G und P sowie Systemfunktionen 8 und 9).
+
+Ausserdem wurde die Tastaturabfrage komfortabler gestaltet,
+indem in der Systemfunktion 4 (INKEY) ein Autorepeat
+implementiert wurde.
+
+Aufgrund der neuen Funktioen mussten aber andere
+Funktionalitaeten, die selten gebraucht werden
+(Speicherbereiche vergleichen, Haltepunkt setzen,
+Schrittbetrieb, Registeranzeige), weichen.
+
+Ein Nachteil des neuen Monitorprogramms ist,
+dass sich die Systemfunktionen auf anderen Adressen befinden
+und somit nur noch ueber RST 20 aufgerufen werden koennen.
+Dieser Nachteil ist inzwischen jedoch nicht mehr so tragisch,
+da der A.2-Monitor ebenfalls andere Einsprungadressen hat
+und deshalb die meisten Z1013-Programme inzwischen
+nur noch RST 20 fuer Systemaufrufe verwenden.
+
+
+3. Initialisierung
+
+Zu Beginn werden wie beim Original die Z1013-Systemzellen
+initialisiert.
+Ausserdem werden einige Funktionen des Sprungverteilers
+initialisiert (Headersave, Tastaturabfrage).
+Das setzt voraus, dass der Bereich F800h bis FFFFh RAM ist.
+Danach wird geprueft, ob am Kassetteneingang gerade
+ein Synchronisationston anliegt.
+Wenn ja, wird die Laderoutine (Kommando L) aufgerufen.
+Danach erscheint die Eingabeaufforderung und man
+befindet sich in der Kommandoschleife.
+
+
+4. Kommandos
+
+Gegenueber dem Original stehen folgende Kommandos
+nicht mehr zur Verfuegung: B, C, E, F, N, R
+
+Folgende Kommandos sind neu oder haben eine geaenderte
+oder voellig neue Bedeutung: D, G, L, M, P, S
+
+Nachfolgend werden nur die Kommandos beschrieben,
+die sich vom Original-Monitor 2.02 unterscheiden:
+
+
+D aadr [eadr]
+
+Werden Anfangs- und Endadresse angegeben,
+wird der entsprechende Speicherinhalt wie beim Original
+ausgegeben.
+Laesst man die Enbdadresse weg,
+erfolgt die Speicherausgabe blockweise als HEX-ASCII-Dump.
+Drueckt man ENTER, wird der naechste Block ausgegeben.
+Jede andere Taste beendet das Kommando.
+
+
+G aadr eadr
+
+Diese Kommando entspricht dem alten L-Kommando und liesst
+eine Datei im alten Nicht-Headersave-Format von Kassette.
+
+
+L [aadr]
+
+Dieses Kommando laedt eine Datei im Headersave-Format
+von der Kassette.
+Dabei kann eine Ladeadresse angegeben werden,
+die dann anstelle der in der Datei befindlichen
+Ladeadresse verwendet wird.
+
+Das Kommando listet erst einmal nur die Headersave-Dateien,
+die die Kassette abspeilt.
+Immer nachdem ein Kopfblock gelesen wurde,
+wird er angezeigt.
+Um die gerade angezeigt Datei zu laden,
+muessen Sie ENTER druecken.
+
+Wenn die gewuenschte Datei nicht zu finden ist,
+koennen Sie das Kommando mit S4-K/CTRL-C abbrechen.
+
+
+M aadr
+
+Das M-Kommando dient zum Aendern von Speicherbereichen
+und entspricht dem Original.
+Es wurde jedoch komfortable gestaltet,
+indem neben hexadezimalen Zahlen auch ASCII-Zeichen
+eingegeben werden koennen.
+Wenn eine Eingabe mit einem Quote-Zeichen beginnt,
+wird das naechste Zeichen als ASCII-Zeichen uebernommen.
+
+
+P aadr eadr
+
+Diese Kommando entspricht dem alten S-Kommando und
+speichert den angegebenen Adressbereich im alten
+Nicht-Headersave-Format auf Kassette.
+
+
+S aadr eadr
+
+Dieses Kommando speichert den angegebenen Adressbereich
+im Headersave-Format auf Kassette.
+Dazu werden Sie nach dem Typ und dem Namen der Datei gefragt.

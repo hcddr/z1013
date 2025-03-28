@@ -1,0 +1,2770 @@
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 1 - 8/15/2024 13:20:0
+
+
+    1/       0 :                        ;PN	TINY-BASIC Version 3.01, Original aus Handbuch IIb bzw. Kassette M0111
+    2/       0 :                        
+    3/       0 :                        ;reass: Volker Pohlers, Lomonossowallee 41/81, O-2200 Greifswald
+    4/       0 :                        ;letzte Aenderung: 9.6.1991
+    5/       0 :                        ;vp070819 Einbau weiterer handschriftl. Kommentare lt. Ausdruck, vermutlich auch noch 1991
+    6/       0 :                        ;vp070819 Anpassung Arnold-Assembler
+    7/       0 :                        ;03.12.2012 Anpassung an Palo-Alto-Labels etc.
+    8/       0 :                        
+    9/       0 :                        ;das Basic 
+   10/       0 :                        
+   11/       0 :                        	cpu	z80
+   12/       0 :                        
+   13/       0 :                        ;Monitoradressen
+   14/       0 : =1BH                   ARG1:	EQU	0001BH			;1. Argument
+   15/       0 : =1DH                   ARG2:	EQU	0001DH			;2. Argument
+   16/       0 : =2BH                   CUPOS:	EQU	0002BH			;akt. Cursorposition
+   17/       0 : =0B0H                  SYSSK:	EQU	000B0H			;Systemstack
+   18/       0 :                        
+   19/       0 :                        ;Kopfpuffer bei CLOAD/CSAVE
+   20/       0 : =0E0H                  FAADR:	EQU	000E0H			;Anfangsadresse
+   21/       0 : =0E2H                  FEADR:	EQU	000E2H			;Endadresse
+   22/       0 : =0F0H                  FNAME:	EQU	000F0H			;Filename
+   23/       0 :                        
+   24/       0 :                        
+   25/       0 : =1000H                 ARBRM:	EQU	01000H			;Beginn Arbeitsspeicher
+   26/       0 : =1000H                 LENZK:	EQU	ARBRM			;Laenge akt. Zeichenkette
+   27/       0 : =1002H                 LSTZL:	EQU	ARBRM+002H		;Anz. zu listender Zeilen
+   28/       0 :                        ;????					;LSTZL+1 ist ungenutzt
+   29/       0 : =1004H                 RANPNT:	EQU	ARBRM+004H		;Zufallswert
+   30/       0 : =1006H                 INOT:	EQU	ARBRM+006H		;3 byte fuer IN/OUT
+   31/       0 : =100BH                 CURRNT:	EQU	ARBRM+00BH		;Zeiger auf aktuelle Zeile
+   32/       0 : =100DH                 STKGOS:	EQU	ARBRM+00DH		;UP-Starter, bei Aufenthalt in UP-Routine 00
+   33/       0 : =100FH                 VARNXT:	EQU	ARBRM+00FH		;Adresse akt. NEXT-Variable
+   34/       0 : =1011H                 STKINP:	EQU	ARBRM+011H		;INPUT
+   35/       0 : =1013H                 LOPVAR:	EQU	ARBRM+013H		;Laufvariablenadresse
+   36/       0 : =1015H                 LOPINC:	EQU	ARBRM+015H		;Schrittweite Schleife
+   37/       0 : =1017H                 LOPLMT:	EQU	ARBRM+017H		;Endwert Schleife
+   38/       0 : =1019H                 LOPLN:	EQU	ARBRM+019H		;Anfangszeile Schleife
+   39/       0 : =101BH                 LOPPT:	EQU	ARBRM+01BH
+   40/       0 : =101DH                 M101D:	EQU	ARBRM+01DH
+   41/       0 : =101FH                 TXTUNF:	EQU	ARBRM+01FH		;BASIC-Pgm.-Ende
+   42/       0 : =1049H                 STMAX:	EQU	ARBRM+049H		;max. Stacktiefe
+   43/       0 : =1113H                 STACK:	EQU	ARBRM+113H		;BASIC-Stack
+   44/       0 : =1115H                 VARBGN:	EQU	ARBRM+115H		;Variablenspeicher A..Z
+   45/       0 : =114CH                 TXTEND:	EQU	ARBRM+14CH		;memory end
+   46/       0 : =114EH                 BUFFER:	EQU	ARBRM+14EH		;Pointer Eingabepuffer
+   47/       0 : =1150H                 INPND:	EQU	ARBRM+150H		;Pointer Eing.pufferende
+   48/       0 : =1152H                 TXTBGN:	EQU	ARBRM+152H		;Beginn BASIC-Programm
+   49/       0 :                        
+   50/       0 : =3094H                 STEND:	EQU	03094H			;Standardwert memory end
+   51/       0 :                        
+   52/       0 :                        
+   53/       0 : =0DH                   CR:	EQU	0DH
+   54/       0 :                        
+   55/       0 :                        
+   56/       0 :                        ;allgemeine Registerverwendung:
+   57/       0 :                        ;
+   58/       0 :                        ;   DE - zeigt auf Adresse im Input
+   59/       0 :                        ;   HL - enthaelt Funktionswert, 2 Byte mit Vorzeichen
+   60/       0 :                        ;
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 2 - 8/15/2024 13:20:0
+
+
+   61/       0 :                        
+   62/       0 :                        
+   63/     100 :                        	ORG	100H
+   64/     100 :                        
+   65/     100 : C3 AF 07               	JP	COLD
+   66/     103 : C3 BB 01               	JP	RSTART
+   67/     106 : E7                     OUTCH:	RST	20H			;Zeichenausgabe
+   68/     107 : 00                     	DB	0			;von A
+   69/     108 : C9                     	RET
+   70/     109 : E7                     INCH:	RST	20H			;Zeicheneingabe
+   71/     10A : 01                     	DB	1			;nach A
+   72/     10B : C9                     	RET
+   73/     10C : E7                     SAVE:	RST	20H			;Kassettenspeichern
+   74/     10D : 08                     	DB	8			;von (ARG1) bis (ARG2)
+   75/     10E : C9                     	RET
+   76/     10F : E7                     LOAD:	RST	20H			;Kassettenladen
+   77/     110 : 09                     	DB	9			;von (ARG1) bis (ARG2)
+   78/     111 : C9                     	RET
+   79/     112 : E7                     HEXUM:	RST	20H			;Tastatur auf
+   80/     113 : 12                     	DB	12H			;Zahleneingabe
+   81/     114 : C9                     	RET
+   82/     115 : E7                     ALFA:	RST	20H			;Tastatur auf
+   83/     116 : 13                     	DB	13H			;Buchstabeneingabe
+   84/     117 : C9                     	RET
+   85/     118 :                        ;
+   86/     118 :                        ;++++++++++++++++++++++++++++++++++++++
+   87/     118 :                        ;Vergleich HL und DE
+   88/     118 :                        ;++++++++++++++++++++++++++++++++++++++
+   89/     118 :                        ;
+   90/     118 : 7C                     COMP:	LD	A,H
+   91/     119 : BA                     	CP	A, D
+   92/     11A : C0                     	RET	NZ
+   93/     11B : 7D                     	LD	A,L
+   94/     11C : BB                     	CP	A, E
+   95/     11D : C9                     	RET
+   96/     11E :                        ;
+   97/     11E :                        ;++++++++++++++++++++++++++++++++++++++
+   98/     11E :                        ;Uebergehen von Leerzeichen
+   99/     11E :                        ;++++++++++++++++++++++++++++++++++++++
+  100/     11E :                        ;
+  101/     11E : 1A                     IGNBLK:	LD	A,(DE)
+  102/     11F : FE 20                  	CP	A, ' '
+  103/     121 : C0                     	RET	NZ
+  104/     122 : 13                     	INC	DE
+  105/     123 : 18 F9                  	JR	IGNBLK
+  106/     125 :                        ;
+  107/     125 :                        ;++++++++++++++++++++++++++++++++++++++
+  108/     125 :                        ;naechsten Befehl bearbeiten
+  109/     125 :                        ;++++++++++++++++++++++++++++++++++++++
+  110/     125 :                        ;
+  111/     125 : F1                     FINISH:	POP	AF
+  112/     126 :                        ;folgt	noch ein Befehl o. ist Zeilenende?
+  113/     126 : CD 1B 06               	CALL	FIN			;dann diesen interpretieren
+  114/     129 :                        ;nein, also Fehler
+  115/     129 : C3 36 06               	JP	QWHAT
+  116/     12C :                        ;
+  117/     12C :                        ;++++++++++++++++++++++++++++++++++++++
+  118/     12C :                        ;Variablenadresse holen
+  119/     12C :                        ;++++++++++++++++++++++++++++++++++++++
+  120/     12C :                        ;
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 3 - 8/15/2024 13:20:0
+
+
+  121/     12C : CD 1E 01               VARAD:	CALL	IGNBLK			;Leerzeichen uebergehen
+  122/     12F : D6 40                  	SUB	40H			;Buchstabe ?
+  123/     131 : D8                     	RET	C			;nein
+  124/     132 : 20 1B                  	JR	NZ, TV1		;wenn Variable
+  125/     134 :                        ;
+  126/     134 :                        ;Feldvariable @(.)
+  127/     134 :                        ;Ablage des Feldes ab (TXTEND) abwaerts
+  128/     134 :                        ;
+  129/     134 : 13                     	INC	DE
+  130/     135 : CD 75 05               	CALL	PARN			;Index holen
+  131/     138 : 29                     	ADD	HL,HL			;*2
+  132/     139 : DA 9D 01               	JP	C, QHOW		;wenn Index negativ
+  133/     13C : D5                     	PUSH	DE
+  134/     13D : EB                     	EX	DE,HL			;DE=rel. Adresse Variable
+  135/     13E : CD B6 05               	CALL	SIZE			;HL=freier Speicher
+  136/     141 : CD 18 01               	CALL	COMP
+  137/     144 : DA 66 06               	JP	C, QSORRY		;wenn HL<DE -> 'sorry'
+  138/     147 :                        ;
+  139/     147 : 2A 4C 11               	LD	HL,(TXTEND)
+  140/     14A : CD D8 05               	CALL	SUBDE			;HL=Adresse Variable
+  141/     14D : D1                     	POP	DE
+  142/     14E : C9                     	RET
+  143/     14F :                        ;
+  144/     14F :                        ;Buchstabenvariable
+  145/     14F :                        ;Ablage im Variablenspeicher
+  146/     14F :                        ;
+  147/     14F : FE 1B                  TV1:	CP	A, 1BH			;Gro~buchstabe ?
+  148/     151 : 3F                     	CCF
+  149/     152 : D8                     	RET	C			;nein
+  150/     153 : 13                     	INC	DE
+  151/     154 : 21 15 11               	LD	HL,VARBGN		;Beginn Variablenspeicher
+  152/     157 : 07                     	RLCA				;A*2
+  153/     158 : 85                     	ADD	A, L
+  154/     159 : 6F                     	LD	L,A
+  155/     15A : 3E 00                  	LD	A,0
+  156/     15C : 8C                     	ADC	A, H
+  157/     15D : 67                     	LD	H,A			;HL=Adresse
+  158/     15E : C9                     	RET
+  159/     15F :                        ;
+  160/     15F :                        ;++++++++++++++++++++++++++++++++++++++
+  161/     15F :                        ;Zeichenvergleich und Verzweigung
+  162/     15F :                        ;++++++++++++++++++++++++++++++++++++++
+  163/     15F :                        ;
+  164/     15F : E3                     TSTC:	EX	(SP),HL
+  165/     160 : CD 1E 01               	CALL	IGNBLK			;Leerzeichen uebergehen
+  166/     163 : BE                     	CP	A, (HL)			;(DE)=Datenbyte nach Ruf?
+  167/     164 : 23                     	INC	HL
+  168/     165 : 28 08                  	JR	Z, TSTC1		;ja
+  169/     167 :                        ;
+  170/     167 :                        ;sonst Datenadresse holen und zu dieser+2 springen
+  171/     167 :                        ;
+  172/     167 : D5                     	PUSH	DE
+  173/     168 : 5E                     	LD	E,(HL)
+  174/     169 : 23                     	INC	HL
+  175/     16A : 56                     	LD	D,(HL)
+  176/     16B : EB                     	EX	DE,HL
+  177/     16C : D1                     	POP	DE
+  178/     16D : 18 01                  	JR	TSTC2
+  179/     16F :                        ;
+  180/     16F :                        ;wenn Zeichen gleich, so 3 Byte hinter Ruf weiter
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 4 - 8/15/2024 13:20:0
+
+
+  181/     16F :                        ;
+  182/     16F : 13                     TSTC1:	INC	DE
+  183/     170 : 23                     TSTC2:	INC	HL
+  184/     171 : 23                     	INC	HL
+  185/     172 : E3                     	EX	(SP),HL
+  186/     173 : C9                     	RET
+  187/     174 :                        ;
+  188/     174 :                        ;++++++++++++++++++++++++++++++++++++++
+  189/     174 :                        ;ASCII->HEX-Konvertierung
+  190/     174 :                        ;++++++++++++++++++++++++++++++++++++++
+  191/     174 :                        ;
+  192/     174 : 21 00 00               TSTNUM:	LD	HL,0			;Startwert
+  193/     177 : 44                     	LD	B,H			;B=Stellenanzahl
+  194/     178 : CD 1E 01               	CALL	IGNBLK			;Leerzeichen uebergehen
+  195/     17B : FE 30                  TN1:	CP	A, '0'			;Ziffer >0 ?
+  196/     17D : D8                     	RET	C			;nein
+  197/     17E : FE 3A                  	CP	A, ':'			;Ziffer <=9 ?
+  198/     180 : D0                     	RET	NC			;nein
+  199/     181 :                        ;reicht der Zahlenumfang fuer die naechste Ziffer?
+  200/     181 : 3E F0                  	LD	A,0F0H			;SET A TO # OF DIGITS
+  201/     183 : A4                     	AND	A, H			;IF H>255, THERE IS NO ROOM FOR NEXT DIGIT
+  202/     184 : 20 17                  	JR	NZ, QHOW		;nein
+  203/     186 :                        ;
+  204/     186 : 04                     	INC	B			;naechste Stelle
+  205/     187 : C5                     	PUSH	BC
+  206/     188 :                        ;EXPR*10
+  207/     188 : 44                     	LD	B,H			;HL=10;*HL+(NEW DIGIT)
+  208/     189 : 4D                     	LD	C,L
+  209/     18A : 29                     	ADD	HL,HL			;WHERE 10;* IS DONE BY
+  210/     18B : 29                     	ADD	HL,HL			;SHIFT AND ADD
+  211/     18C : 09                     	ADD	HL,BC
+  212/     18D : 29                     	ADD	HL,HL
+  213/     18E :                        ;und neue Ziffer dazu
+  214/     18E : 1A                     	LD	A,(DE)			;AND (DIGIT) IS FROM
+  215/     18F : 13                     	INC	DE			;STRIPPING THE ASCII
+  216/     190 : E6 0F                  	AND	A, 0FH			;CODE
+  217/     192 : 85                     	ADD	A, L
+  218/     193 : 6F                     	LD	L,A
+  219/     194 : 3E 00                  	LD	A,0
+  220/     196 : 8C                     	ADC	A, H
+  221/     197 : 67                     	LD	H,A
+  222/     198 : C1                     	POP	BC
+  223/     199 :                        ;EXPR noch positiv? dann naechste Stelle
+  224/     199 : 1A                     	LD	A,(DE)			;DO THIS DIGIT AFTER
+  225/     19A : F2 7B 01               	JP	P, TN1			;DIGIT. S SAYS OVERFLOW
+  226/     19D :                        
+  227/     19D :                        ;
+  228/     19D :                        ;++++++++++++++++++++++++++++++++++++++
+  229/     19D :                        ;Fehlermeldung 'HOW?'
+  230/     19D :                        ;++++++++++++++++++++++++++++++++++++++
+  231/     19D :                        ;
+  232/     19D : D5                     QHOW:	PUSH	DE			;*** ERROR: "HOW?" ***
+  233/     19E : 11 A4 01               AHOW:	LD	DE,HOW
+  234/     1A1 : C3 3A 06               	JP	ERROR
+  235/     1A4 :                        ;
+  236/     1A4 :                        ;++++++++++++++++++++++++++++++++++++++
+  237/     1A4 :                        ;Meldungen
+  238/     1A4 :                        ;++++++++++++++++++++++++++++++++++++++
+  239/     1A4 :                        ;
+  240/     1A4 : 48 4F 57 3F 0D         HOW:	DB	"HOW?", CR
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 5 - 8/15/2024 13:20:0
+
+
+  241/     1A9 : 52 45 41 44 59 0D      OK:	DB	"READY", CR
+  242/     1AF : 57 48 41 54 3F 0D      WHAT:	DB	"WHAT?", CR
+  243/     1B5 : 53 4F 52 52 59 0D      SORRY:	DB	"SORRY", CR
+  244/     1BB :                        
+  245/     1BB :                        ;**************************************************************
+  246/     1BB :                        ;*
+  247/     1BB :                        ;* *** MAIN ***
+  248/     1BB :                        ;*
+  249/     1BB :                        ;* THIS IS THE MAIN LOOP THAT COLLECTS THE TINY BASIC PROGRAM
+  250/     1BB :                        ;* AND STORES IT IN THE MEMORY.
+  251/     1BB :                        ;*
+  252/     1BB :                        ;* AT START, IT PRINTS OUT "(CR)OK(CR)", AND INITIALIZES THE
+  253/     1BB :                        ;* STACK AND SOME OTHER INTERNAL VARIABLES.  THEN IT PROMPTS
+  254/     1BB :                        ;* ">" AND READS A LINE.  IF THE LINE STARTS WITH A NON-ZERO
+  255/     1BB :                        ;* NUMBER, THIS NUMBER IS THE LINE NUMBER.  THE LINE NUMBER
+  256/     1BB :                        ;* (IN 16 BIT BINARY) AND THE REST OF THE LINE (INCLUDING CR)
+  257/     1BB :                        ;* IS STORED IN THE MEMORY.  IF A LINE WITH THE SAME LINE
+  258/     1BB :                        ;* NUMBER IS ALREDY THERE, IT IS REPLACED BY THE NEW ONE.  IF
+  259/     1BB :                        ;* THE REST OF THE LINE CONSISTS OF A 0DHONLY, IT IS NOT STORED
+  260/     1BB :                        ;* AND ANY EXISTING LINE WITH THE SAME LINE NUMBER IS DELETED.
+  261/     1BB :                        ;*
+  262/     1BB :                        ;* AFTER A LINE ISs INSERTED, REPLACED, OR DELETED, THE PROGRAM
+  263/     1BB :                        ;* LOOPS BACK AND ASK FOR ANOTHER LINE.  THIS LOOP WILL BE
+  264/     1BB :                        ;* TERMINATED WHEN IT READS A LINE WITH ZERO OR NO LINE
+  265/     1BB :                        ;* NUMBER; AND CONTROL IS TRANSFERED TO "DIRCT".
+  266/     1BB :                        ;*
+  267/     1BB :                        ;* TINY BASIC PROGRAM SAVE AREA STARTS AT THE MEMORY LOCATION
+  268/     1BB :                        ;* LABELED "TXTBGN" AND ENDED AT "TXTEND".  WE ALWAYS FILL THIS
+  269/     1BB :                        ;* AREA STARTING AT "TXTBGN", THE UNFILLED PORTION IS POINTED
+  270/     1BB :                        ;* BY THE CONTENT OF A MEMORY LOCATION LABELED "TXTUNF".
+  271/     1BB :                        ;*
+  272/     1BB :                        ;* THE MEMORY LOCATION "CURRNT" POINTS TO THE LINE NUMBER
+  273/     1BB :                        ;* THAT IS CURRENTLY BEING INTERPRETED.  WHILE WE ARE IN
+  274/     1BB :                        ;* THIS LOOP OR WHILE WE ARE INTERPRETING A DIRECT COMMAND
+  275/     1BB :                        ;* (SEE NEXT SECTION), "CURRNT" SHOULD POINT TO A 0.
+  276/     1BB :                        ;*
+  277/     1BB :                        ;
+  278/     1BB :                        ;++++++++++++++++++++++++++++++++++++++
+  279/     1BB :                        ;Warmstart
+  280/     1BB :                        ;++++++++++++++++++++++++++++++++++++++
+  281/     1BB :                        ;
+  282/     1BB : 31 13 11               RSTART:	LD	SP,STACK		;Stack initialisieren
+  283/     1BE : CD 15 01               	CALL	ALFA			;Tastatur im Normalmode
+  284/     1C1 : 11 A9 01               	LD	DE,OK
+  285/     1C4 : 97                     	SUB	A			;A=0
+  286/     1C5 : CD C3 06               	CALL	PRTSTG			;'Ready' ausgeben
+  287/     1C8 :                        ;
+  288/     1C8 : 21 D4 01               	LD	HL,ST2+1		;LITERAL 0
+  289/     1CB : 22 0B 10               	LD	(CURRNT),HL		;CURRNT->LINE # = 0
+  290/     1CE : 3E FF                  	LD	A,0FFH			;Anzahl zu listender
+  291/     1D0 : 32 02 10               	LD	(LSTZL),A		;Zeilen
+  292/     1D3 : 21 00 00               ST2:	LD	HL,0
+  293/     1D6 : 22 13 10               	LD	(LOPVAR),HL
+  294/     1D9 : 22 0D 10               	LD	(STKGOS),HL
+  295/     1DC :                        ;
+  296/     1DC : 3E 3E                  ST3:	LD	A,'>'			;Ausgabe Prompt
+  297/     1DE : CD 6C 06               	CALL	GETLN			;und Zeileneingabe
+  298/     1E1 :                        ;
+  299/     1E1 : D5                     	PUSH	DE			;DE->END OF LINE akt. Pufferende
+  300/     1E2 : ED 5B 4E 11            	LD	DE,(BUFFER)		;DE->BEGINNING OF LINE
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 6 - 8/15/2024 13:20:0
+
+
+  301/     1E6 : CD 74 01               	CALL	TSTNUM			;evtl. Zeilennummer?
+  302/     1E9 : CD 1E 01               	CALL	IGNBLK			;Leerzeichen uebergehen
+  303/     1EC : 7C                     	LD	A,H			;HL=VALUE OF THE # OR
+  304/     1ED : B5                     	OR	L			;0 IF NO # WAS FOUND
+  305/     1EE : C1                     	POP	BC			;BC->END OF LINE
+  306/     1EF : CA 34 09               	JP	Z, DIRECT		;wenn keine Zeilenummer, so Befehl ausfuehren
+  307/     1F2 :                        ;Zeilennummer hex. in Puffer schreiben
+  308/     1F2 : 1B                     	DEC	DE			;BACKUP DE AND SAVE
+  309/     1F3 : 7C                     	LD	A,H			;VALUE OF LINE # THERE
+  310/     1F4 : 12                     	LD	(DE),A
+  311/     1F5 : 1B                     	DEC	DE
+  312/     1F6 : 7D                     	LD	A,L
+  313/     1F7 : 12                     	LD	(DE),A
+  314/     1F8 :                        ;
+  315/     1F8 : C5                     	PUSH	BC			;BC,DE->BEGIN, END
+  316/     1F9 : D5                     	PUSH	DE
+  317/     1FA : 79                     	LD	A,C
+  318/     1FB : 93                     	SUB	E
+  319/     1FC : F5                     	PUSH	AF			;A=# OF BYTES IN LINE
+  320/     1FD : CD 9C 06               	CALL	FNDLN			;FIND THIS LINE IN SAVE
+  321/     200 : D5                     	PUSH	DE			;AREA, DE->SAVE AREA
+  322/     201 : 20 10                  	JR	NZ, ST4			;NZ:NOT FOUND, INSERT
+  323/     203 :                        ;
+  324/     203 : D5                     	PUSH	DE			;Z:FOUND, DELETE IT
+  325/     204 : CD B9 06               	CALL	FNDNXT			;Zeilenende suchen DE->NEXT LINE
+  326/     207 : C1                     	POP	BC			;BC->LINE TO BE DELETED
+  327/     208 : 2A 1F 10               	LD	HL,(TXTUNF)		;HL->UNFILLED SAVE AREA
+  328/     20B : CD 55 07               	CALL	MVUP			;MOVE UP TO DELETE
+  329/     20E : 60                     	LD	H,B			;TXTUNF->UNFILLED AREA
+  330/     20F : 69                     	LD	L,C
+  331/     210 : 22 1F 10               	LD	(TXTUNF),HL		;UPDATE
+  332/     213 :                        ;
+  333/     213 : C1                     ST4:	POP	BC			;GET READY TO INSERT
+  334/     214 : 2A 1F 10               	LD	HL,(TXTUNF)		;BUT FIRT CHECK IF
+  335/     217 : F1                     	POP	AF			;THE LENGTH OF NEW LINE
+  336/     218 : E5                     	PUSH	HL			;IS 3 (LINE # AND CR)
+  337/     219 : FE 03                  	CP	A, 3			;THEN DO NOT INSERT
+  338/     21B : CA BB 01               	JP	Z, RSTART		;MUST CLEAR THE STACK
+  339/     21E : 85                     	ADD	A, L			;COMPUTE NEW TXTUNF
+  340/     21F : 6F                     	LD	L,A
+  341/     220 : 3E 00                  	LD	A,0
+  342/     222 : 8C                     	ADC	A, H
+  343/     223 : 67                     	LD	H,A			;HL->NEW UNFILLED AREA
+  344/     224 : ED 5B 4C 11            	LD	DE,(TXTEND)		;CHECK TO SEE IF THERE
+  345/     228 : CD 18 01               	CALL	COMP			;IS ENOUGH SPACE
+  346/     22B : D2 66 06               	JP	NC, QSORRY		;SORRY, NO ROOM FOR IT
+  347/     22E : 22 1F 10               	LD	(TXTUNF),HL		;OK, UPDATE TXTUNF
+  348/     231 : D1                     	POP	DE			;DE->OLD UNFILLED AREA
+  349/     232 : CD 5F 07               	CALL	MVDOWN
+  350/     235 : D1                     	POP	DE			;DE->BEGIN, HL->END
+  351/     236 : E1                     	POP	HL
+  352/     237 : CD 55 07               	CALL	MVUP			;MOVE NEW LINE TO SAVE
+  353/     23A : C3 DC 01               	JP	ST3			;AREA
+  354/     23D :                        ;*
+  355/     23D :                        ;**************************************************************
+  356/     23D :                        ;*
+  357/     23D :                        ;* WHAT FOLLOWS IS THE CODE TO EXECUTE DIRECT AND STATEMENT
+  358/     23D :                        ;* COMMANDS.  CONTROL IS TRANSFERED TO THESE POINTS VIA THE
+  359/     23D :                        ;* COMMAND TABLE LOOKUP CODE OF 'DIRECT' AND 'EXEC' IN LAST
+  360/     23D :                        ;* SECTION.  AFTER THE COMMAND IS EXECUTED, CONTROL IS
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 7 - 8/15/2024 13:20:0
+
+
+  361/     23D :                        ;* TANSFERED TO OTHER SECTIONS AS FOLLOWS:
+  362/     23D :                        ;*
+  363/     23D :                        ;* FOR 'LIST', 'NEW', AND 'STOP': GO BACK TO 'RSTART'
+  364/     23D :                        ;* FOR 'RUN': GO EXECUTE THE FIRST STORED LINE IFF ANY; ELSE
+  365/     23D :                        ;* GO BACK TO 'RSTART'.
+  366/     23D :                        ;* FOR 'GOTO' AND 'GOSUB': GO EXECUTE THE TARGET LINE.
+  367/     23D :                        ;* FOR 'RETURN' AND 'NEXT': GO BACK TO SAVED RETURN LINE.
+  368/     23D :                        ;* FOR ALL OTHERS: IFF 'CURRNT' -> 0, GO TO 'RSTART', ELSE
+  369/     23D :                        ;* GO EXECUTE NEXT COMMAND.  (THIS IS DONE IN 'FINISH'.)
+  370/     23D :                        ;*
+  371/     23D :                        ;**************************************************************
+  372/     23D :                        ;*
+  373/     23D :                        ;* *** NEW *** STOP *** RUN (& FRIENDS) *** & GOTO ***
+  374/     23D :                        ;*
+  375/     23D :                        ;* 'NEW(CR)' SETS 'TXTUNF' TO POINT TO 'TXTBGN'
+  376/     23D :                        ;*
+  377/     23D :                        ;* 'STOP(CR)' GOES BACK TO 'RSTART'
+  378/     23D :                        ;*
+  379/     23D :                        ;* 'RUN(CR)' FINDS THE FIRST STORED LINE, STORE ITS ADDRESS (IN
+  380/     23D :                        ;* 'CURRNT'), AND START EXECUTE IT.  NOTE THAT ONLY THOSE
+  381/     23D :                        ;* COMMANDS IN TAB2 ARE LEGAL FOR STORED PROGRAM.
+  382/     23D :                        ;*
+  383/     23D :                        ;* THERE ARE 3 MORE ENTRIES IN 'RUN':
+  384/     23D :                        ;* 'RUNNXL' FINDS NEXT LINE, STORES ITS ADDR. AND EXECUTES IT.
+  385/     23D :                        ;* 'RUNTSL' STORES THE ADDRESS OF THIS LINE AND EXECUTES IT.
+  386/     23D :                        ;* 'RUNSML' CONTINUES THE EXECUTION ON SAME LINE.
+  387/     23D :                        ;*
+  388/     23D :                        ;* 'GOTO EXPR(CR)' EVALUATES THE EXPRESSION, FIND THE TARGET
+  389/     23D :                        ;* LINE, AND JUMP TO 'RUNTSL' TO DO IT.
+  390/     23D :                        ;* 'DLOAD' LOADS A NAMED PROGRAM FROM DISK.
+  391/     23D :                        ;* 'DSAVE' SAVES A NAMED PROGRAM ON DISK.
+  392/     23D :                        ;* 'FCBSET' SETS UP THE FILE CONTROL BLOCK FOR SUBSEQUENT DISK I/O.
+  393/     23D :                        ;*
+  394/     23D :                        ;
+  395/     23D :                        ;**************************************
+  396/     23D :                        ;NEW - Programm loeschen
+  397/     23D :                        ;**************************************
+  398/     23D :                        ;
+  399/     23D : CD 30 06               NEW:	CALL	ENDCHK			;folgt noch was?
+  400/     240 : 21 52 11               	LD	HL,TXTBGN		;Pgm-ende-zeiger
+  401/     243 : 22 1F 10               	LD	(TXTUNF),HL		;ruecksetzen
+  402/     246 :                        ;
+  403/     246 :                        ;**************************************
+  404/     246 :                        ;STOP - Programmabbruch
+  405/     246 :                        ;**************************************
+  406/     246 :                        ;
+  407/     246 : CD 30 06               STOP:	CALL	ENDCHK			;folgt noch was?
+  408/     249 : C3 BB 01               	JP	RSTART
+  409/     24C :                        ;
+  410/     24C :                        ;**************************************
+  411/     24C :                        ;RUN - Start eines Programms
+  412/     24C :                        ;**************************************
+  413/     24C :                        ;
+  414/     24C : CD 30 06               RUN:	CALL	ENDCHK			;folgt noch was?
+  415/     24F : 11 52 11               	LD	DE,TXTBGN		;Programmanfang
+  416/     252 :                        ;
+  417/     252 :                        ;neue Zeile abarbeiten
+  418/     252 :                        ;
+  419/     252 : 21 00 00               RUNNXL:	LD	HL,0
+  420/     255 : CD A4 06               	CALL	FNDLNP			;naechste Zeile suchen
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 8 - 8/15/2024 13:20:0
+
+
+  421/     258 : DA BB 01               	JP	C, RSTART		;C:PASSED TXTUNF, QUIT
+  422/     25B :                        ;
+  423/     25B : ED 53 0B 10            RUNTSL:	LD	(CURRNT),DE		;Zeilenanfangsadr.
+  424/     25F : 13                     	INC	DE			;BUMP PASS LINE #
+  425/     260 : 13                     	INC	DE
+  426/     261 :                        ;
+  427/     261 :                        ;naechsten Befehl bearbeiten
+  428/     261 :                        ;
+  429/     261 : CD 86 0B               RUNSML:	CALL	CHKIO			;Tastaturinterrupt?
+  430/     264 : 21 37 08               	LD	HL,TBPRC		;Prozedurentab. durchsuchen
+  431/     267 : C3 37 09               	JP	EXEC			;Befehl interpretieren
+  432/     26A :                        ;
+  433/     26A :                        ;**************************************
+  434/     26A :                        ;GOTO znr
+  435/     26A :                        ;**************************************
+  436/     26A :                        ;
+  437/     26A : CD 77 04               GOTO:	CALL	EXPR			;znr holen
+  438/     26D : D5                     	PUSH	DE			;SAVE FOR ERROR ROUTINE
+  439/     26E : CD 30 06               	CALL	ENDCHK			;folgt noch was?
+  440/     271 : CD 9C 06               	CALL	FNDLN			;Zeile znr suchen
+  441/     274 : C2 9E 01               	JP	NZ, AHOW		;wenn nicht ex.
+  442/     277 :                        ;
+  443/     277 : F1                     	POP	AF			;CLEAR THE "PUSH DE"
+  444/     278 : C3 5B 02               	JP	RUNTSL			;Sprung zur Zeile
+  445/     27B :                        ;*
+  446/     27B :                        ;*************************************************************
+  447/     27B :                        ;*
+  448/     27B :                        ;* *** LIST *** & PRINT ***
+  449/     27B :                        ;*
+  450/     27B :                        ;* LIST HAS TWO FORMS:
+  451/     27B :                        ;* 'LIST(CR)' LISTS ALL SAVED LINES
+  452/     27B :                        ;* 'LIST #(CR)' START LIST AT THIS LINE #
+  453/     27B :                        ;* YOU CAN STOP THE LISTING BY CONTROL C KEY
+  454/     27B :                        ;*
+  455/     27B :                        ;* PRINT COMMAND IS 'PRINT ....;' OR 'PRINT ....(CR)'
+  456/     27B :                        ;* WHERE '....' IS A LIST OF EXPRESIONS, FORMATS, BACK-
+  457/     27B :                        ;* ARROWS, AND STRINGS.  THESE ITEMS ARE SEPERATED BY COMMAS.
+  458/     27B :                        ;*
+  459/     27B :                        ;* A FORMAT IS A POUND SIGN FOLLOWED BY A NUMBER.  IT CONTROLSs
+  460/     27B :                        ;* THE NUMBER OF SPACES THE VALUE OF A EXPRESION IS GOING TO
+  461/     27B :                        ;* BE PRINTED.  IT STAYS EFFECTIVE FOR THE REST OF THE PRINT
+  462/     27B :                        ;* COMMAND UNLESS CHANGED BY ANOTHER FORMAT.  IFF NO FORMAT IS
+  463/     27B :                        ;* SPECIFIED, 6 POSITIONS WILL BE USED.
+  464/     27B :                        ;*
+  465/     27B :                        ;* A STRING IS QUOTED IN A PAIR OF SINGLE QUOTES OR A PAIR OF
+  466/     27B :                        ;* DOUBLE QUOTES.
+  467/     27B :                        ;*
+  468/     27B :                        ;* A BACK-ARROW MEANS GENERATE A (CR) WITHOUT (LF)
+  469/     27B :                        ;*
+  470/     27B :                        ;* A (CRLF) IS GENERATED AFTER THE ENTIRE LIST HAS BEEN
+  471/     27B :                        ;* PRINTED OR IFF THE LIST IS A NULL LIST.  HOWEVER IFF THE LIST
+  472/     27B :                        ;* ENDED WITH A COMMA, NO (CRL) IS GENERATED.
+  473/     27B :                        ;*
+  474/     27B :                        ;
+  475/     27B :                        ;**************************************
+  476/     27B :                        ;LIST [znr]
+  477/     27B :                        ;**************************************
+  478/     27B :                        ;
+  479/     27B : CD 74 01               LIST:	CALL	TSTNUM			;znr berechnen
+  480/     27E : CD 30 06               	CALL	ENDCHK			;folgt noch was?
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 9 - 8/15/2024 13:20:0
+
+
+  481/     281 : 7C                     	LD	A,H
+  482/     282 : B5                     	OR	L
+  483/     283 : 28 05                  	JR	Z, LIST1
+  484/     285 :                        ;
+  485/     285 :                        ;wenn znr=0, so max. 255 Zeilen listen
+  486/     285 :                        ;sonst Listen von 20 Zeilen ab znr
+  487/     285 :                        ;
+  488/     285 : 3E 14                  	LD	A,20
+  489/     287 : 32 02 10               	LD	(LSTZL),A
+  490/     28A : CD 9C 06               LIST1:	CALL	FNDLN
+  491/     28D : DA BB 01               LS1:	JP	C, RSTART
+  492/     290 : CD 40 07               	CALL	PRTLN			;Anzeige Zeile
+  493/     293 : CD 86 0B               	CALL	CHKIO
+  494/     296 : 3A 02 10               	LD	A,(LSTZL)
+  495/     299 : 3D                     	DEC	A
+  496/     29A : 32 02 10               	LD	(LSTZL),A
+  497/     29D : CA BB 01               	JP	Z, RSTART		;alle Zeilen durch
+  498/     2A0 : CD A4 06               	CALL	FNDLNP			;zur naechsten Zeile
+  499/     2A3 : 18 E8                  	JR	LS1
+  500/     2A5 :                        ;
+  501/     2A5 :                        ;**************************************
+  502/     2A5 :                        ;PRINT
+  503/     2A5 :                        ;**************************************
+  504/     2A5 :                        ;
+  505/     2A5 : 0E 06                  PRINT:	LD	C,6			;Ausgabeformat 6 Stellen
+  506/     2A7 :                        ;
+  507/     2A7 : CD 5F 01               	CALL	TSTC			;folgt ein ';' ?
+  508/     2AA : 3B                     	DB	";"
+  509/     2AB : B1 02                  	DW	PR2-2			;nein
+  510/     2AD : CD E5 07               	CALL	CRLF			;ja -> Ausgabe CR
+  511/     2B0 : C3 61 02               	JP	RUNSML			;und zurueck
+  512/     2B3 :                        ;
+  513/     2B3 : CD 5F 01               PR2:	CALL	TSTC			;folgt Zeilenende ?
+  514/     2B6 : 0D                     	DB	CR
+  515/     2B7 : BD 02                  	DW	PR0-2
+  516/     2B9 : CD E5 07               	CALL	CRLF			;dann CR und zurueck
+  517/     2BC : C3 52 02               	JP	RUNNXL
+  518/     2BF :                        ;
+  519/     2BF : CD 5F 01               PR0:	CALL	TSTC			;folgt Formatanweisung ?
+  520/     2C2 : 23                     	DB	"#"
+  521/     2C3 : C9 02                  	DW	PR1-2
+  522/     2C5 : CD 77 04               	CALL	EXPR			;dann Format holen
+  523/     2C8 : 4D                     	LD	C,L			;und merken
+  524/     2C9 : 18 05                  	JR	PR3			;LOOK FOR MORE TO PRINT
+  525/     2CB :                        ;
+  526/     2CB : CD D0 06               PR1:	CALL	QTSTG			;OR IS IT A STRING?
+  527/     2CE : 18 11                  	JR	PR8			;IFF NOT, MUST BE EXPR.
+  528/     2D0 :                        ;
+  529/     2D0 : CD 5F 01               PR3:	CALL	TSTC			;folgt ',' ?
+  530/     2D3 : 2C                     	DB	","
+  531/     2D4 : D9 02                  	DW	PR6-2
+  532/     2D6 : CD 1B 06               	CALL	FIN			;dann Zahlenwert berechnen
+  533/     2D9 : 18 E4                  	JR	PR0			;LIST CONTINUES
+  534/     2DB :                        ;
+  535/     2DB : CD E5 07               PR6:	CALL	CRLF			;Ausgabe CR
+  536/     2DE : CD 25 01               	CALL	FINISH
+  537/     2E1 :                        ;
+  538/     2E1 : CD 77 04               PR8:	CALL	EXPR			;EVALUATE THE EXPR
+  539/     2E4 : C5                     	PUSH	BC
+  540/     2E5 : CD 00 07               	CALL	PRTNUM			;EXPR anzeigen
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 10 - 8/15/2024 13:20:0
+
+
+  541/     2E8 : C1                     	POP	BC
+  542/     2E9 : 18 E5                  	JR	PR3			;MORE TO PRINT?
+  543/     2EB :                        ;*
+  544/     2EB :                        ;**************************************************************
+  545/     2EB :                        ;*
+  546/     2EB :                        ;* *** GOSUB *** & RETURN ***
+  547/     2EB :                        ;*
+  548/     2EB :                        ;* 'GOSUB EXPR;' OR 'GOSUB EXPR (CR)' IS LIKE THE 'GOTO'
+  549/     2EB :                        ;* COMMAND, EXCEPT THAT THE CURRENT TEXT POINTER, STACK POINTER
+  550/     2EB :                        ;* ETC. ARE SAVE SO THAT EXECUTION CAN BE CONTINUED AFTER THE
+  551/     2EB :                        ;* SUBROUTINE 'RETURN'.  IN ORDER THAT 'GOSUB' CAN BE NESTED
+  552/     2EB :                        ;* (AND EVEN RECURSIVE), THE SAVE AREA MUST BE STACKED.
+  553/     2EB :                        ;* THE STACK POINTER IS SAVED IN 'STKGOS'. THE OLD 'STKGOS' IS
+  554/     2EB :                        ;* SAVED IN THE STACK.  IFF WE ARE IN THE MAIN ROUTINE, 'STKGOS'
+  555/     2EB :                        ;* IS ZERO (THIS WAS DONE BY THE "MAIN" SECTION OF THE CODE),
+  556/     2EB :                        ;* BUT WE STILL SAVE IT AS A FLAG FORr NO FURTHER 'RETURN'S.
+  557/     2EB :                        ;*
+  558/     2EB :                        ;* 'RETURN(CR)' UNDOS EVERYHING THAT 'GOSUB' DID, AND THUS
+  559/     2EB :                        ;* RETURN THE EXCUTION TO THE COMMAND AFTER THE MOST RECENT
+  560/     2EB :                        ;* 'GOSUB'.  IFF 'STKGOS' IS ZERO, IT INDICATES THAT WE
+  561/     2EB :                        ;* NEVER HAD A 'GOSUB' AND IS THUS AN ERROR.
+  562/     2EB :                        ;*
+  563/     2EB :                        ;
+  564/     2EB :                        ;**************************************
+  565/     2EB :                        ;GOSUB znr
+  566/     2EB :                        ;**************************************
+  567/     2EB :                        ;
+  568/     2EB : CD 87 07               GOSUB:	CALL	PUSHA			;neue Verschachtelungsebene
+  569/     2EE : CD 77 04               	CALL	EXPR			;znr holen
+  570/     2F1 : D5                     	PUSH	DE			;akt. Position in Zeile merken
+  571/     2F2 : CD 9C 06               	CALL	FNDLN			;diese Zeile suchen
+  572/     2F5 : C2 9E 01               	JP	NZ, AHOW		;wenn nicht ex.
+  573/     2F8 : 2A 0B 10               	LD	HL,(CURRNT)		;FOUND IT, SAVE OLD
+  574/     2FB : E5                     	PUSH	HL			;'CURRNT' OLD 'STKGOS'
+  575/     2FC : 2A 0D 10               	LD	HL,(STKGOS)
+  576/     2FF : E5                     	PUSH	HL
+  577/     300 : 21 00 00               	LD	HL,0			;AND LOAD NEW ONES
+  578/     303 : 22 13 10               	LD	(LOPVAR),HL
+  579/     306 : 39                     	ADD	HL,SP
+  580/     307 : 22 0D 10               	LD	(STKGOS),HL
+  581/     30A : C3 5B 02               	JP	RUNTSL			;THEN RUN THAT LINE
+  582/     30D :                        ;
+  583/     30D :                        ;**************************************
+  584/     30D :                        ;RETURN
+  585/     30D :                        ;**************************************
+  586/     30D :                        ;
+  587/     30D : CD 30 06               RETURN:	CALL	ENDCHK			;folgt noch was?
+  588/     310 : 2A 0D 10               	LD	HL,(STKGOS)		;OLD STACK POINTER
+  589/     313 : 7C                     	LD	A,H			;0 MEANS NOT EXIST
+  590/     314 : B5                     	OR	L
+  591/     315 : CA 36 06               	JP	Z, QWHAT		;SO, WE SAY: "WHAT?"
+  592/     318 : F9                     	LD	SP,HL			;ELSE, RESTORE IT
+  593/     319 : E1                     	POP	HL
+  594/     31A : 22 0D 10               	LD	(STKGOS),HL		;AND THE OLD 'STKGOS'
+  595/     31D : E1                     	POP	HL
+  596/     31E : 22 0B 10               	LD	(CURRNT),HL		;AND THE OLD 'CURRNT'
+  597/     321 : D1                     	POP	DE			;OLD TEXT POINTER
+  598/     322 : CD 6C 07               	CALL	POPA			;OLD "FOR" PARAMETERS
+  599/     325 : CD 25 01               	CALL	FINISH			;AND WE ARE BACK HOME
+  600/     328 :                        ;*
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 11 - 8/15/2024 13:20:0
+
+
+  601/     328 :                        ;**************************************************************
+  602/     328 :                        ;*
+  603/     328 :                        ;* *** FOR *** & NEXT ***
+  604/     328 :                        ;*
+  605/     328 :                        ;* 'FOR' HAS TWO FORMS:
+  606/     328 :                        ;* 'FOR VAR=EXP1 TO EXP2 STEP EXP1' AND 'FOR VAR=EXP1 TO EXP2'
+  607/     328 :                        ;* THE SECOND FORM MEANS THE SAME THING AS THE FIRST FORM WITH
+  608/     328 :                        ;* EXP1=1.  (I.E., WITH A STEP OF +1.)
+  609/     328 :                        ;* TBI WILL FIND THE VARIABLE VAR. AND SET ITS VALUE TO THE
+  610/     328 :                        ;* CURRENT VALUE OF EXP1.  IT ALSO EVALUATES EXPR2 AND EXP1
+  611/     328 :                        ;* AND SAVE ALL THESE TOGETHER WITH THE TEXT POINTERr ETC. IN
+  612/     328 :                        ;* THE 'FOR' SAVE AREA, WHICH CONSISTS OF 'LOPVAR', 'LOPINC',
+  613/     328 :                        ;* 'LOPLMT', 'LOPLN', AND 'LOPPT'.  IFF THERE IS ALREADY SOME-
+  614/     328 :                        ;* THING IN THE SAVE AREA (THIS IS INDICATED BY A NON-ZERO
+  615/     328 :                        ;* 'LOPVAR'), THEN THE OLD SAVE AREA IS SAVED IN THE STACK
+  616/     328 :                        ;* BEFORE THE NEW ONE OVERWRITES IT.
+  617/     328 :                        ;* TBI WILL THEN DIG IN THE STACK AND FIND OUT IFF THIS SAME
+  618/     328 :                        ;* VARIABLE WAS USED IN ANOTHER CURRENTLY ACTIVE 'FOR' LOOP.
+  619/     328 :                        ;* IFF THAT IS THE CASE THEN THE OLD 'FOR' LOOP IS DEACTIVATED.
+  620/     328 :                        ;* (PURGED FROM THE STACK..)
+  621/     328 :                        ;*
+  622/     328 :                        ;* 'NEXT VAR' SERVES AS THE LOGICAL (NOT NECESSARILLY PHYSICAL)
+  623/     328 :                        ;* END OF THE 'FOR' LOOP.  THE CONTROL VARIABLE VAR. IS CHECKED
+  624/     328 :                        ;* WITH THE 'LOPVAR'.  IFF THEY ARE NOT THE SAME, TBI DIGS IN
+  625/     328 :                        ;* THE STACK TO FIND THE RIGHTt ONE AND PURGES ALL THOSE THAT
+  626/     328 :                        ;* DID NOT MATCH.  EITHER WAY, TBI THEN ADDS THE 'STEP' TO
+  627/     328 :                        ;* THAT VARIABLE AND CHECK THE RESULT WITH THE LIMIT.  IFF IT
+  628/     328 :                        ;* IS WITHIN THE LIMIT, CONTROL LOOPS BACK TO THE COMMAND
+  629/     328 :                        ;* FOLLOWING THE 'FOR'.  IFF OUTSIDE THE LIMIT, THE SAVE ARER
+  630/     328 :                        ;* IS PURGED AND EXECUTION CONTINUES.
+  631/     328 :                        ;*
+  632/     328 :                        ;
+  633/     328 :                        ;**************************************
+  634/     328 :                        ;FOR var=anfang FR1 ende [FR2 weite]
+  635/     328 :                        ;**************************************
+  636/     328 :                        ;
+  637/     328 : CD 87 07               FOR:	CALL	PUSHA			;SAVE THE OLD SAVE AREA
+  638/     32B : CD 01 06               	CALL	SETVAL			;SET THE CONTROL VAR.
+  639/     32E : 2B                     	DEC	HL			;HL IS ITS ADDRESS
+  640/     32F : 22 13 10               	LD	(LOPVAR),HL		;SAVE THAT
+  641/     332 : 21 04 09               	LD	HL,TBTO			;USE 'EXEC' TO LOOK
+  642/     335 : C3 37 09               	JP	EXEC			;FOR THE WORD 'TO'
+  643/     338 :                        ;
+  644/     338 :                        ;**************************************
+  645/     338 :                        ;TO
+  646/     338 :                        ;**************************************
+  647/     338 :                        ;
+  648/     338 : CD 77 04               FR1:	CALL	EXPR			;EVALUATE THE LIMIT
+  649/     33B : 22 17 10               	LD	(LOPLMT),HL		;SAVE THAT
+  650/     33E : 21 0C 09               	LD	HL,TBSTP		;USE 'EXEC' TO LOOK
+  651/     341 : C3 37 09               	JP	EXEC			;FOR THE WORD 'STEP'
+  652/     344 :                        ;
+  653/     344 :                        ;**************************************
+  654/     344 :                        ;STEP
+  655/     344 :                        ;**************************************
+  656/     344 :                        ;
+  657/     344 : CD 77 04               FR2:	CALL	EXPR			;FOUND IT, GET STEP
+  658/     347 : 18 03                  	JR	FR4
+  659/     349 :                        ;
+  660/     349 :                        ;wenn nicht STEP, so Schrittweite 1
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 12 - 8/15/2024 13:20:0
+
+
+  661/     349 :                        ;
+  662/     349 : 21 01 00               FR3:	LD	HL,1			;NOT FOUND, SET TO 1
+  663/     34C : 22 15 10               FR4:	LD	(LOPINC),HL		;SAVE THAT TOO
+  664/     34F : 2A 0B 10               	LD	HL,(CURRNT)		;SAVE CURRENT LINE #
+  665/     352 : 22 19 10               	LD	(LOPLN),HL		;akt. Zeile merken
+  666/     355 : EB                     	EX	DE,HL			;AND TEXT POINTER
+  667/     356 : 22 1B 10               	LD	(LOPPT),HL		;akt. Pos. in Zeile
+  668/     359 : 01 0A 00               	LD	BC,10			;B=0, C=10, ;DIG INTO STACK TO
+  669/     35C : 2A 13 10               	LD	HL,(LOPVAR)		;FIND 'LOPVAR'
+  670/     35F : EB                     	EX	DE,HL			;DE=Laufvariablenadr.
+  671/     360 : 60                     	LD	H,B
+  672/     361 : 68                     	LD	L,B			;HL=0 NOW
+  673/     362 : 39                     	ADD	HL,SP			;HERE IS THE STACK
+  674/     363 : 3E                     	DB	3EH			;LD A,...
+  675/     364 : 09                     FR7:	ADD	HL,BC			;EACH LEVEL IS 10 DEEP
+  676/     365 : 7E                     	LD	A,(HL)			;GET THAT OLD 'LOPVAR'
+  677/     366 : 23                     	INC	HL
+  678/     367 : B6                     	OR	(HL)
+  679/     368 : 28 18                  	JR	Z, FR8			;0 SAYS NO MORE IN IT
+  680/     36A : 7E                     	LD	A,(HL)
+  681/     36B : 2B                     	DEC	HL
+  682/     36C : BA                     	CP	A, D			;SAME AS THIS ONE?
+  683/     36D : 20 F5                  	JR	NZ, FR7
+  684/     36F : 7E                     	LD	A,(HL)			;THE OTHER HALF?
+  685/     370 : BB                     	CP	A, E
+  686/     371 : 20 F1                  	JR	NZ, FR7
+  687/     373 : EB                     	EX	DE,HL			;YES, FOUND ONE
+  688/     374 : 21 00 00               	LD	HL,0
+  689/     377 : 39                     	ADD	HL,SP			;TRY TO MOVE SP
+  690/     378 : 44                     	LD	B,H
+  691/     379 : 4D                     	LD	C,L
+  692/     37A : 21 0A 00               	LD	HL,10
+  693/     37D : 19                     	ADD	HL,DE
+  694/     37E : CD 5F 07               	CALL	MVDOWN			;AND PURGE 10 WORDS
+  695/     381 : F9                     	LD	SP,HL			;IN THE STACK
+  696/     382 : 2A 1B 10               FR8:	LD	HL,(LOPPT)		;JOB DONE, RESTORE DE
+  697/     385 : EB                     	EX	DE,HL
+  698/     386 : CD 25 01               	CALL	FINISH			;AND CONTINUE
+  699/     389 :                        ;
+  700/     389 :                        ;**************************************
+  701/     389 :                        ;NEXT var
+  702/     389 :                        ;**************************************
+  703/     389 :                        ;
+  704/     389 : CD 2C 01               NEXT:	CALL	VARAD			;GET ADDRESS OF VAR.
+  705/     38C : DA 36 06               	JP	C, QWHAT		;NO VARIABLE, "WHAT?"
+  706/     38F : 22 0F 10               	LD	(VARNXT),HL		;YES, SAVE IT
+  707/     392 : D5                     NX0:	PUSH	DE			;SAVE TEXT POINTER
+  708/     393 : EB                     	EX	DE,HL
+  709/     394 : 2A 13 10               	LD	HL,(LOPVAR)		;GET VAR. IN 'FOR'
+  710/     397 : 7C                     	LD	A,H
+  711/     398 : B5                     	OR	L			;0 SAYS NEVER HAD ONE
+  712/     399 : CA 37 06               	JP	Z, AWHAT		;SO WE ASK: "WHAT?"
+  713/     39C : CD 18 01               	CALL	COMP			;ELSE WE CHECK THEM
+  714/     39F : 28 09                  	JR	Z, NX3			;OK, THEY AGREE
+  715/     3A1 : D1                     	POP	DE			;NO, LET'S SEE
+  716/     3A2 : CD 6C 07               	CALL	POPA			;PURGE CURRENT LOOP
+  717/     3A5 : 2A 0F 10               	LD	HL,(VARNXT)		;AND POP ONE LEVEL
+  718/     3A8 : 18 E8                  	JR	NX0			;GO CHECK AGAIN
+  719/     3AA :                        ;
+  720/     3AA : 5E                     NX3:	LD	E,(HL)			;COME HERE WHEN AGREED
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 13 - 8/15/2024 13:20:0
+
+
+  721/     3AB : 23                     	INC	HL
+  722/     3AC : 56                     	LD	D,(HL)			;DE=VALUE OF VAR.
+  723/     3AD : 2A 15 10               	LD	HL,(LOPINC)
+  724/     3B0 : E5                     	PUSH	HL
+  725/     3B1 : 7C                     	LD	A,H
+  726/     3B2 : AA                     	XOR	D
+  727/     3B3 : 7A                     	LD	A,D
+  728/     3B4 : 19                     	ADD	HL,DE			;ADD ONE STEP
+  729/     3B5 : FA BC 03               	JP	M, NEXT3
+  730/     3B8 : AC                     	XOR	H
+  731/     3B9 : FA DF 03               	JP	M, NEXT5
+  732/     3BC : EB                     NEXT3:	EX	DE,HL
+  733/     3BD : 2A 13 10               	LD	HL,(LOPVAR)		;PUT IT BACK
+  734/     3C0 : 73                     	LD	(HL),E
+  735/     3C1 : 23                     	INC	HL
+  736/     3C2 : 72                     	LD	(HL),D
+  737/     3C3 : 2A 17 10               	LD	HL,(LOPLMT)		;HL->LIMIT
+  738/     3C6 : F1                     	POP	AF
+  739/     3C7 : B7                     	OR	A
+  740/     3C8 : F2 CC 03               	JP	P, NX1			;STEP > 0
+  741/     3CB : EB                     	EX	DE,HL
+  742/     3CC : CD F7 05               NX1:	CALL	CKHLDE			;COMPARE WITH LIMIT
+  743/     3CF : D1                     	POP	DE			;RESTORE TEXT POINTER
+  744/     3D0 : 38 0F                  	JR	C, NX2			;OUTSIDE LIMIT
+  745/     3D2 : 2A 19 10               	LD	HL,(LOPLN)		;WITHIN LIMIT, GO
+  746/     3D5 : 22 0B 10               	LD	(CURRNT),HL		;BACK TO THE SAVED
+  747/     3D8 : 2A 1B 10               	LD	HL,(LOPPT)		;'CURRNT' AND TEXT
+  748/     3DB : EB                     	EX	DE,HL			;POINTER
+  749/     3DC : CD 25 01               	CALL	FINISH
+  750/     3DF : E1                     NEXT5:	POP	HL
+  751/     3E0 : D1                     	POP	DE
+  752/     3E1 : CD 6C 07               NX2:	CALL	POPA			;PURGE THIS LOOP
+  753/     3E4 : CD 25 01               	CALL	FINISH
+  754/     3E7 :                        ;*
+  755/     3E7 :                        ;**************************************************************
+  756/     3E7 :                        ;*
+  757/     3E7 :                        ;* *** REM *** IFF *** INPUT *** & LET (& DEFLT) ***
+  758/     3E7 :                        ;*
+  759/     3E7 :                        ;* 'REM' CAN BE FOLLOWED BY ANYTHING AND IS IGNORED BY TBI.
+  760/     3E7 :                        ;* TBI TREATS IT LIKE AN 'IF' WITH A FALSE CONDITION.
+  761/     3E7 :                        ;*
+  762/     3E7 :                        ;* 'IF' IS FOLLOWED BY AN EXPR. AS A CONDITION AND ONE OR MORE
+  763/     3E7 :                        ;* COMMANDS (INCLUDING OUTHER 'IF'S) SEPERATED BY SEMI-COLONS.
+  764/     3E7 :                        ;* NOTE THAT THE WORD 'THEN' IS NOT USED.  TBI EVALUATES THE
+  765/     3E7 :                        ;* EXPR. IFF IT IS NON-ZERO, EXECUTION CONTINUES.  IFF THE
+  766/     3E7 :                        ;* EXPR. IS ZERO, THE COMMANDS THAT FOLLOWS ARE IGNORED AND
+  767/     3E7 :                        ;* EXECUTION CONTINUES AT THE NEXT LINE.
+  768/     3E7 :                        ;*
+  769/     3E7 :                        ;* 'INPUT' COMMAND IS LIKE THE 'PRINT' COMMAND, AND IS FOLLOWED
+  770/     3E7 :                        ;* BY A LIST OF ITEMS.  IF THE ITEM IS A STRING IN SINGLE OR
+  771/     3E7 :                        ;* DOUBLE QUOTES, OR IS A BACK-ARROW, IT HAS THE SAME EFFECT AS
+  772/     3E7 :                        ;* IN 'PRINT'.  IF AN ITEM IS A VARIABLE, THIS VARIABLE NAME IS
+  773/     3E7 :                        ;* PRINTED OUT FOLLOWED BY A COLON.  THEN TBI WAITS FOR AN
+  774/     3E7 :                        ;* EXPR. TO BE TYPED IN.  THE VARIABLE ISs THEN SET TO THE
+  775/     3E7 :                        ;* VALUE OF THIS EXPR.  IF THE VARIABLE IS PROCEDED BY A STRING
+  776/     3E7 :                        ;* (AGAIN IN SINGLE OR DOUBLE QUOTES), THE STRING WILL BE
+  777/     3E7 :                        ;* PRINTED FOLLOWED BY A COLON.  TBI THEN WAITS FOR INPUT EXPR.
+  778/     3E7 :                        ;* AND SET THE VARIABLE TO THE VALUE OF THE EXPR.
+  779/     3E7 :                        ;*
+  780/     3E7 :                        ;* IF THE INPUT EXPR. IS INVALID, TBI WILL PRINT "WHAT?",
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 14 - 8/15/2024 13:20:0
+
+
+  781/     3E7 :                        ;* "HOW?" OR "SORRY" AND REPRINT THE PROMPT AND REDO THE INPUT.
+  782/     3E7 :                        ;* THE EXECUTION WILL NOT TERMINATE UNLESS YOU TYPE CONTROL-C.
+  783/     3E7 :                        ;* THIS IS HANDLED IN 'INPERR'.
+  784/     3E7 :                        ;*
+  785/     3E7 :                        ;* 'LET' IS FOLLOWED BY A LIST OF ITEMS SEPERATED BY COMMAS.
+  786/     3E7 :                        ;* EACH ITEM CONSISTS OF A VARIABLE, AN EQUAL SIGN, AND AN EXPR.
+  787/     3E7 :                        ;* TBI EVALUATES THE EXPR. AND SET THE VARIBLE TO THAT VALUE.
+  788/     3E7 :                        ;* TB WILL ALSO HANDLE 'LET' COMMAND WITHOUT THE WORD 'LET'.
+  789/     3E7 :                        ;* THIS IS DONE BY 'DEFLT'.
+  790/     3E7 :                        ;*
+  791/     3E7 :                        ;
+  792/     3E7 :                        ;**************************************
+  793/     3E7 :                        ;REM - Kommentarzeile
+  794/     3E7 :                        ;**************************************
+  795/     3E7 :                        ;
+  796/     3E7 : 21 00 00               REM:	LD	HL,0			;=FALSE
+  797/     3EA : 18 03                  	JR	IF1
+  798/     3EC :                        ;
+  799/     3EC :                        ;**************************************
+  800/     3EC :                        ;IF n vgl m
+  801/     3EC :                        ;**************************************
+  802/     3EC :                        ;
+  803/     3EC : CD 77 04               IFF:	CALL	EXPR			;log. Ausdruck auswerten
+  804/     3EF : 7C                     IF1:	LD	A,H			;IS THE EXPR.=0?
+  805/     3F0 : B5                     	OR	L
+  806/     3F1 : C2 61 02               	JP	NZ, RUNSML		;NO, CONTINUE
+  807/     3F4 : CD BB 06               	CALL	FNDSKP			;YES, SKIP REST OF LINE
+  808/     3F7 : D2 5B 02               	JP	NC, RUNTSL
+  809/     3FA : C3 BB 01               	JP	RSTART
+  810/     3FD :                        ;
+  811/     3FD :                        ;++++++++++++++++++++++++++++++++++++++
+  812/     3FD :                        ;
+  813/     3FD :                        ;++++++++++++++++++++++++++++++++++++++
+  814/     3FD :                        ;
+  815/     3FD : 2A 11 10               INPERR:	LD	HL,(STKINP)
+  816/     400 : F9                     	LD	SP,HL			;RESTORE OLD SP
+  817/     401 : E1                     	POP	HL			;AND OLD 'CURRNT'
+  818/     402 : 22 0B 10               	LD	(CURRNT),HL
+  819/     405 : D1                     	POP	DE			;AND OLD TEXT POINTER
+  820/     406 : D1                     	POP	DE			;REDO INPUT
+  821/     407 :                        ;
+  822/     407 :                        ;**************************************
+  823/     407 :                        ;INPUT
+  824/     407 :                        ;**************************************
+  825/     407 :                        ;
+  826/     407 : D5                     INPUT:	PUSH	DE			;SAVE IN CASE OF ERROR
+  827/     408 : CD D0 06               	CALL	QTSTG			;IS NEXT ITEM A STRING?
+  828/     40B : 18 08                  	JR	IP2			;NO
+  829/     40D :                        ;
+  830/     40D : CD 2C 01               	CALL	VARAD			;YES. BUT FOLLOWED BY A
+  831/     410 : DA 57 04               	JP	C, IP4			;VARIABLE?   NO.
+  832/     413 : 18 12                  	JR	IP3			;YES.  INPUT VARIABLE
+  833/     415 :                        ;
+  834/     415 : D5                     IP2:	PUSH	DE			;SAVE FOR 'PRTSTG'
+  835/     416 : CD 2C 01               	CALL	VARAD			;MUST BE VARIABLE NOW
+  836/     419 : DA 36 06               	JP	C, QWHAT		;"WHAT?" IT IS NOT?
+  837/     41C : 1A                     	LD	A,(DE)			;GET READY FOR 'RTSTG'
+  838/     41D : 4F                     	LD	C,A
+  839/     41E : 97                     	SUB	A
+  840/     41F : 12                     	LD	(DE),A
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 15 - 8/15/2024 13:20:0
+
+
+  841/     420 : D1                     	POP	DE
+  842/     421 : CD C3 06               	CALL	PRTSTG			;PRINT STRING AS PROMPT
+  843/     424 : 79                     	LD	A,C			;RESTORE TEXT
+  844/     425 : 1B                     	DEC	DE
+  845/     426 : 12                     	LD	(DE),A
+  846/     427 : D5                     IP3:	PUSH	DE			;SAVE IN CASE OF ERROR
+  847/     428 : EB                     	EX	DE,HL
+  848/     429 : 2A 0B 10               	LD	HL,(CURRNT)		;ALSO SAVE 'CURRNT'
+  849/     42C : E5                     	PUSH	HL
+  850/     42D : 21 07 04               	LD	HL,INPUT		;A NEGATIVE NUMBER
+  851/     430 : 22 0B 10               	LD	(CURRNT),HL		;AS A FLAG
+  852/     433 : 21 00 00               	LD	HL,0			;SAVE SP TOO
+  853/     436 : 39                     	ADD	HL,SP
+  854/     437 : 22 11 10               	LD	(STKINP),HL
+  855/     43A : D5                     	PUSH	DE			;OLD HL
+  856/     43B : CD 12 01               	CALL	HEXUM			;Tastatur auf Hexmode
+  857/     43E : 3E 3A                  	LD	A,':'			;PRINT THIS TOO
+  858/     440 : CD 6C 06               	CALL	GETLN			;AND GET A LINE
+  859/     443 : CD 15 01               	CALL	ALFA			;Tastatur zurueckschalten
+  860/     446 : ED 5B 4E 11            	LD	DE,(BUFFER)		;POINTS TO BUFFER
+  861/     44A : CD 77 04               	CALL	EXPR			;EVALUATE INPUT
+  862/     44D : D1                     	POP	DE			;OK, GET OLD HL
+  863/     44E : EB                     	EX	DE,HL
+  864/     44F : 73                     	LD	(HL),E			;SAVE VALUE IN VAR.
+  865/     450 : 23                     	INC	HL
+  866/     451 : 72                     	LD	(HL),D
+  867/     452 : E1                     	POP	HL			;GET OLD 'CURRNT'
+  868/     453 : 22 0B 10               	LD	(CURRNT),HL
+  869/     456 : D1                     	POP	DE			;AND OLD TEXT POINTER
+  870/     457 : F1                     IP4:	POP	AF			;PURGE JUNK IN STACK
+  871/     458 : CD 5F 01               	CALL	TSTC			;IS NEXT CH. ','?
+  872/     45B : 2C                     	DB	","
+  873/     45C : 5F 04                  	DW	INPT4-2
+  874/     45E : C3 07 04               	JP	INPUT			;YES, MORE ITEMS.
+  875/     461 :                        
+  876/     461 : CD 25 01               INPT4:	CALL	FINISH
+  877/     464 :                        ;
+  878/     464 :                        ;**************************************
+  879/     464 :                        ;ohne Prozedurruf
+  880/     464 :                        ;**************************************
+  881/     464 :                        ;
+  882/     464 : 1A                     DEFLT:	LD	A,(DE)
+  883/     465 : FE 0D                  	CP	A, CR			;EMPTY LINE IS OK
+  884/     467 : 28 0B                  	JR	Z, LT1			;ELSE IT IS 'LET'
+  885/     469 :                        ;
+  886/     469 :                        ;**************************************
+  887/     469 :                        ;LET
+  888/     469 :                        ;**************************************
+  889/     469 :                        ;
+  890/     469 : CD 01 06               LET:	CALL	SETVAL			;Zuweisung
+  891/     46C : CD 5F 01               	CALL	TSTC			;SET VALUE TO VAR.
+  892/     46F : 2C                     	DB	","
+  893/     470 : 72 04                  	DW	LT1-2
+  894/     472 : 18 F5                  	JR	LET			;ITEM BY ITEM
+  895/     474 :                        ;
+  896/     474 : CD 25 01               LT1:	CALL	FINISH			;UNTIL FINISH
+  897/     477 :                        ;*
+  898/     477 :                        ;**************************************************************
+  899/     477 :                        ;*
+  900/     477 :                        ;* *** EXPR ***
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 16 - 8/15/2024 13:20:0
+
+
+  901/     477 :                        ;*
+  902/     477 :                        ;* 'EXPR' EVALUATES ARITHMETICAL OR LOGICAL EXPRESSIONS.
+  903/     477 :                        ;* <EXPR>::=<EXPR2>
+  904/     477 :                        ;*          <EXPR2><REL.OP.><EXPR2>
+  905/     477 :                        ;* WHERE <REL.OP.> IS ONE OF THE OPERATORSs IN TAB8 AND THE
+  906/     477 :                        ;* RESULT OF THESE OPERATIONS IS 1 IFF TRUE AND 0 IFF FALSE.
+  907/     477 :                        ;* <EXPR2>::=(+ OR -)<EXPR3>(+ OR -<EXPR3>)(....)
+  908/     477 :                        ;* WHERE () ARE OPTIONAL AND (....) ARE OPTIONAL REPEATS.
+  909/     477 :                        ;* <EXPR3>::=<EXPR4>(<* OR /><EXPR4>)(....)
+  910/     477 :                        ;* <EXPR4>::=<VARIABLE>
+  911/     477 :                        ;*           <FUNCTION>
+  912/     477 :                        ;*           (<EXPR>)
+  913/     477 :                        ;* <EXPR> IS RECURSIVE SO THAT VARIABLE '@' CAN HAVE AN <EXPR>
+  914/     477 :                        ;* AS INDEX, FNCTIONS CAN HAVE AN <EXPR> AS ARGUMENTS, AND
+  915/     477 :                        ;* <EXPR4> CAN BE AN <EXPR> IN PARANTHESE.
+  916/     477 :                        ;*
+  917/     477 :                        ;*                 EXPR   CALL EXPR2     THIS IS AT LOC. 18
+  918/     477 :                        ;*                        PUSH HL        SAVE <EXPR2> VALUE
+  919/     477 :                        ;
+  920/     477 :                        ;++++++++++++++++++++++++++++++++++++++
+  921/     477 :                        ;EXPR berechnen
+  922/     477 :                        ;++++++++++++++++++++++++++++++++++++++
+  923/     477 :                        ;
+  924/     477 : CD BF 04               EXPR:	CALL	EXPR2
+  925/     47A : E5                     	PUSH	HL			;SAVE <EXPR2> VALUE
+  926/     47B :                        ;
+  927/     47B : 21 16 09               	LD	HL,TBVGL		;LOOKUP REL.OP.
+  928/     47E : C3 37 09               	JP	EXEC			;GO DO IT
+  929/     481 :                        ;
+  930/     481 :                        ;**************************************
+  931/     481 :                        ;>=
+  932/     481 :                        ;**************************************
+  933/     481 :                        ;
+  934/     481 : CD AA 04               XP11:	CALL	XP18			;REL.OP.">="
+  935/     484 : D8                     	RET	C			;NO, RETURN HL=0
+  936/     485 : 6F                     	LD	L,A			;YES, RETURN HL=1
+  937/     486 : C9                     	RET
+  938/     487 :                        ;
+  939/     487 :                        ;**************************************
+  940/     487 :                        ;#
+  941/     487 :                        ;**************************************
+  942/     487 :                        ;
+  943/     487 : CD AA 04               XP12:	CALL	XP18			;REL.OP."#"
+  944/     48A : C8                     	RET	Z			;FALSE, RETURN HL=0
+  945/     48B : 6F                     	LD	L,A			;TRUE, RETURN HL=1
+  946/     48C : C9                     	RET
+  947/     48D :                        ;
+  948/     48D :                        ;**************************************
+  949/     48D :                        ;>
+  950/     48D :                        ;**************************************
+  951/     48D :                        ;
+  952/     48D : CD AA 04               XP13:	CALL	XP18			;REL.OP.">"
+  953/     490 : C8                     	RET	Z			;FALSE
+  954/     491 : D8                     	RET	C			;ALSO FALSE, HL=0
+  955/     492 : 6F                     	LD	L,A			;TRUE, HL=1
+  956/     493 : C9                     	RET
+  957/     494 :                        ;
+  958/     494 :                        ;**************************************
+  959/     494 :                        ;<=
+  960/     494 :                        ;**************************************
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 17 - 8/15/2024 13:20:0
+
+
+  961/     494 :                        ;
+  962/     494 : CD AA 04               XP14:	CALL	XP18			;REL.OP."<="
+  963/     497 : 6F                     	LD	L,A			;SET HL=1
+  964/     498 : C8                     	RET	Z			;REL. TRUE, RETURN
+  965/     499 : D8                     	RET	C
+  966/     49A : 6C                     	LD	L,H			;ELSE SET HL=0
+  967/     49B : C9                     	RET
+  968/     49C :                        ;
+  969/     49C :                        ;**************************************
+  970/     49C :                        ;=
+  971/     49C :                        ;**************************************
+  972/     49C :                        ;
+  973/     49C : CD AA 04               XP15:	CALL	XP18			;REL.OP."="
+  974/     49F : C0                     	RET	NZ			;FALSE, RETRUN HL=0
+  975/     4A0 : 6F                     	LD	L,A			;ELSE SET HL=1
+  976/     4A1 : C9                     	RET
+  977/     4A2 :                        ;
+  978/     4A2 :                        ;**************************************
+  979/     4A2 :                        ;<
+  980/     4A2 :                        ;**************************************
+  981/     4A2 :                        ;
+  982/     4A2 : CD AA 04               XP16:	CALL	XP18			;REL.OP."<"
+  983/     4A5 : D0                     	RET	NC			;FALSE, RETURN HL=0
+  984/     4A6 : 6F                     	LD	L,A			;ELSE SET HL=1
+  985/     4A7 : C9                     	RET
+  986/     4A8 :                        ;
+  987/     4A8 :                        ;**************************************
+  988/     4A8 :                        ;ohne Vergleichsoperation
+  989/     4A8 :                        ;**************************************
+  990/     4A8 :                        ;
+  991/     4A8 : E1                     XP17:	POP	HL			;NOT REL.OP.
+  992/     4A9 : C9                     	RET				;RETURN HL=<EXPR2>
+  993/     4AA :                        ;
+  994/     4AA :                        ;++++++++++++++++++++++++++++++++++++++
+  995/     4AA :                        ;
+  996/     4AA :                        ;++++++++++++++++++++++++++++++++++++++
+  997/     4AA :                        ;
+  998/     4AA : 79                     XP18:	LD	A,C			;SUBROUTINE FOR ALL
+  999/     4AB : E1                     	POP	HL			;REL.OP.'S
+ 1000/     4AC : C1                     	POP	BC
+ 1001/     4AD : E5                     	PUSH	HL			;REVERSE TOP OF STACK
+ 1002/     4AE : C5                     	PUSH	BC
+ 1003/     4AF : 4F                     	LD	C,A
+ 1004/     4B0 : CD BF 04               	CALL	EXPR2			;GET 2ND <EXPR2>
+ 1005/     4B3 : EB                     	EX	DE,HL			;VALUE IN DE NOW
+ 1006/     4B4 : E3                     	EX	(SP),HL			;1ST <EXPR2> IN HL
+ 1007/     4B5 : CD F7 05               	CALL	CKHLDE			;COMPARE 1ST WITH 2ND
+ 1008/     4B8 : D1                     	POP	DE			;RESTORE TEXT POINTER
+ 1009/     4B9 : 21 00 00               	LD	HL,0			;SET HL=0, A=1
+ 1010/     4BC : 3E 01                  	LD	A,1
+ 1011/     4BE : C9                     	RET
+ 1012/     4BF :                        ;
+ 1013/     4BF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1014/     4BF :                        ;math. Ausdruck berechnen
+ 1015/     4BF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1016/     4BF :                        ;
+ 1017/     4BF :                        ;negatives Vorzeichen
+ 1018/     4BF :                        ;
+ 1019/     4BF : CD 5F 01               EXPR2:	CALL	TSTC			;NEGATIVE SIGN?
+ 1020/     4C2 : 2D                     	DB	"-"
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 18 - 8/15/2024 13:20:0
+
+
+ 1021/     4C3 : C8 04                  	DW	XP21-2
+ 1022/     4C5 : 21 00 00               	LD	HL,0			;YES, FAKE '0-'
+ 1023/     4C8 : 18 2A                  	JR	XP26			;TREAT LIKE SUBTRACT
+ 1024/     4CA :                        ;
+ 1025/     4CA :                        ;positives Vorzeichen
+ 1026/     4CA :                        ;
+ 1027/     4CA : CD 5F 01               XP21:	CALL	TSTC			;POSITIVE SIGN?  IGNORE
+ 1028/     4CD : 2B                     	DB	"+"
+ 1029/     4CE : CE 04                  	DW	XP22-2
+ 1030/     4D0 : CD FD 04               XP22:	CALL	EXPR3			;1ST <EXPR3>
+ 1031/     4D3 :                        ;
+ 1032/     4D3 :                        ;Addition
+ 1033/     4D3 :                        ;
+ 1034/     4D3 : CD 5F 01               XP23:	CALL	TSTC			;ADD?
+ 1035/     4D6 : 2B                     	DB	"+"
+ 1036/     4D7 : EC 04                  	DW	XP25-2
+ 1037/     4D9 : E5                     	PUSH	HL			;YES, SAVE VALUE
+ 1038/     4DA : CD FD 04               	CALL	EXPR3			;GET 2ND<EXPR3>
+ 1039/     4DD : EB                     XP24:	EX	DE,HL			;2ND IN DE
+ 1040/     4DE : E3                     	EX	(SP),HL			;1ST IN HL
+ 1041/     4DF : 7C                     	LD	A,H			;COMPARE SIGN
+ 1042/     4E0 : AA                     	XOR	D
+ 1043/     4E1 : 7A                     	LD	A,D
+ 1044/     4E2 : 19                     	ADD	HL,DE
+ 1045/     4E3 : D1                     	POP	DE			;RESTORE TEXT POINTER
+ 1046/     4E4 : FA D3 04               	JP	M, XP23			;1ST 2ND SIGN DIFFER
+ 1047/     4E7 : AC                     	XOR	H			;1ST 2ND SIGN EQUAL
+ 1048/     4E8 : F2 D3 04               	JP	P, XP23			;SO ISp RESULT
+ 1049/     4EB : C3 9D 01               	JP	QHOW			;ELSE WE HAVE OVERFLOW
+ 1050/     4EE :                        ;
+ 1051/     4EE :                        ;Subtraktion
+ 1052/     4EE :                        ;
+ 1053/     4EE : CD 5F 01               XP25:	CALL	TSTC			;SUBTRACT?
+ 1054/     4F1 : 2D                     	DB	"-"
+ 1055/     4F2 : 82 05                  	DW	XP42-2
+ 1056/     4F4 : E5                     XP26:	PUSH	HL			;YES, SAVE 1ST <EXPR3>
+ 1057/     4F5 : CD FD 04               	CALL	EXPR3			;GET 2ND <EXPR3>
+ 1058/     4F8 : CD E2 05               	CALL	CHGSGN			;NEGATE
+ 1059/     4FB : 18 E0                  	JR	XP24			;AND ADD THEM
+ 1060/     4FD :                        ;
+ 1061/     4FD :                        ;Multiplikation
+ 1062/     4FD :                        ;
+ 1063/     4FD : CD 5F 05               EXPR3:	CALL	EXPR4			;GET 1ST <EXPR4>
+ 1064/     500 : CD 5F 01               XP31:	CALL	TSTC			;MULTIPLY?
+ 1065/     503 : 2A                     	DB	"*"
+ 1066/     504 : 2D 05                  	DW	XP34-2
+ 1067/     506 : E5                     	PUSH	HL			;YES, SAVE 1ST
+ 1068/     507 : CD 5F 05               	CALL	EXPR4			;AND GET 2ND <EXPR4>
+ 1069/     50A : 06 00                  	LD	B,0			;CLEAR B FOR SIGN
+ 1070/     50C : CD DF 05               	CALL	CHKSGN			;CHECK SIGN
+ 1071/     50F : E3                     	EX	(SP),HL
+ 1072/     510 : CD DF 05               	CALL	CHKSGN			;CHECK SIGN OF 1ST
+ 1073/     513 : EB                     	EX	DE,HL			;2ND IN DE NOW
+ 1074/     514 : E3                     	EX	(SP),HL			;1ST IN HL
+ 1075/     515 : 7C                     	LD	A,H			;IS HL > 255 ?
+ 1076/     516 : B7                     	OR	A
+ 1077/     517 : 28 06                  	JR	Z, XP32			;NO
+ 1078/     519 : 7A                     	LD	A,D
+ 1079/     51A : B2                     	OR	D
+ 1080/     51B : EB                     	EX	DE,HL			;PUT SMALLER IN HL
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 19 - 8/15/2024 13:20:0
+
+
+ 1081/     51C : C2 9E 01               	JP	NZ, AHOW		;ALSO >, WILL OVERFLOW
+ 1082/     51F : 7D                     XP32:	LD	A,L			;THIS IS DUMB
+ 1083/     520 : 21 00 00               	LD	HL,0			;CLEAR RESULT
+ 1084/     523 : B7                     	OR	A			;ADD AND COUNT
+ 1085/     524 : 28 2B                  	JR	Z, XP35
+ 1086/     526 : 19                     XP33:	ADD	HL,DE
+ 1087/     527 : DA 9E 01               	JP	C, AHOW			;OVERFLOW
+ 1088/     52A : 3D                     	DEC	A
+ 1089/     52B : 20 F9                  	JR	NZ, XP33
+ 1090/     52D : 18 22                  	JR	XP35			;FINISHED
+ 1091/     52F :                        ;
+ 1092/     52F :                        ;Division
+ 1093/     52F :                        ;
+ 1094/     52F : CD 5F 01               XP34:	CALL	TSTC			;DIVIDE?
+ 1095/     532 : 2F                     	DB	"/"
+ 1096/     533 : 82 05                  	DW	XP42-2
+ 1097/     535 : E5                     	PUSH	HL			;YES, SAVE 1ST <EXPR4>
+ 1098/     536 : CD 5F 05               	CALL	EXPR4			;AND GET 2ND ONE
+ 1099/     539 : 06 00                  	LD	B,0			;CLEAR B FOR SIGN
+ 1100/     53B : CD DF 05               	CALL	CHKSGN			;CHECK SIGN OF 2ND
+ 1101/     53E : E3                     	EX	(SP),HL
+ 1102/     53F : CD DF 05               	CALL	CHKSGN			;CHECK SIGN OF 1ST
+ 1103/     542 : EB                     	EX	DE,HL
+ 1104/     543 : E3                     	EX	(SP),HL			;GET 1ST IN HL
+ 1105/     544 : EB                     	EX	DE,HL			;PUT 2ND IN DE
+ 1106/     545 : 7A                     	LD	A,D			;DIVIDE BY 0?
+ 1107/     546 : B3                     	OR	E
+ 1108/     547 : CA 9E 01               	JP	Z, AHOW			;SAY "HOW?"
+ 1109/     54A : C5                     	PUSH	BC			;ELSE SAVE SIGN
+ 1110/     54B : CD C3 05               	CALL	DIVIDE			;USE SUBROUTINE
+ 1111/     54E : 60                     	LD	H,B			;RESULT IN HL NOW
+ 1112/     54F : 69                     	LD	L,C
+ 1113/     550 : C1                     	POP	BC			;GET SIGN BACK
+ 1114/     551 : D1                     XP35:	POP	DE			;AND TEXT POINTER
+ 1115/     552 : 7C                     	LD	A,H			;HL MUST BE +
+ 1116/     553 : B7                     	OR	A
+ 1117/     554 : FA 9D 01               	JP	M, QHOW			;ELSE IT IS OVERFLOW
+ 1118/     557 : 78                     	LD	A,B
+ 1119/     558 : B7                     	OR	A
+ 1120/     559 : FC E2 05               	CALL	M, CHGSGN		;CHANGE SIGN IFF NEEDED
+ 1121/     55C : C3 00 05               	JP	XP31			;LOOK OR MORE TERMS
+ 1122/     55F :                        ;
+ 1123/     55F : 21 C3 08               EXPR4:	LD	HL,TBFKT		;FIND FUNCTION IN TBFKT
+ 1124/     562 : C3 37 09               	JP	EXEC			;AND GO DO IT
+ 1125/     565 :                        ;
+ 1126/     565 :                        ;**************************************
+ 1127/     565 :                        ;wenn kein Funktionsruf
+ 1128/     565 :                        ;**************************************
+ 1129/     565 :                        ;
+ 1130/     565 : CD 2C 01               XP40:	CALL	VARAD			;NO, NOT A FUNCTION
+ 1131/     568 : 38 05                  	JR	C, XP41			;NOR A VARIABLE
+ 1132/     56A : 7E                     	LD	A,(HL)			;VARIABLE
+ 1133/     56B : 23                     	INC	HL
+ 1134/     56C : 66                     	LD	H,(HL)			;VALUE IN HL
+ 1135/     56D : 6F                     	LD	L,A
+ 1136/     56E : C9                     	RET				;HL=Variableninhalt
+ 1137/     56F :                        ;
+ 1138/     56F : CD 74 01               XP41:	CALL	TSTNUM			;OR IS IT A NUMBER
+ 1139/     572 : 78                     	LD	A,B			;# OF DIGIT
+ 1140/     573 : B7                     	OR	A
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 20 - 8/15/2024 13:20:0
+
+
+ 1141/     574 : C0                     	RET	NZ			;OK
+ 1142/     575 :                        ;
+ 1143/     575 :                        ;
+ 1144/     575 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1145/     575 :                        ;EXPR in Klammern berechnen
+ 1146/     575 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1147/     575 :                        ;
+ 1148/     575 : CD 5F 01               PARN:	CALL	TSTC			;NO DIGIT, MUST BE
+ 1149/     578 : 28                     	DB	"("
+ 1150/     579 : 83 05                  	DW	XP43-2
+ 1151/     57B : CD 77 04               	CALL	EXPR			;"(EXPR)"
+ 1152/     57E : CD 5F 01               	CALL	TSTC
+ 1153/     581 : 29                     	DB	")"
+ 1154/     582 : 83 05                  	DW	XP43-2
+ 1155/     584 : C9                     XP42:	RET
+ 1156/     585 :                        ;
+ 1157/     585 : C3 36 06               XP43:	JP	QWHAT			;ELSE SAY: "WHAT?"
+ 1158/     588 :                        ;
+ 1159/     588 :                        ;**************************************
+ 1160/     588 :                        ;RND (EXPR)
+ 1161/     588 :                        ;**************************************
+ 1162/     588 :                        ;
+ 1163/     588 : 21 04 10               RND:	LD	HL,RANPNT		;Speicher fuer Zufallswert
+ 1164/     58B : ED 5F                  	LD	A,R			;aendern
+ 1165/     58D : ED 6F                  	RLD
+ 1166/     58F : 23                     	INC	HL
+ 1167/     590 : ED 6F                  	RLD
+ 1168/     592 : CD 75 05               	CALL	PARN			;EXPR holen
+ 1169/     595 : 7C                     	LD	A,H			;EXPR MUST BE +
+ 1170/     596 : B7                     	OR	A
+ 1171/     597 : FA 9D 01               	JP	M, QHOW
+ 1172/     59A : B5                     	OR	L			;AND NON-ZERO
+ 1173/     59B : CA 9D 01               	JP	Z, QHOW
+ 1174/     59E : D5                     	PUSH	DE			;SAVE BOTH
+ 1175/     59F : C5                     	PUSH	BC
+ 1176/     5A0 : EB                     	EX	DE,HL			;in DE EXPR
+ 1177/     5A1 : 2A 04 10               	LD	HL,(RANPNT)
+ 1178/     5A4 : ED 52                  RA1:	SBC	HL,DE			;Zufallszahl um index er-
+ 1179/     5A6 : 30 FC                  	JR	NC, RA1			;niedrigen, bis negativ
+ 1180/     5A8 : 19                     	ADD	HL,DE			;dann index addieren
+ 1181/     5A9 : 23                     	INC	HL
+ 1182/     5AA : C1                     	POP	BC
+ 1183/     5AB : D1                     	POP	DE
+ 1184/     5AC : C9                     	RET
+ 1185/     5AD :                        ;
+ 1186/     5AD :                        ;**************************************
+ 1187/     5AD :                        ;ABS (EXPR)
+ 1188/     5AD :                        ;**************************************
+ 1189/     5AD :                        ;
+ 1190/     5AD : CD 75 05               ABS:	CALL	PARN			;EXPR holen
+ 1191/     5B0 : 1B                     	DEC	DE
+ 1192/     5B1 : CD DF 05               	CALL	CHKSGN			;und Betrag bilden
+ 1193/     5B4 : 13                     	INC	DE
+ 1194/     5B5 : C9                     	RET
+ 1195/     5B6 :                        ;
+ 1196/     5B6 :                        ;**************************************
+ 1197/     5B6 :                        ;SIZE
+ 1198/     5B6 :                        ;**************************************
+ 1199/     5B6 :                        ;
+ 1200/     5B6 : 2A 1F 10               SIZE:	LD	HL,(TXTUNF)		;aktuelles Pgm.ende
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 21 - 8/15/2024 13:20:0
+
+
+ 1201/     5B9 : D5                     	PUSH	DE			;GET THE NUMBER OF FREE
+ 1202/     5BA : EB                     	EX	DE,HL			;BYTES BETWEEN 'TXTUNF'
+ 1203/     5BB : 2A 4C 11               	LD	HL,(TXTEND)		;und Speicherende
+ 1204/     5BE : CD D8 05               	CALL	SUBDE			;Differenz bilden
+ 1205/     5C1 : D1                     	POP	DE
+ 1206/     5C2 : C9                     	RET
+ 1207/     5C3 :                        ;*
+ 1208/     5C3 :                        ;**************************************************************
+ 1209/     5C3 :                        ;*
+ 1210/     5C3 :                        ;* *** DIVIDE *** SUBDE *** CHKSGN *** CHGSGN *** & CKHLDE ***
+ 1211/     5C3 :                        ;*
+ 1212/     5C3 :                        ;* 'DIVIDE' DIVIDES HL BY DE, RESULT IN BC, REMAINDER IN HL
+ 1213/     5C3 :                        ;*
+ 1214/     5C3 :                        ;* 'SUBDE' SUBTRACTS DE FROM HL
+ 1215/     5C3 :                        ;*
+ 1216/     5C3 :                        ;* 'CHKSGN' CHECKS SIGN OF HL.  IFF +, NO CHANGE.  IFF -, CHANGE
+ 1217/     5C3 :                        ;* SIGN AND FLIP SIGN OF B.
+ 1218/     5C3 :                        ;*
+ 1219/     5C3 :                        ;* 'CHGSGN' CHNGES SIGN OF HL AND B UNCONDITIONALLY.
+ 1220/     5C3 :                        ;*
+ 1221/     5C3 :                        ;* 'CKHLE' CHECKS SIGN OF HL AND DE.  IFF DIFFERENT, HL AND DE
+ 1222/     5C3 :                        ;* ARE INTERCHANGED.  IFF SAME SIGN, NOT INTERCHANGED.  EITHER
+ 1223/     5C3 :                        ;* CASE, HL DE ARE THEN COMPARED TO SET THE FLAGS.
+ 1224/     5C3 :                        ;*
+ 1225/     5C3 :                        ;
+ 1226/     5C3 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1227/     5C3 :                        ;Division BC := HL / DE
+ 1228/     5C3 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1229/     5C3 :                        ;
+ 1230/     5C3 : E5                     DIVIDE:	PUSH	HL
+ 1231/     5C4 : 6C                     	LD	L,H			;DIVIDE H BY DE
+ 1232/     5C5 : 26 00                  	LD	H,0
+ 1233/     5C7 : CD CE 05               	CALL	DHLD1
+ 1234/     5CA : 41                     	LD	B,C			;SAVE RESULT IN B
+ 1235/     5CB : 7D                     	LD	A,L			;(REMAINDER+L)/DE
+ 1236/     5CC : E1                     	POP	HL
+ 1237/     5CD : 67                     	LD	H,A
+ 1238/     5CE : 0E FF                  DHLD1:	LD	C,0FFH			;RESULT IN C
+ 1239/     5D0 : 0C                     DHLD2:	INC	C			;DUMB ROUTINE
+ 1240/     5D1 : CD D8 05               	CALL	SUBDE			;DIVIDE BY SUBTRACT
+ 1241/     5D4 : 30 FA                  	JR	NC, DHLD2		;AND COUNT
+ 1242/     5D6 : 19                     	ADD	HL,DE
+ 1243/     5D7 : C9                     	RET
+ 1244/     5D8 :                        ;
+ 1245/     5D8 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1246/     5D8 :                        ;Berechnung HL := HL - DE
+ 1247/     5D8 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1248/     5D8 :                        ;
+ 1249/     5D8 : 7D                     SUBDE:	LD	A,L
+ 1250/     5D9 : 93                     	SUB	E			;SUBTRACT DE FROM
+ 1251/     5DA : 6F                     	LD	L,A			;HL
+ 1252/     5DB : 7C                     	LD	A,H
+ 1253/     5DC : 9A                     	SBC	A,D
+ 1254/     5DD : 67                     	LD	H,A
+ 1255/     5DE : C9                     	RET
+ 1256/     5DF :                        ;
+ 1257/     5DF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1258/     5DF :                        ;Absolutbetrag einer EXPR bilden
+ 1259/     5DF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1260/     5DF :                        ;
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 22 - 8/15/2024 13:20:0
+
+
+ 1261/     5DF : 7C                     CHKSGN:	LD	A,H
+ 1262/     5E0 : B7                     	OR	A			;CHECK SIGN OF HL
+ 1263/     5E1 : F0                     	RET	P			;IF -, CHANGE SIGN
+ 1264/     5E2 :                        ;
+ 1265/     5E2 :                        ;inverse EXPR bilden
+ 1266/     5E2 :                        ;
+ 1267/     5E2 : 7C                     CHGSGN:	LD	A,H			;EXPR=0?
+ 1268/     5E3 : B5                     	OR	L
+ 1269/     5E4 : C8                     	RET	Z			;ja
+ 1270/     5E5 :                        ;
+ 1271/     5E5 : 7C                     	LD	A,H			;sonst EXPR negieren...
+ 1272/     5E6 : F5                     	PUSH	AF
+ 1273/     5E7 : 2F                     	CPL				;CHANGE SIGN OF HL
+ 1274/     5E8 : 67                     	LD	H,A
+ 1275/     5E9 : 7D                     	LD	A,L
+ 1276/     5EA : 2F                     	CPL
+ 1277/     5EB : 6F                     	LD	L,A
+ 1278/     5EC : 23                     	INC	HL
+ 1279/     5ED : F1                     	POP	AF
+ 1280/     5EE : AC                     	XOR	H
+ 1281/     5EF : F2 9D 01               	JP	P, QHOW			;wenn Ueberlauf
+ 1282/     5F2 : 78                     	LD	A,B			;AND ALSO FLIP B
+ 1283/     5F3 : EE 80                  	XOR	80H
+ 1284/     5F5 : 47                     	LD	B,A
+ 1285/     5F6 : C9                     	RET
+ 1286/     5F7 :                        ;
+ 1287/     5F7 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1288/     5F7 :                        ;Vergleich HL - DE
+ 1289/     5F7 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1290/     5F7 :                        ;
+ 1291/     5F7 : 7C                     CKHLDE:	LD	A,H
+ 1292/     5F8 : AA                     	XOR	D			;SAME SIGN?
+ 1293/     5F9 : F2 FD 05               	JP	P, COMP1		;YES, COMPARE
+ 1294/     5FC : EB                     	EX	DE,HL			;NO, XCH AND COMP
+ 1295/     5FD : CD 18 01               COMP1:	CALL	COMP
+ 1296/     600 : C9                     	RET
+ 1297/     601 :                        ;*
+ 1298/     601 :                        ;**************************************************************
+ 1299/     601 :                        ;*
+ 1300/     601 :                        ;* *** SETVAL *** FIN *** ENDCHK *** & ERROR (& FRIENDS) ***
+ 1301/     601 :                        ;*
+ 1302/     601 :                        ;* "SETVAL" EXPECTS A VARIABLE, FOLLOWED BY AN EQUAL SIGN AND
+ 1303/     601 :                        ;* THEN AN EXPR.  IT EVALUATES THE EXPR. AND SET THE VARIABLE
+ 1304/     601 :                        ;* TO THAT VALUE.
+ 1305/     601 :                        ;*
+ 1306/     601 :                        ;* "FIN" CHECKS THE END OF A COMMAND.  IFF IT ENDED WITH ";",
+ 1307/     601 :                        ;* EXECUTION CONTINUES.  IFF IT ENDED WITH A CR, IT FINDS THE
+ 1308/     601 :                        ;* NEXT LINE AND CONTINUE FROM THERE.
+ 1309/     601 :                        ;*
+ 1310/     601 :                        ;* "ENDCHK" CHECKS IFF A COMMAND IS ENDED WITH CR.  THIS IS
+ 1311/     601 :                        ;* REQUIRED IN CERTAIN COMMANDS. (GOTO, RETURN, AND STOP ETC.)
+ 1312/     601 :                        ;*
+ 1313/     601 :                        ;* "ERROR" PRINTS THE STRING POINTED BY DE (AND ENDS WITH CR).
+ 1314/     601 :                        ;* IT THEN PRINTS THE LINE POINTED BY 'CURRNT' WITH A "?"
+ 1315/     601 :                        ;* INSERTED AT WHERE THE OLD TEXT POINTER (SHOULD BE ON TOP
+ 1316/     601 :                        ;* O THE STACK) POINTS TO.  EXECUTION OF TB IS STOPPED
+ 1317/     601 :                        ;* AND TBI IS RESTARTED.  HOWEVER, IFF 'CURRNT' -> ZERO
+ 1318/     601 :                        ;* (INDICATING A DIRECT COMMAND), THE DIRECT COMMAND IS NOT
+ 1319/     601 :                        ;*  PRINTED.  AND IFF 'CURRNT' -> NEGATIVE # (INDICATING 'INPUT'
+ 1320/     601 :                        ;* COMMAND, THE INPUT LINE IS NOT PRINTED AND EXECUTION IS
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 23 - 8/15/2024 13:20:0
+
+
+ 1321/     601 :                        ;* NOT TERMINATED BUT CONTINUED AT 'INPERR'.
+ 1322/     601 :                        ;*
+ 1323/     601 :                        ;* RELATED TO 'ERROR' ARE THE FOLLOWING:
+ 1324/     601 :                        ;* 'QWHAT' SAVES TEXT POINTER IN STACK AND GET MESSAGE "WHAT?"
+ 1325/     601 :                        ;* 'AWHAT' JUST GET MESSAGE "WHAT?" AND JUMP TO 'ERROR'.
+ 1326/     601 :                        ;* 'QSORRY' AND 'ASORRY' DO SAME KIND OF THING.
+ 1327/     601 :                        ;* 'QHOW' AND 'AHOW' IN THE ZERO PAGE SECTION ALSO DO THIS
+ 1328/     601 :                        ;*
+ 1329/     601 :                        ;
+ 1330/     601 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1331/     601 :                        ;LET-Zuweisung
+ 1332/     601 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1333/     601 :                        ;
+ 1334/     601 : CD 2C 01               SETVAL:	CALL	VARAD			;Var.adr. holen
+ 1335/     604 : DA 36 06               	JP	C, QWHAT		;"WHAT?" NO VARIABLE
+ 1336/     607 :                        ;
+ 1337/     607 : E5                     	PUSH	HL			;SAVE ADDRESS OF VAR.
+ 1338/     608 : CD 5F 01               	CALL	TSTC			;PASS "=" SIGN
+ 1339/     60B : 3D                     	DB	"="
+ 1340/     60C : 16 06                  	DW	SV1-2
+ 1341/     60E :                        ;
+ 1342/     60E : CD 77 04               	CALL	EXPR			;EVALUATE EXPR.
+ 1343/     611 : 44                     	LD	B,H			;VALUE IN BC NOW
+ 1344/     612 : 4D                     	LD	C,L
+ 1345/     613 : E1                     	POP	HL			;GET ADDRESS
+ 1346/     614 : 71                     	LD	(HL),C			;SAVE VALUE
+ 1347/     615 : 23                     	INC	HL
+ 1348/     616 : 70                     	LD	(HL),B
+ 1349/     617 : C9                     	RET
+ 1350/     618 :                        
+ 1351/     618 : C3 36 06               SV1:	JP	QWHAT			;NO "=" SIGN
+ 1352/     61B :                        ;
+ 1353/     61B :                        ;++++++++++++++++++++++++++++++++++++++
+ 1354/     61B :                        ;naechsten Befehl interpretieren
+ 1355/     61B :                        ;++++++++++++++++++++++++++++++++++++++
+ 1356/     61B :                        ;
+ 1357/     61B : CD 5F 01               FIN:	CALL	TSTC
+ 1358/     61E : 3B                     	DB	";"
+ 1359/     61F : 23 06                  	DW	FI1-2
+ 1360/     621 : F1                     	POP	AF			;";", PURGE RET ADDR.
+ 1361/     622 : C3 61 02               	JP	RUNSML			;CONTINUE SAME LINE
+ 1362/     625 :                        ;
+ 1363/     625 : CD 5F 01               FI1:	CALL	TSTC			;NOT ";", IS IT CR?
+ 1364/     628 : 0D                     	DB	CR
+ 1365/     629 : 2D 06                  	DW	FI2-2
+ 1366/     62B : F1                     	POP	AF			;YES, PURGE RET ADDR.
+ 1367/     62C : C3 52 02               	JP	RUNNXL			;RUN NEXT LINE
+ 1368/     62F :                        ;
+ 1369/     62F : C9                     FI2:	RET				;ELSE RETURN TO CALLER
+ 1370/     630 :                        ;
+ 1371/     630 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1372/     630 :                        ;Test, ob Zeilenende erreicht
+ 1373/     630 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1374/     630 :                        ;
+ 1375/     630 : CD 1E 01               ENDCHK:	CALL	IGNBLK			;Leerzeichen uebergehen
+ 1376/     633 : FE 0D                  	CP	A, CR			;END WITH CR?
+ 1377/     635 : C8                     	RET	Z			;OK, ELSE SAY: "WHAT?"
+ 1378/     636 :                        ;
+ 1379/     636 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1380/     636 :                        ;Fehlermeldung 'WHAT'
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 24 - 8/15/2024 13:20:0
+
+
+ 1381/     636 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1382/     636 :                        ;
+ 1383/     636 : D5                     QWHAT:	PUSH	DE
+ 1384/     637 : 11 AF 01               AWHAT:	LD	DE,WHAT
+ 1385/     63A :                        ;
+ 1386/     63A :                        ;++++++++++++++++++++++++++++++++++++++
+ 1387/     63A :                        ;Fehlerbehandlung
+ 1388/     63A :                        ;++++++++++++++++++++++++++++++++++++++
+ 1389/     63A :                        ;
+ 1390/     63A : 97                     ERROR:	SUB	A
+ 1391/     63B : CD C3 06               	CALL	PRTSTG			;PRINT 'WHAT?', 'HOW?'
+ 1392/     63E : D1                     	POP	DE			;OR 'SORRY'
+ 1393/     63F : 1A                     	LD	A,(DE)			;SAVE THE CHARACTER
+ 1394/     640 : F5                     	PUSH	AF			;AT WHERE OLD DE ->
+ 1395/     641 : 97                     	SUB	A			;AND PUT A 0 THERE
+ 1396/     642 : 12                     	LD	(DE),A
+ 1397/     643 :                        ;
+ 1398/     643 : 2A 0B 10               	LD	HL,(CURRNT)		;GET CURRENT LINE #
+ 1399/     646 : E5                     	PUSH	HL
+ 1400/     647 : 7E                     	LD	A,(HL)			;CHECK THE VALUE
+ 1401/     648 : 23                     	INC	HL
+ 1402/     649 : B6                     	OR	(HL)
+ 1403/     64A : D1                     	POP	DE
+ 1404/     64B : CA BB 01               	JP	Z, RSTART		;IF ZERO, JUST RERSTART
+ 1405/     64E :                        ;
+ 1406/     64E : 7E                     	LD	A,(HL)			;IF NEGATIVE,
+ 1407/     64F : B7                     	OR	A
+ 1408/     650 : FA FD 03               	JP	M, INPERR		;REDO INPUT
+ 1409/     653 :                        ;
+ 1410/     653 : CD 40 07               	CALL	PRTLN			;ELSE PRINT THE LINE
+ 1411/     656 : 1B                     	DEC	DE			;UPTO WHERE THE 0 IS
+ 1412/     657 : F1                     	POP	AF			;RESTORE THE CHARACTER
+ 1413/     658 : 12                     	LD	(DE),A
+ 1414/     659 : 3E 3F                  	LD	A,'?'			;PRINTt A "?"
+ 1415/     65B : CD E7 07               	CALL	OTSTC
+ 1416/     65E : 97                     	SUB	A			;AND THE REST OF THE
+ 1417/     65F : CD C3 06               	CALL	PRTSTG			;LINE
+ 1418/     662 : C3 BB 01               	JP	RSTART
+ 1419/     665 :                        ;
+ 1420/     665 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1421/     665 :                        ;Fehlermeldung 'SORRY'
+ 1422/     665 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1423/     665 :                        ;
+ 1424/     665 : D5                     ERSOR:	PUSH	DE
+ 1425/     666 : 11 B5 01               QSORRY:	LD	DE,SORRY
+ 1426/     669 : C3 3A 06               	JP	ERROR
+ 1427/     66C :                        ;*
+ 1428/     66C :                        ;**************************************************************
+ 1429/     66C :                        ;*
+ 1430/     66C :                        ;* *** GETLN *** FNDLN (& FRIENDS) ***
+ 1431/     66C :                        ;*
+ 1432/     66C :                        ;* 'GETLN' READS A INPUT LINE INTO 'BUFFER'.  IT FIRST PROMPT
+ 1433/     66C :                        ;* THE CHARACTER IN A (GIVEN BY THE CALLER), THEN IT FILLS THE
+ 1434/     66C :                        ;* THE BUFFER AND ECHOS.  IT IGNORES LF'S AND NULLS, BUT STILL
+ 1435/     66C :                        ;* ECHOS THEM BACK.  RUB-OUT IS USED TO CAUSE IT TO DELETE
+ 1436/     66C :                        ;* THE LAST CHARATER (IFF THERE IS ONE), AND ALT-MOD IS USED TO
+ 1437/     66C :                        ;* CAUSE IT TO DELETE THE WHOLE LINE AND START IT ALL OVER.
+ 1438/     66C :                        ;* 0DHSIGNALS THE END OF A LINE, AND CAUE 'GETLN' TO RETURN.
+ 1439/     66C :                        ;*
+ 1440/     66C :                        ;* 'FNDLN' FINDS A LINE WITH A GIVEN LINE # (IN HL) IN THE
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 25 - 8/15/2024 13:20:0
+
+
+ 1441/     66C :                        ;* TEXT SAVE AREA.  DE IS USED AS THE TEXT POINTER.  IFF THE
+ 1442/     66C :                        ;* LINE IS FOUND, DE WILL POINT TO THE BEGINNING OF THAT LINE
+ 1443/     66C :                        ;* (I.E., THE LOW BYTE OF THE LINE #), AND FLAGS ARE NC & Z.
+ 1444/     66C :                        ;* IFF THAT LINE IS NOT THERE AND A LINE WITH A HIGHER LINE #
+ 1445/     66C :                        ;* IS FOUND, DE POINTS TO THERE AND FLAGS ARE NC & NZ.  IFF
+ 1446/     66C :                        ;* WE REACHED THE END OF TEXT SAVE ARE AND CANNOT FIND THE
+ 1447/     66C :                        ;* LINE, FLAGS ARE C & NZ.
+ 1448/     66C :                        ;* 'FNDLN' WILL INITIALIZE DE TO THE BEGINNING OF THE TEXT SAVE
+ 1449/     66C :                        ;* AREA TO START THE SEARCH.  SOME OTHER ENTRIES OF THIS
+ 1450/     66C :                        ;* ROUTINE WILL NOT INITIALIZE DE AND DO THE SEARCH.
+ 1451/     66C :                        ;* 'FNDLNP' WILL START WITH DE AND SEARCH FOR THE LINE #.
+ 1452/     66C :                        ;* 'FNDNXT' WILL BUMP DE BY 2, FIND A 0DHAND THEN START SEARCH.
+ 1453/     66C :                        ;* 'FNDSKP' USE DE TO FIND A CR, AND THEN STRART SEARCH.
+ 1454/     66C :                        ;*
+ 1455/     66C :                        ;
+ 1456/     66C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1457/     66C :                        ;Eingaberoutine
+ 1458/     66C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1459/     66C :                        ;
+ 1460/     66C : CD E7 07               GETLN:	CALL	OTSTC			;Ausgabe (A)
+ 1461/     66F : ED 5B 4E 11            	LD	DE,(BUFFER)		;Beginn Eingabepuffer
+ 1462/     673 : CD 09 01               INLI1:	CALL	INCH			;Zeicheneingabe
+ 1463/     676 : FE 08                  	CP	A, 8			;Cursor links?
+ 1464/     678 : 28 17                  	JR	Z, INLI4		;ein Zeichen zurueck
+ 1465/     67A : FE 09                  	CP	A, 9			;Cursor rechts?
+ 1466/     67C : 28 06                  	JR	Z, INLI2		;dann ein Zeichen weiter
+ 1467/     67E : FE 03                  	CP	A, 3			;STOP?
+ 1468/     680 : CA BB 01               	JP	Z, RSTART		;dann Abbruch
+ 1469/     683 :                        ;
+ 1470/     683 : 12                     	LD	(DE),A			;sonst Zeichen in Puffer
+ 1471/     684 :                        ;
+ 1472/     684 : 13                     INLI2:	INC	DE			;Pufferadr. erhoehen
+ 1473/     685 : CD E7 07               INLI3:	CALL	OTSTC			;Zeichen anzeigen
+ 1474/     688 :                        ;
+ 1475/     688 : FE 0D                  	CP	A, CR			;bei ENTER
+ 1476/     68A : C8                     	RET	Z			;zurueck
+ 1477/     68B :                        ;
+ 1478/     68B : 7B                     	LD	A,E
+ 1479/     68C : CD 61 09               	CALL	M0961			;Pufferende erreicht?
+ 1480/     68F : 20 E2                  	JR	NZ, INLI1		;nein --> weiter
+ 1481/     691 :                        ;sonst ein Zeichen zurueck
+ 1482/     691 : 7B                     INLI4:	LD	A,E
+ 1483/     692 : CD 68 09               	CALL	M0968			;Pufferanfang erreicht?
+ 1484/     695 : 28 DC                  	JR	Z, INLI1		;weiter eingeben
+ 1485/     697 :                        ;
+ 1486/     697 : 1B                     	DEC	DE			;sonst im Puffer zurueck
+ 1487/     698 : 3E 08                  	LD	A,8			;und Cursor zurueck
+ 1488/     69A : 18 E9                  	JR	INLI3
+ 1489/     69C :                        ;
+ 1490/     69C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1491/     69C :                        ;suche naechste Zeile mit znr <= HL
+ 1492/     69C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1493/     69C :                        ;
+ 1494/     69C : 7C                     FNDLN:	LD	A,H
+ 1495/     69D : B7                     	OR	A			;CHECK SIGN OF HL
+ 1496/     69E : FA 9D 01               	JP	M, QHOW			;IT CANNT BE -
+ 1497/     6A1 : 11 52 11               	LD	DE,TXTBGN		;INIT. TEXT POINTER
+ 1498/     6A4 :                        ;naechstfolgende Zeile suchen
+ 1499/     6A4 : =6A4H                  FNDLNP:	EQU	$
+ 1500/     6A4 : E5                     FL1:	PUSH	HL			;SAVE LINE #
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 26 - 8/15/2024 13:20:0
+
+
+ 1501/     6A5 : 2A 1F 10               	LD	HL,(TXTUNF)		;CHECK IFF WE PASSED END
+ 1502/     6A8 : 2B                     	DEC	HL
+ 1503/     6A9 : CD 18 01               	CALL	COMP			;Ende erreicht?
+ 1504/     6AC : E1                     	POP	HL			;GET LINE # BACK
+ 1505/     6AD : D8                     	RET	C			;C,NZ PASSED END
+ 1506/     6AE : 1A                     	LD	A,(DE)			;WE DID NOT, GET BYTE 1
+ 1507/     6AF : 95                     	SUB	L			;IS THIS THE LINE?
+ 1508/     6B0 : 47                     	LD	B,A			;COMPARE LOW ORDER
+ 1509/     6B1 : 13                     	INC	DE
+ 1510/     6B2 : 1A                     	LD	A,(DE)			;GET BYTE 2
+ 1511/     6B3 : 9C                     	SBC	A, H			;COMPARE HIGH ORDER
+ 1512/     6B4 : 38 04                  	JR	C, FL2			;NO, NOT THERE YET
+ 1513/     6B6 :                        ;weitersuchen bis Zeilennummer erreicht o. ueberschritten
+ 1514/     6B6 : 1B                     	DEC	DE			;ELSE WE EITHER FOUND
+ 1515/     6B7 : B0                     	OR	B			;IT, OR IT IS NOT THERE
+ 1516/     6B8 : C9                     	RET				;NC,Z:FOUND; NC,NZ:NO
+ 1517/     6B9 :                        ;Zeilenende suchen
+ 1518/     6B9 : 13                     FNDNXT:	INC	DE			;FIND NEXT LINE
+ 1519/     6BA : 13                     FL2:	INC	DE			;JUST PASSED BYTE 1 & 2
+ 1520/     6BB : 1A                     FNDSKP:	LD	A,(DE)
+ 1521/     6BC : FE 0D                  	CP	A, CR			;TRY TO FIND 0DH
+ 1522/     6BE : 20 FA                  	JR	NZ, FL2			;KEEP LOOKING
+ 1523/     6C0 : 13                     	INC	DE			;FOUND CR, SKIP OVER
+ 1524/     6C1 : 18 E1                  	JR	FL1			;CHECK IF END OF TEXT
+ 1525/     6C3 :                        ;*
+ 1526/     6C3 :                        ;*************************************************************
+ 1527/     6C3 :                        ;*
+ 1528/     6C3 :                        ;* *** PRTSTG *** QTSTG *** PRTNUM *** & PRTLN ***
+ 1529/     6C3 :                        ;*
+ 1530/     6C3 :                        ;* 'PRTSTG' PRINTS A STRING POINTED BY DE.  IT STOPS PRINTING
+ 1531/     6C3 :                        ;* AND RETURNS TO CALLER WHEN EITHER A 0DH IS PRINTED OR WHEN
+ 1532/     6C3 :                        ;* THE NEXT BYTE IS THE SAME AS WHAT WAS IN A (GIVEN BY THE
+ 1533/     6C3 :                        ;* CALLER).  OLD A IS STORED IN B, OLD B IS LOST.
+ 1534/     6C3 :                        ;*
+ 1535/     6C3 :                        ;* 'QTSTG' LOOKS FOR A BACK-ARROW, SINGLE QUOTE, OR DOUBLE
+ 1536/     6C3 :                        ;* QUOTE.  IFF NONE OF THESE, RETURN TO CALLER.  IFF BACK-ARROW,
+ 1537/     6C3 :                        ;* OUTPUT A 0DH WITHOUT A LF.  IF SINGLE OR DOUBLE QUOTE, PRINT
+ 1538/     6C3 :                        ;* THE STRING IN THE QUOTE AND DEMANDS A MATCHING UNQUOTE.
+ 1539/     6C3 :                        ;* AFTER THE PRINTING THE NEXT 3 BYTES OF THE CALLER IS SKIPPED
+ 1540/     6C3 :                        ;* OVER (USUALLY A JUMP INSTRUCTION).
+ 1541/     6C3 :                        ;*
+ 1542/     6C3 :                        ;* 'PRTNUM' PRINTS THE NUMBER IN HL.  LEADING BLANKS ARE ADDED
+ 1543/     6C3 :                        ;* IF NEEDED TO PAD THE NUMBER OF SPACES TO THE NUMBER IN C.
+ 1544/     6C3 :                        ;* HOWEVER, IF THE NUMBER OF DIGITS IS LARGER THAN THE # IN
+ 1545/     6C3 :                        ;* C, ALL DIGITS ARE PRINTED ANYWAY.  NEGATIVE SIGN IS ALSO
+ 1546/     6C3 :                        ;* PRINTED AND COUNTED IN, POSITIVE SIGN IS NOT.
+ 1547/     6C3 :                        ;*
+ 1548/     6C3 :                        ;* 'PRTLN' PRINSrA SAVED TEXT LINE WITH LINE # AND ALL.
+ 1549/     6C3 :                        ;*
+ 1550/     6C3 :                        ;
+ 1551/     6C3 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1552/     6C3 :                        ;Stringausgabe
+ 1553/     6C3 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1554/     6C3 :                        ;
+ 1555/     6C3 : 47                     PRTSTG:	LD	B,A			;A=Abschlu~byte
+ 1556/     6C4 : 1A                     STRN1:	LD	A,(DE)			;DE-Stringadresse
+ 1557/     6C5 : 13                     	INC	DE
+ 1558/     6C6 : B8                     	CP	A, B
+ 1559/     6C7 : C8                     	RET	Z
+ 1560/     6C8 : CD E7 07               	CALL	OTSTC
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 27 - 8/15/2024 13:20:0
+
+
+ 1561/     6CB : FE 0D                  	CP	A, CR			;Abbruch auch bei
+ 1562/     6CD : 20 F5                  	JR	NZ, STRN1		;Zeilenende
+ 1563/     6CF : C9                     	RET
+ 1564/     6D0 :                        ;
+ 1565/     6D0 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1566/     6D0 :                        ;Stringausgabe fuer PRINT und INPUT
+ 1567/     6D0 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1568/     6D0 :                        ;
+ 1569/     6D0 : CD 5F 01               QTSTG:	CALL	TSTC			;Zeichenkette in ".."
+ 1570/     6D3 : 22                     	DB	'"'			;eingeschlossen?
+ 1571/     6D4 : E2 06                  	DW	TXOU3-2
+ 1572/     6D6 : 3E 22                  	LD	A,'"'
+ 1573/     6D8 : CD C3 06               TXOU1:	CALL	PRTSTG			;dann Stringausgabe
+ 1574/     6DB : FE 0D                  	CP	A, CR
+ 1575/     6DD : E1                     	POP	HL			;Returnadr.
+ 1576/     6DE : CA 52 02               	JP	Z, RUNNXL			;wenn Zeilenende
+ 1577/     6E1 : 23                     TXOU2:	INC	HL			;2 Byte-Befehl hinter
+ 1578/     6E2 : 23                     	INC	HL			;Aufruf uebergehen, wenn
+ 1579/     6E3 : E9                     	JP	(HL)			;String ausgegeben
+ 1580/     6E4 :                        ;
+ 1581/     6E4 : CD 5F 01               TXOU3:	CALL	TSTC			;Zeichenkette in '..'
+ 1582/     6E7 : 27                     	DB	27H			;eingeschlossen?
+ 1583/     6E8 : EC 06                  	DW	TXOU4-2
+ 1584/     6EA : 3E 27                  	LD	A,27H
+ 1585/     6EC : 18 EA                  	JR	TXOU1			;dann Stringausgabe
+ 1586/     6EE :                        ;
+ 1587/     6EE : CD 5F 01               TXOU4:	CALL	TSTC			;steht ein _, so
+ 1588/     6F1 : 5F                     	DB	"_"			;Ausgabe
+ 1589/     6F2 : FD 06                  	DW	TXOU5-2			;sonst zurueck
+ 1590/     6F4 : 3E 0D                  	LD	A,CR			;2x CR
+ 1591/     6F6 : CD E7 07               	CALL	OTSTC
+ 1592/     6F9 : CD E7 07               	CALL	OTSTC
+ 1593/     6FC : E1                     	POP	HL
+ 1594/     6FD : 18 E2                  	JR	TXOU2
+ 1595/     6FF :                        ;
+ 1596/     6FF : C9                     TXOU5:	RET
+ 1597/     700 :                        ;
+ 1598/     700 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1599/     700 :                        ;Ausgabe HL dezimal
+ 1600/     700 :                        ;in:  C - Stellenanzahl
+ 1601/     700 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1602/     700 :                        ;
+ 1603/     700 : 06 00                  PRTNUM:	LD	B,0
+ 1604/     702 : CD DF 05               	CALL	CHKSGN			;Betrag bilden
+ 1605/     705 : F2 0B 07               	JP	P, HLOU1		;wenn positiv
+ 1606/     708 : 06 2D                  	LD	B,'-'			;sonst Vorzeichen '-'
+ 1607/     70A : 0D                     	DEC	C
+ 1608/     70B : D5                     HLOU1:	PUSH	DE
+ 1609/     70C : 11 0A 00               	LD	DE,10
+ 1610/     70F : D5                     	PUSH	DE
+ 1611/     710 : 0D                     	DEC	C
+ 1612/     711 : C5                     	PUSH	BC
+ 1613/     712 : CD C3 05               HLOU2:	CALL	DIVIDE			;Division HL/10
+ 1614/     715 : 78                     	LD	A,B
+ 1615/     716 : B1                     	OR	C
+ 1616/     717 : 28 07                  	JR	Z, HLOU3		;wenn Quotient = 0
+ 1617/     719 : E3                     	EX	(SP),HL
+ 1618/     71A : 2D                     	DEC	L
+ 1619/     71B : E5                     	PUSH	HL
+ 1620/     71C : 60                     	LD	H,B
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 28 - 8/15/2024 13:20:0
+
+
+ 1621/     71D : 69                     	LD	L,C
+ 1622/     71E : 18 F2                  	JR	HLOU2
+ 1623/     720 :                        ;
+ 1624/     720 : C1                     HLOU3:	POP	BC
+ 1625/     721 : 0D                     HLOU4:	DEC	C
+ 1626/     722 : 79                     	LD	A,C
+ 1627/     723 : B7                     	OR	A
+ 1628/     724 : FA 2E 07               	JP	M, HLOU5
+ 1629/     727 : 3E 20                  	LD	A,' '
+ 1630/     729 : CD E7 07               	CALL	OTSTC
+ 1631/     72C : 18 F3                  	JR	HLOU4
+ 1632/     72E :                        ;
+ 1633/     72E : 78                     HLOU5:	LD	A,B
+ 1634/     72F : B7                     	OR	A
+ 1635/     730 : C4 E7 07               	CALL	NZ, OTSTC
+ 1636/     733 : 5D                     	LD	E,L
+ 1637/     734 : 7B                     HLOU6:	LD	A,E
+ 1638/     735 : FE 0A                  	CP	A, 0AH
+ 1639/     737 : D1                     	POP	DE
+ 1640/     738 : C8                     	RET	Z
+ 1641/     739 : C6 30                  	ADD	A, '0'
+ 1642/     73B : CD E7 07               	CALL	OTSTC
+ 1643/     73E : 18 F4                  	JR	HLOU6
+ 1644/     740 :                        ;
+ 1645/     740 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1646/     740 :                        ;Ausgabe Zeile ab DE
+ 1647/     740 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1648/     740 :                        ;
+ 1649/     740 : 1A                     PRTLN:	LD	A,(DE)			;Zeilennummer
+ 1650/     741 : 6F                     	LD	L,A
+ 1651/     742 : 13                     	INC	DE
+ 1652/     743 : 1A                     	LD	A,(DE)
+ 1653/     744 : 67                     	LD	H,A
+ 1654/     745 : 13                     	INC	DE
+ 1655/     746 : 0E 04                  	LD	C,4			;4 stellig
+ 1656/     748 : CD 00 07               	CALL	PRTNUM			;ausgeben
+ 1657/     74B : 3E 20                  	LD	A,' '
+ 1658/     74D : CD E7 07               	CALL	OTSTC			;dann ein Leerzeichen
+ 1659/     750 : 97                     	SUB	A
+ 1660/     751 : CD C3 06               	CALL	PRTSTG			;und die Zeile
+ 1661/     754 : C9                     	RET
+ 1662/     755 :                        ;*
+ 1663/     755 :                        ;**************************************************************
+ 1664/     755 :                        ;*
+ 1665/     755 :                        ;* *** MVUP *** MVDOWN *** POPA *** & PUSHA ***
+ 1666/     755 :                        ;*
+ 1667/     755 :                        ;* 'MVUP' MOVES A BLOCK UP FROM HERE DE-> TO WHERE BC-> UNTIL
+ 1668/     755 :                        ;* DE = HL
+ 1669/     755 :                        ;*
+ 1670/     755 :                        ;* 'MVDOWN' MOVES A BLOCK DOWN FROM WHERE DE-> TO WHERE HL->
+ 1671/     755 :                        ;* UNTIL DE = BC
+ 1672/     755 :                        ;*
+ 1673/     755 :                        ;* 'POPA' RESTORES THE 'FOR' LOOP VARIABLE SAVE AREA FROM THE
+ 1674/     755 :                        ;* STACK
+ 1675/     755 :                        ;*
+ 1676/     755 :                        ;* 'PUSHA' STACKS THE 'FOR' LOOP VARIABLE SAVE AREA INTO THE
+ 1677/     755 :                        ;* STACK
+ 1678/     755 :                        ;*
+ 1679/     755 :                        ;
+ 1680/     755 :                        ;++++++++++++++++++++++++++++++++++++++
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 29 - 8/15/2024 13:20:0
+
+
+ 1681/     755 :                        ;
+ 1682/     755 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1683/     755 :                        ;
+ 1684/     755 : CD 18 01               MVUP:	CALL	COMP
+ 1685/     758 : C8                     	RET	Z
+ 1686/     759 : 1A                     	LD	A,(DE)
+ 1687/     75A : 02                     	LD	(BC),A
+ 1688/     75B : 13                     	INC	DE
+ 1689/     75C : 03                     	INC	BC
+ 1690/     75D : 18 F6                  	JR	MVUP
+ 1691/     75F :                        ;
+ 1692/     75F :                        ;++++++++++++++++++++++++++++++++++++++
+ 1693/     75F :                        ;
+ 1694/     75F :                        ;++++++++++++++++++++++++++++++++++++++
+ 1695/     75F :                        ;
+ 1696/     75F : 78                     MVDOWN:	LD	A,B
+ 1697/     760 : 92                     	SUB	D
+ 1698/     761 : 20 03                  	JR	NZ, MD1
+ 1699/     763 : 79                     	LD	A,C
+ 1700/     764 : 93                     	SUB	E
+ 1701/     765 : C8                     	RET	Z
+ 1702/     766 : 1B                     MD1:	DEC	DE
+ 1703/     767 : 2B                     	DEC	HL
+ 1704/     768 : 1A                     	LD	A,(DE)
+ 1705/     769 : 77                     	LD	(HL),A
+ 1706/     76A : 18 F3                  	JR	MVDOWN
+ 1707/     76C :                        ;
+ 1708/     76C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1709/     76C :                        ;Verlassen der aktuellen Struktur
+ 1710/     76C :                        ;++++++++++++++++++++++++++++++++++++++
+ 1711/     76C :                        ;
+ 1712/     76C : C1                     POPA:	POP	BC
+ 1713/     76D : E1                     	POP	HL
+ 1714/     76E : 22 13 10               	LD	(LOPVAR),HL		;ist UP ausgeführt worden?
+ 1715/     771 : 7C                     	LD	A,H
+ 1716/     772 : B5                     	OR	L			;(dann LOPVAR = 00)
+ 1717/     773 : 28 10                  	JR	Z, PP1		;so zurueck
+ 1718/     775 :                        ;
+ 1719/     775 : E1                     	POP	HL
+ 1720/     776 : 22 15 10               	LD	(LOPINC),HL		;sonst aktuelle Werte
+ 1721/     779 : E1                     	POP	HL			;zurueckschreiben
+ 1722/     77A : 22 17 10               	LD	(LOPLMT),HL
+ 1723/     77D : E1                     	POP	HL
+ 1724/     77E : 22 19 10               	LD	(LOPLN),HL
+ 1725/     781 : E1                     	POP	HL
+ 1726/     782 : 22 1B 10               	LD	(LOPPT),HL
+ 1727/     785 : C5                     PP1:	PUSH	BC
+ 1728/     786 : C9                     	RET
+ 1729/     787 :                        ;
+ 1730/     787 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1731/     787 :                        ;Eroeffnen einer neuen Verschachtelungsebene
+ 1732/     787 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1733/     787 :                        ;
+ 1734/     787 : 21 49 10               PUSHA:	LD	HL,STMAX		;wird die max. moegliche
+ 1735/     78A : CD E2 05               	CALL	CHGSGN			;Tiefe ueberschritten?
+ 1736/     78D : C1                     	POP	BC
+ 1737/     78E : 39                     	ADD	HL,SP
+ 1738/     78F : D2 65 06               	JP	NC, ERSOR		;ja --> 'sorry'
+ 1739/     792 :                        ;
+ 1740/     792 : 2A 13 10               	LD	HL,(LOPVAR)		;war 'GOSUB'?
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 30 - 8/15/2024 13:20:0
+
+
+ 1741/     795 : 7C                     	LD	A,H
+ 1742/     796 : B5                     	OR	L
+ 1743/     797 : 28 13                  	JR	Z, PU1			;dann ist nix zu tun
+ 1744/     799 :                        ;
+ 1745/     799 : 2A 1B 10               	LD	HL,(LOPPT)		;sonst aktuelle Werte
+ 1746/     79C : E5                     	PUSH	HL			;retten
+ 1747/     79D : 2A 19 10               	LD	HL,(LOPLN)
+ 1748/     7A0 : E5                     	PUSH	HL
+ 1749/     7A1 : 2A 17 10               	LD	HL,(LOPLMT)
+ 1750/     7A4 : E5                     	PUSH	HL
+ 1751/     7A5 : 2A 15 10               	LD	HL,(LOPINC)
+ 1752/     7A8 : E5                     	PUSH	HL
+ 1753/     7A9 : 2A 13 10               	LD	HL,(LOPVAR)
+ 1754/     7AC : E5                     PU1:	PUSH	HL
+ 1755/     7AD : C5                     	PUSH	BC
+ 1756/     7AE : C9                     	RET
+ 1757/     7AF :                        ;
+ 1758/     7AF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1759/     7AF :                        ;Systemkaltstart
+ 1760/     7AF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1761/     7AF :                        ;
+ 1762/     7AF : 31 13 11               COLD:	LD	SP,STACK		;Stack init.
+ 1763/     7B2 : 3E 0C                  	LD	A,0CH
+ 1764/     7B4 : CD E7 07               	CALL	OTSTC			;Bildschirm loeschen
+ 1765/     7B7 : CD E5 07               	CALL	CRLF
+ 1766/     7BA : CD E5 07               	CALL	CRLF
+ 1767/     7BD : 97                     	SUB	A
+ 1768/     7BE : 11 EF 07               	LD	DE,TITEL		;Titelzeile ausgeben
+ 1769/     7C1 : CD C3 06               	CALL	PRTSTG
+ 1770/     7C4 : 21 AF 07               	LD	HL,COLD
+ 1771/     7C7 : 22 1D 10               	LD	(M101D),HL
+ 1772/     7CA : 21 52 11               	LD	HL,TXTBGN		;kein Programm im
+ 1773/     7CD : 22 1F 10               	LD	(TXTUNF),HL		;Speicher
+ 1774/     7D0 : 21 94 30               	LD	HL,STEND		;Standartwerte fuer
+ 1775/     7D3 : 22 4C 11               	LD	(TXTEND),HL		;Speicherende,
+ 1776/     7D6 : 21 96 30               	LD	HL,STEND+2
+ 1777/     7D9 : 22 4E 11               	LD	(BUFFER),HL		;Inputpuffer,
+ 1778/     7DC : 21 D6 30               	LD	HL,STEND+66
+ 1779/     7DF : 22 50 11               	LD	(INPND),HL		;Inputpufferende
+ 1780/     7E2 : C3 BB 01               	JP	RSTART			;setzen
+ 1781/     7E5 :                        ;
+ 1782/     7E5 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1783/     7E5 :                        ;Ausgabe Zeilenvorschub
+ 1784/     7E5 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1785/     7E5 :                        ;
+ 1786/     7E5 : 3E 0D                  CRLF:	LD	A,0DH
+ 1787/     7E7 :                        ;
+ 1788/     7E7 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1789/     7E7 :                        ;Ausgabe Zeichen in A
+ 1790/     7E7 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1791/     7E7 :                        ;
+ 1792/     7E7 : C5                     OTSTC:	PUSH	BC
+ 1793/     7E8 : F5                     	PUSH	AF
+ 1794/     7E9 : CD 06 01               	CALL	OUTCH
+ 1795/     7EC : F1                     	POP	AF
+ 1796/     7ED : C1                     	POP	BC
+ 1797/     7EE : C9                     	RET
+ 1798/     7EF :                        ;
+ 1799/     7EF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1800/     7EF :                        ;Titelzeile
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 31 - 8/15/2024 13:20:0
+
+
+ 1801/     7EF :                        ;++++++++++++++++++++++++++++++++++++++
+ 1802/     7EF :                        ;
+ 1803/     7EF : 72 6F 62 6F 74 72 6F   TITEL:	DB	"robotron Z1013 BASIC 3.01"
+           7F6 : 6E 20 5A 31 30 31 33
+           7FD : 20 42 41 53 49 43 20
+           804 : 33 2E 30 31         
+ 1804/     808 : 0D                     	DB	CR
+ 1805/     809 :                        
+ 1806/     809 :                        
+ 1807/     809 :                        ;*
+ 1808/     809 :                        ;**************************************************************
+ 1809/     809 :                        ;*
+ 1810/     809 :                        ;* *** TABLES *** DIRECT *** & EXEC ***
+ 1811/     809 :                        ;*
+ 1812/     809 :                        ;* THIS SECTION OF THE CODE TESTS A STRING AGAINST A TABLE.
+ 1813/     809 :                        ;* WHEN A MATCH IS FOUND, CONTROL IS TRANSFERED TO THE SECTION
+ 1814/     809 :                        ;* OF CODE ACCORDING TO THE TABLE.
+ 1815/     809 :                        ;*
+ 1816/     809 :                        ;* AT 'EXEC', DE SHOULD POINT TO THE STRING AD HL SHOULD POINT
+ 1817/     809 :                        ;* TO THE TABLE-1.  AT 'DIRECT', DE SHOULD POINT TO THE STRING,
+ 1818/     809 :                        ;* HL WILL BE SET UP TO POINT TO TAB1-1, WHICH IS THE TABLE OF
+ 1819/     809 :                        ;* ALL DIRECT AND STATEMENT COMMANDS.
+ 1820/     809 :                        ;*
+ 1821/     809 :                        ;* A '.' IN THE STRING WILL TERMINATE THE TEST AND THE PARTIAL
+ 1822/     809 :                        ;* MATCH WILL BE CONSIDERED AS A MATCH.  E.G., 'P.', 'PR.',
+ 1823/     809 :                        ;* 'PRI.', 'PRIN.', OR 'PRINT' WILL ALL MATCH 'PRINT'.
+ 1824/     809 :                        ;*
+ 1825/     809 :                        ;* THE TABLE CONSISTS OF ANY NUMBER OF ITEMS.  EACH ITEM
+ 1826/     809 :                        ;* IS A STRING OF CHARACTERS AND 0 BYTE.
+ 1827/     809 :                        ;*
+ 1828/     809 :                        ;* END OF TABLE IS AN ITEM WITH A JUMP ADDRESS ONLY.  IF THE
+ 1829/     809 :                        ;* STRING DOES NOT MATCH ANY OF THE OTHER ITEMS, IT WILL
+ 1830/     809 :                        ;* MATCH THIS NULL ITEM AS DEFAULT.
+ 1831/     809 :                        ;*
+ 1832/     809 :                        
+ 1833/     809 :                        ;
+ 1834/     809 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1835/     809 :                        ;direkt auszufuehrende Kommandos
+ 1836/     809 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1837/     809 :                        ;
+ 1838/     809 : =808H                  TBKDO:	EQU	$-1
+ 1839/     809 : 4C 49 53 54 00         	DB	"LIST",0
+ 1840/     80E : 7B 02                  	DW	LIST
+ 1841/     810 : 52 55 4E 00            	DB	"RUN",0
+ 1842/     814 : 4C 02                  	DW	RUN
+ 1843/     816 : 4E 45 57 00            	DB	"NEW",0
+ 1844/     81A : 3D 02                  	DW	NEW
+ 1845/     81C : 42 59 45 00            	DB	"BYE",0
+ 1846/     820 : A0 09                  	DW	BYE
+ 1847/     822 : 45 4E 44 00            	DB	"END",0
+ 1848/     826 : 6F 09                  	DW	END
+ 1849/     828 : 43 53 41 56 45 00      	DB	"CSAVE",0
+ 1850/     82E : A4 09                  	DW	CSAVE
+ 1851/     830 : 43 4C 4F 41 44 00      	DB	"CLOAD",0
+ 1852/     836 : E7 09                  	DW	CLOAD
+ 1853/     838 :                        ;
+ 1854/     838 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1855/     838 :                        ;Prozeduren
+ 1856/     838 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1857/     838 :                        ;
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 32 - 8/15/2024 13:20:0
+
+
+ 1858/     838 : =837H                  TBPRC:	EQU	$-1
+ 1859/     838 : 4E 45 58 54 00         	DB	"NEXT",0
+ 1860/     83D : 89 03                  	DW	NEXT
+ 1861/     83F : 4C 45 54 00            	DB	"LET",0
+ 1862/     843 : 69 04                  	DW	LET
+ 1863/     845 : 49 46 00               	DB	"IF",0
+ 1864/     848 : EC 03                  	DW	IFF
+ 1865/     84A : 47 4F 54 4F 00         	DB	"GOTO",0
+ 1866/     84F : 6A 02                  	DW	GOTO
+ 1867/     851 : 47 4F 53 55 42 00      	DB	"GOSUB",0
+ 1868/     857 : EB 02                  	DW	GOSUB
+ 1869/     859 : 52 45 54 55 52 4E 00   	DB	"RETURN",0
+ 1870/     860 : 0D 03                  	DW	RETURN
+ 1871/     862 : 52 45 4D 00            	DB	"REM",0
+ 1872/     866 : E7 03                  	DW	REM
+ 1873/     868 : 46 4F 52 00            	DB	"FOR",0
+ 1874/     86C : 28 03                  	DW	FOR
+ 1875/     86E : 49 4E 50 55 54 00      	DB	"INPUT",0
+ 1876/     874 : 07 04                  	DW	INPUT
+ 1877/     876 : 50 52 49 4E 54 00      	DB	"PRINT",0
+ 1878/     87C : A5 02                  	DW	PRINT
+ 1879/     87E : 53 54 4F 50 00         	DB	"STOP",0
+ 1880/     883 : 46 02                  	DW	STOP
+ 1881/     885 : 43 41 4C 4C 00         	DB	"CALL",0
+ 1882/     88A : 25 0A                  	DW	CALLP
+ 1883/     88C : 4F 55 54 43 48 41 52   	DB	"OUTCHAR",0
+           893 : 00                  
+ 1884/     894 : 26 0B                  	DW	OUTCHAR
+ 1885/     896 : 4F 55 54 00            	DB	"OUT",0
+ 1886/     89A : 32 0A                  	DW	OUTP
+ 1887/     89C : 4F 24 00               	DB	"O$",0
+ 1888/     89F : 83 0A                  	DW	OUTSTR
+ 1889/     8A1 : 49 24 00               	DB	"I$",0
+ 1890/     8A4 : 90 0A                  	DW	INPSTR
+ 1891/     8A6 : 50 4F 4B 45 00         	DB	"POKE",0
+ 1892/     8AB : CB 0A                  	DW	POKE
+ 1893/     8AD : 54 41 42 00            	DB	"TAB",0
+ 1894/     8B1 : 59 0A                  	DW	TAB
+ 1895/     8B3 : 42 59 54 45 00         	DB	"BYTE",0
+ 1896/     8B8 : E1 0A                  	DW	BYTE
+ 1897/     8BA : 57 4F 52 44 00         	DB	"WORD",0
+ 1898/     8BF : EB 0A                  	DW	WORD
+ 1899/     8C1 : 00                     	DB	0
+ 1900/     8C2 : 64 04                  	DW	DEFLT
+ 1901/     8C4 :                        ;
+ 1902/     8C4 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1903/     8C4 :                        ;Funktionen
+ 1904/     8C4 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1905/     8C4 :                        ;
+ 1906/     8C4 : =8C3H                  TBFKT:	EQU	$-1
+ 1907/     8C4 : 52 4E 44 00            	DB	"RND",0
+ 1908/     8C8 : 88 05                  	DW	RND
+ 1909/     8CA : 41 42 53 00            	DB	"ABS",0
+ 1910/     8CE : AD 05                  	DW	ABS
+ 1911/     8D0 : 53 49 5A 45 00         	DB	"SIZE",0
+ 1912/     8D5 : B6 05                  	DW	SIZE
+ 1913/     8D7 : 50 45 45 4B 00         	DB	"PEEK",0
+ 1914/     8DC : C4 0A                  	DW	PEEK
+ 1915/     8DE : 49 4E 43 48 41 52 00   	DB	"INCHAR",0
+ 1916/     8E5 : 30 0B                  	DW	INCHAR
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 33 - 8/15/2024 13:20:0
+
+
+ 1917/     8E7 : 48 45 58 00            	DB	"HEX",0
+ 1918/     8EB : 3C 0B                  	DW	HEX
+ 1919/     8ED : 49 4E 00               	DB	"IN",0
+ 1920/     8F0 : 69 0A                  	DW	INP
+ 1921/     8F2 : 27 00                  	DB	27H,0
+ 1922/     8F4 : 0D 0B                  	DW	CHRP
+ 1923/     8F6 : 54 4F 50 00            	DB	"TOP",0
+ 1924/     8FA : 1C 0B                  	DW	TOP
+ 1925/     8FC : 4C 45 4E 00            	DB	"LEN",0
+ 1926/     900 : 21 0B                  	DW	LEN
+ 1927/     902 : 00                     	DB	0
+ 1928/     903 : 65 05                  	DW	XP40
+ 1929/     905 :                        ;
+ 1930/     905 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1931/     905 :                        ;FOR-Schleife
+ 1932/     905 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1933/     905 :                        ;
+ 1934/     905 : =904H                  TBTO:	EQU	$-1
+ 1935/     905 : 54 4F 00               	DB	"TO",0
+ 1936/     908 : 38 03                  	DW	FR1
+ 1937/     90A : 00                     	DB	0
+ 1938/     90B : 36 06                  	DW	QWHAT
+ 1939/     90D :                        ;
+ 1940/     90D : =90CH                  TBSTP:	EQU	$-1
+ 1941/     90D : 53 54 45 50 00         	DB	"STEP",0
+ 1942/     912 : 44 03                  	DW	FR2
+ 1943/     914 : 00                     	DB	0
+ 1944/     915 : 49 03                  	DW	FR3
+ 1945/     917 :                        ;
+ 1946/     917 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1947/     917 :                        ;Vergleiche
+ 1948/     917 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1949/     917 :                        ;
+ 1950/     917 : =916H                  TBVGL:	EQU	$-1
+ 1951/     917 : 3E 3D 00               	DB	">=",0
+ 1952/     91A : 81 04                  	DW	XP11
+ 1953/     91C : 23 00                  	DB	"#",0
+ 1954/     91E : 87 04                  	DW	XP12
+ 1955/     920 : 3E 00                  	DB	">",0
+ 1956/     922 : 8D 04                  	DW	XP13
+ 1957/     924 : 3D 00                  	DB	"=",0
+ 1958/     926 : 9C 04                  	DW	XP15
+ 1959/     928 : 3C 3D 00               	DB	"<=",0
+ 1960/     92B : 94 04                  	DW	XP14
+ 1961/     92D : 3C 00                  	DB	"<",0
+ 1962/     92F : A2 04                  	DW	XP16
+ 1963/     931 : 00                     	DB	0
+ 1964/     932 : A8 04                  	DW	XP17
+ 1965/     934 :                        ;
+ 1966/     934 :                        ;
+ 1967/     934 :                        ;
+ 1968/     934 : 21 08 08               DIRECT:	LD	HL,TBKDO		;Kommandoworte
+ 1969/     937 :                        ;
+ 1970/     937 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1971/     937 :                        ;Befehl in Tabelle HL suchen und ausfuehren
+ 1972/     937 :                        ;++++++++++++++++++++++++++++++++++++++
+ 1973/     937 :                        ;
+ 1974/     937 : CD 1E 01               EXEC:	CALL	IGNBLK			;Leerzeichen uebergehen
+ 1975/     93A : D5                     	PUSH	DE			;SAVE POINTER
+ 1976/     93B : 1A                     EX1:	LD	A,(DE)			;IF FOUND '.' IN STRING
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 34 - 8/15/2024 13:20:0
+
+
+ 1977/     93C : 13                     	INC	DE			;BEFORE ANY MISMATCH
+ 1978/     93D : FE 2E                  	CP	A, '.'			;WE DECLARE A MATCH
+ 1979/     93F : 28 13                  	JR	Z, EX3
+ 1980/     941 : 23                     	INC	HL			;HL->TABLE
+ 1981/     942 : BE                     	CP	A, (HL)			;IF MATCH, TEST NEXT
+ 1982/     943 : 28 F6                  	JR	Z, EX1
+ 1983/     945 : 3E 00                  	LD	A,0			;ELSE, SEE IF endbyte 0
+ 1984/     947 : 1B                     	DEC	DE			;IS SET, WHICH
+ 1985/     948 : BE                     	CP	A, (HL)			;IS THE JUMP ADDR. (HI)
+ 1986/     949 : 28 0F                  	JR	Z, EX5			;YES, MATCHED
+ 1987/     94B : 23                     EX2:	INC	HL
+ 1988/     94C : BE                     	CP	A, (HL)
+ 1989/     94D : 20 FC                  	JR	NZ, EX2
+ 1990/     94F : 23                     	INC	HL			;BUMP TO NEXT TAB. ITEM
+ 1991/     950 : 23                     	INC	HL
+ 1992/     951 : D1                     	POP	DE			;RESTORE STRING POINTER
+ 1993/     952 : 18 E3                  	JR	EXEC			;TEST AGAINST NEXT ITEM
+ 1994/     954 :                        ;
+ 1995/     954 : 3E 00                  EX3:	LD	A,0			;PARTIAL MATCH, FIND
+ 1996/     956 : 23                     EX4:	INC	HL			;JUMP ADDR., WHICH IS
+ 1997/     957 : BE                     	CP	A, (HL)			;after endbyte 0
+ 1998/     958 : 20 FC                  	JR	NZ, EX4
+ 1999/     95A : 23                     EX5:	INC	HL
+ 2000/     95B : 7E                     	LD	A,(HL)			;LOAD HL WITH THE JUMP
+ 2001/     95C : 23                     	INC	HL			;ADDRESS FROM THE TABLE
+ 2002/     95D : 66                     	LD	H,(HL)
+ 2003/     95E : 6F                     	LD	L,A
+ 2004/     95F : F1                     	POP	AF			;CLEAN UP THE GABAGE
+ 2005/     960 : E9                     	JP	(HL)			;AND WE GO DO IT
+ 2006/     961 :                        
+ 2007/     961 :                        ;-----------------------------------------------------------------
+ 2008/     961 :                        ; ab hier neu robotron (und evtl. rdk??)
+ 2009/     961 :                        ;-----------------------------------------------------------------
+ 2010/     961 :                        ;
+ 2011/     961 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2012/     961 :                        ;Ende im Eingabepuffer erreicht?
+ 2013/     961 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2014/     961 :                        ;
+ 2015/     961 : E5                     M0961:	PUSH	HL
+ 2016/     962 : 2A 50 11               	LD	HL,(INPND)
+ 2017/     965 : BD                     	CP	A, L
+ 2018/     966 : E1                     	POP	HL
+ 2019/     967 : C9                     	RET
+ 2020/     968 :                        ;
+ 2021/     968 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2022/     968 :                        ;Anfang des Eingabepuffers erreicht?
+ 2023/     968 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2024/     968 :                        ;
+ 2025/     968 : E5                     M0968:	PUSH	HL
+ 2026/     969 : 2A 4E 11               	LD	HL,(BUFFER)
+ 2027/     96C : BD                     	CP	A, L
+ 2028/     96D : E1                     	POP	HL
+ 2029/     96E : C9                     	RET
+ 2030/     96F :                        ;
+ 2031/     96F :                        ;**************************************
+ 2032/     96F :                        ;END ende - neues Speicherende
+ 2033/     96F :                        ;**************************************
+ 2034/     96F :                        ;
+ 2035/     96F : CD 77 04               END:	CALL	EXPR			;ende holen
+ 2036/     972 : EB                     	EX	DE,HL
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 35 - 8/15/2024 13:20:0
+
+
+ 2037/     973 : 21 94 30               	LD	HL,STEND		;Standartspeichergrenze
+ 2038/     976 : EB                     	EX	DE,HL
+ 2039/     977 : CD 18 01               	CALL	COMP
+ 2040/     97A : DA 66 06               	JP	C, QSORRY		;wenn ende < STEND
+ 2041/     97D :                        ;
+ 2042/     97D : 7C                     	LD	A,H
+ 2043/     97E : B7                     	OR	A
+ 2044/     97F : FA 66 06               	JP	M, QSORRY		;wenn ende < 0
+ 2045/     982 :                        ;
+ 2046/     982 : 7E                     	LD	A,(HL)
+ 2047/     983 : 2F                     	CPL
+ 2048/     984 : 77                     	LD	(HL),A
+ 2049/     985 : 46                     	LD	B,(HL)
+ 2050/     986 : B8                     	CP	A, B
+ 2051/     987 : C2 66 06               	JP	NZ, QSORRY		;wenn ende kein RAM
+ 2052/     98A :                        ;
+ 2053/     98A : 22 50 11               	LD	(INPND),HL		;neues Ende Inputpuffer
+ 2054/     98D : 7D                     	LD	A,L
+ 2055/     98E : D6 84                  	SUB	132
+ 2056/     990 : 6F                     	LD	L,A
+ 2057/     991 : 7C                     	LD	A,H
+ 2058/     992 : DE 00                  	SBC	A, 0
+ 2059/     994 : 67                     	LD	H,A
+ 2060/     995 : 22 4E 11               	LD	(BUFFER),HL		;neuer Anfang Inputpuffer
+ 2061/     998 : 2B                     	DEC	HL
+ 2062/     999 : 2B                     	DEC	HL
+ 2063/     99A : 22 4C 11               	LD	(TXTEND),HL
+ 2064/     99D : C3 BB 01               	JP	RSTART
+ 2065/     9A0 :                        ;
+ 2066/     9A0 :                        ;**************************************
+ 2067/     9A0 :                        ;BYE
+ 2068/     9A0 :                        ;**************************************
+ 2069/     9A0 :                        ;
+ 2070/     9A0 : FF                     BYE:	RST	38H			;Sprung zum Monitor
+ 2071/     9A1 :                        ;
+ 2072/     9A1 : C3 BB 01               	JP	RSTART			;koennte entfallen
+ 2073/     9A4 :                        ;
+ 2074/     9A4 :                        ;**************************************
+ 2075/     9A4 :                        ;CSAVE
+ 2076/     9A4 :                        ;**************************************
+ 2077/     9A4 :                        ;
+ 2078/     9A4 : 31 B0 00               CSAVE:	LD	SP,SYSSK
+ 2079/     9A7 : CD 1E 01               	CALL	IGNBLK			;Leerzeichen uebergehen
+ 2080/     9AA :                        ;
+ 2081/     9AA : 21 F0 00               	LD	HL,FNAME
+ 2082/     9AD : E5                     	PUSH	HL
+ 2083/     9AE : 06 10                  	LD	B,10H
+ 2084/     9B0 : 36 20                  M09B0:	LD	(HL),' '		;Filenamenspuffer loeschen
+ 2085/     9B2 : 23                     	INC	HL
+ 2086/     9B3 : 10 FB                  	DJNZ	M09B0
+ 2087/     9B5 : E1                     	POP	HL
+ 2088/     9B6 :                        ;Zeichen aus Eingabestrom holen
+ 2089/     9B6 : 1A                     M09B6:	LD	A,(DE)
+ 2090/     9B7 : FE 22                  	CP	A, '"'			;Filenamensbegrenzung?
+ 2091/     9B9 : 20 03                  	JR	NZ, M09BE		;nein
+ 2092/     9BB : 13                     	INC	DE			;Uebergehen mehrerer '"'
+ 2093/     9BC : 18 F8                  	JR	M09B6
+ 2094/     9BE :                        ;
+ 2095/     9BE : FE 0D                  M09BE:	CP	A, CR			;Zeilenende erreicht?
+ 2096/     9C0 : 28 09                  	JR	Z, M09CB		;ja -> abspeichern
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 36 - 8/15/2024 13:20:0
+
+
+ 2097/     9C2 :                        ;
+ 2098/     9C2 : 77                     	LD	(HL),A			;Buchstabe in Puffer
+ 2099/     9C3 : 23                     	INC	HL			;uebernehmen
+ 2100/     9C4 :                        ;
+ 2101/     9C4 : 7C                     	LD	A,H			;Pufferende ueberschritten?
+ 2102/     9C5 : B7                     	OR	A			;( >= 100H )
+ 2103/     9C6 : 20 03                  	JR	NZ, M09CB		;dann abspeichern
+ 2104/     9C8 : 13                     	INC	DE			;sonst naechsten Buchstaben
+ 2105/     9C9 : 18 EB                  	JR	M09B6
+ 2106/     9CB :                        ;File abspeichern
+ 2107/     9CB : CD 0C 0A               M09CB:	CALL	M0A0C			;Kopfadr. bereitstellen
+ 2108/     9CE : 21 00 10               	LD	HL,ARBRM		;Anfangsadresse
+ 2109/     9D1 : 22 E0 00               	LD	(FAADR),HL
+ 2110/     9D4 : 2A 1F 10               	LD	HL,(TXTUNF)
+ 2111/     9D7 : 23                     	INC	HL			;Endadresse
+ 2112/     9D8 : 22 E2 00               	LD	(FEADR),HL
+ 2113/     9DB : CD 0C 01               	CALL	SAVE			;Kopf absaven
+ 2114/     9DE : CD 19 0A               	CALL	M0A19			;Fileadr. bereitstellen
+ 2115/     9E1 : CD 0C 01               	CALL	SAVE			;File absaven
+ 2116/     9E4 : C3 BB 01               	JP	RSTART
+ 2117/     9E7 :                        ;
+ 2118/     9E7 :                        ;**************************************
+ 2119/     9E7 :                        ;CLOAD
+ 2120/     9E7 :                        ;**************************************
+ 2121/     9E7 :                        ;
+ 2122/     9E7 : 31 B0 00               CLOAD:	LD	SP,SYSSK
+ 2123/     9EA : CD 0C 0A               	CALL	M0A0C			;Kopfadr. bereitstellen
+ 2124/     9ED : CD 0F 01               	CALL	LOAD			;Kopf lesen
+ 2125/     9F0 :                        ;
+ 2126/     9F0 : 21 F0 00               	LD	HL,FNAME		;gelesenen Filenamen
+ 2127/     9F3 : ED 5B 2B 00            	LD	DE,(CUPOS)		;anzeigen
+ 2128/     9F7 : 01 10 00               	LD	BC,10H
+ 2129/     9FA : ED B0                  	LDIR
+ 2130/     9FC : ED 53 2B 00            	LD	(CUPOS),DE
+ 2131/     A00 : CD E5 07               	CALL	CRLF
+ 2132/     A03 :                        ;
+ 2133/     A03 : CD 19 0A               	CALL	M0A19			;Fileadr. bereitstellen
+ 2134/     A06 : CD 0F 01               	CALL	LOAD			;File laden
+ 2135/     A09 : C3 BB 01               	JP	RSTART
+ 2136/     A0C :                        ;
+ 2137/     A0C :                        ;Kopfblockadressen in Monitor-ARG schreiben
+ 2138/     A0C :                        ;
+ 2139/     A0C : 21 E0 00               M0A0C:	LD	HL,FAADR
+ 2140/     A0F : 22 1B 00               	LD	(ARG1),HL
+ 2141/     A12 : 21 FF 00               	LD	HL,FAADR+1FH
+ 2142/     A15 : 22 1D 00               	LD	(ARG2),HL
+ 2143/     A18 : C9                     	RET
+ 2144/     A19 :                        ;
+ 2145/     A19 :                        ;Fileadressen in Monitor-ARG schreiben
+ 2146/     A19 :                        ;
+ 2147/     A19 : 21 E0 00               M0A19:	LD	HL,FAADR
+ 2148/     A1C : 11 1B 00               	LD	DE,ARG1
+ 2149/     A1F : 01 04 00               	LD	BC,4
+ 2150/     A22 : ED B0                  	LDIR
+ 2151/     A24 : C9                     	RET
+ 2152/     A25 :                        ;
+ 2153/     A25 :                        ;**************************************
+ 2154/     A25 :                        ;CALL adr
+ 2155/     A25 :                        ;**************************************
+ 2156/     A25 :                        ;
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 37 - 8/15/2024 13:20:0
+
+
+ 2157/     A25 : CD 77 04               CALLP:	CALL	EXPR			;adr holen
+ 2158/     A28 : D5                     	PUSH	DE			;akt. Zeilenzeiger retten
+ 2159/     A29 : 01 2E 0A               	LD	BC,M0A2E		;Returnadr. auf Stack
+ 2160/     A2C : C5                     	PUSH	BC
+ 2161/     A2D : E9                     	JP	(HL)			;Programm starten
+ 2162/     A2E :                        ;
+ 2163/     A2E : D1                     M0A2E:	POP	DE			;Zeilenzeiger restaurieren
+ 2164/     A2F : CD 25 01               	CALL	FINISH
+ 2165/     A32 :                        ;
+ 2166/     A32 :                        ;**************************************
+ 2167/     A32 :                        ;OUT (port)=wert            Portausgabe
+ 2168/     A32 :                        ;**************************************
+ 2169/     A32 :                        ;
+ 2170/     A32 : CD 75 05               OUTP:	CALL	PARN			;Port holen
+ 2171/     A35 : E5                     	PUSH	HL
+ 2172/     A36 :                        ;
+ 2173/     A36 : CD 5F 01               	CALL	TSTC			;folgt ein '=' ?
+ 2174/     A39 : 3D                     	DB	"="
+ 2175/     A3A : 54 0A                  	DW	M0A56-2			;nein --> Fehler
+ 2176/     A3C :                        ;
+ 2177/     A3C : CD 77 04               	CALL	EXPR			;wert holen
+ 2178/     A3F : 45                     	LD	B,L
+ 2179/     A40 :                        ;
+ 2180/     A40 : 3E D3                  	LD	A,0D3H			;Befehl OUT n
+ 2181/     A42 : 32 06 10               	LD	(INOT),A
+ 2182/     A45 : E1                     	POP	HL			;port
+ 2183/     A46 : 7D                     	LD	A,L
+ 2184/     A47 : 32 07 10               	LD	(INOT+1),A
+ 2185/     A4A : 3E C9                  	LD	A,0C9H			;Befehl RET
+ 2186/     A4C : 32 08 10               	LD	(INOT+2),A
+ 2187/     A4F :                        ;
+ 2188/     A4F : 78                     	LD	A,B			;auszugebenden Wert
+ 2189/     A50 : CD 06 10               	CALL	INOT			;ausgeben
+ 2190/     A53 : CD 25 01               	CALL	FINISH
+ 2191/     A56 :                        ;
+ 2192/     A56 : C3 36 06               M0A56:	JP	QWHAT
+ 2193/     A59 :                        ;
+ 2194/     A59 :                        ;**************************************
+ 2195/     A59 :                        ;TAB (n)          Ausgabe n Leerzeichen
+ 2196/     A59 :                        ;**************************************
+ 2197/     A59 :                        ;
+ 2198/     A59 : CD 75 05               TAB:	CALL	PARN			;n holen
+ 2199/     A5C : 7C                     M0A5C:	LD	A,H
+ 2200/     A5D : B5                     	OR	L
+ 2201/     A5E : CC 25 01               	CALL	Z, FINISH		;wenn n=0 weiter
+ 2202/     A61 :                        ;
+ 2203/     A61 : 2B                     	DEC	HL			;n erniedrigen
+ 2204/     A62 : 3E 20                  	LD	A,' '
+ 2205/     A64 : CD E7 07               	CALL	OTSTC			;Leerzeichen ausgeben
+ 2206/     A67 : 18 F3                  	JR	M0A5C			;bis n=0
+ 2207/     A69 :                        ;
+ 2208/     A69 :                        ;**************************************
+ 2209/     A69 :                        ;IN (port)                  Porteingabe
+ 2210/     A69 :                        ;**************************************
+ 2211/     A69 :                        ;
+ 2212/     A69 : CD 75 05               INP:	CALL	PARN			;port holen
+ 2213/     A6C : E5                     	PUSH	HL
+ 2214/     A6D :                        ;
+ 2215/     A6D : 3E DB                  	LD	A,0DBH			;Befehl IN n
+ 2216/     A6F : 32 06 10               	LD	(INOT),A
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 38 - 8/15/2024 13:20:0
+
+
+ 2217/     A72 : E1                     	POP	HL
+ 2218/     A73 : 7D                     	LD	A,L			;port
+ 2219/     A74 : 32 07 10               	LD	(INOT+1),A
+ 2220/     A77 : 3E C9                  	LD	A,0C9H			;Befehl RET
+ 2221/     A79 : 32 08 10               	LD	(INOT+2),A
+ 2222/     A7C :                        ;
+ 2223/     A7C : CD 06 10               	CALL	INOT			;wert holen
+ 2224/     A7F : 26 00                  	LD	H,0			;in HL uebergeben
+ 2225/     A81 : 6F                     	LD	L,A
+ 2226/     A82 : C9                     	RET
+ 2227/     A83 :                        ;
+ 2228/     A83 :                        ;**************************************
+ 2229/     A83 :                        ;O$ adr                   Stringausgabe
+ 2230/     A83 :                        ;**************************************
+ 2231/     A83 :                        ;
+ 2232/     A83 : CD 77 04               OUTSTR:	CALL	EXPR			;adr holen
+ 2233/     A86 : D5                     	PUSH	DE
+ 2234/     A87 : EB                     	EX	DE,HL
+ 2235/     A88 : AF                     	XOR	A			;Stringabschluss CR o. 0
+ 2236/     A89 : CD C3 06               	CALL	PRTSTG			;und String ausgeben
+ 2237/     A8C : D1                     	POP	DE
+ 2238/     A8D : CD 25 01               	CALL	FINISH
+ 2239/     A90 :                        ;
+ 2240/     A90 :                        ;**************************************
+ 2241/     A90 :                        ;I$ adr                   Stringeingabe
+ 2242/     A90 :                        ;**************************************
+ 2243/     A90 :                        ;
+ 2244/     A90 : CD 77 04               INPSTR:	CALL	EXPR			;adr holen
+ 2245/     A93 : D5                     	PUSH	DE
+ 2246/     A94 :                        ;
+ 2247/     A94 : EB                     	EX	DE,HL			;soll ins Programm
+ 2248/     A95 : 2A 1F 10               	LD	HL,(TXTUNF)		;geschrieben werden?
+ 2249/     A98 : EB                     	EX	DE,HL
+ 2250/     A99 : CD 18 01               	CALL	COMP
+ 2251/     A9C : DA 66 06               	JP	C, QSORRY		;ja --> Fehler
+ 2252/     A9F :                        ;
+ 2253/     A9F : ED 5B 4E 11            	LD	DE,(BUFFER)		;Inputpuffer
+ 2254/     AA3 : CD 73 06               	CALL	INLI1			;Stringeingabe
+ 2255/     AA6 : 44                     	LD	B,H
+ 2256/     AA7 : 4D                     	LD	C,L
+ 2257/     AA8 : EB                     	EX	DE,HL
+ 2258/     AA9 : 2B                     	DEC	HL
+ 2259/     AAA : ED 5B 4E 11            	LD	DE,(BUFFER)
+ 2260/     AAE : D5                     	PUSH	DE
+ 2261/     AAF : CD 55 07               	CALL	MVUP
+ 2262/     AB2 : AF                     	XOR	A
+ 2263/     AB3 : 02                     	LD	(BC),A
+ 2264/     AB4 : D1                     	POP	DE
+ 2265/     AB5 : 23                     	INC	HL
+ 2266/     AB6 : CD D8 05               	CALL	SUBDE
+ 2267/     AB9 : EB                     	EX	DE,HL
+ 2268/     ABA : 21 00 10               	LD	HL,LENZK
+ 2269/     ABD : 73                     	LD	(HL),E
+ 2270/     ABE : 23                     	INC	HL
+ 2271/     ABF : 72                     	LD	(HL),D
+ 2272/     AC0 : D1                     	POP	DE
+ 2273/     AC1 : CD 25 01               	CALL	FINISH
+ 2274/     AC4 :                        ;
+ 2275/     AC4 :                        ;**************************************
+ 2276/     AC4 :                        ;PEEK (adr)
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 39 - 8/15/2024 13:20:0
+
+
+ 2277/     AC4 :                        ;**************************************
+ 2278/     AC4 :                        ;
+ 2279/     AC4 : CD 75 05               PEEK:	CALL	PARN			;adr holen
+ 2280/     AC7 : 6E                     	LD	L,(HL)			;und EXPR aud adr
+ 2281/     AC8 : 26 00                  	LD	H,0			;zurueckgeben
+ 2282/     ACA : C9                     	RET
+ 2283/     ACB :                        ;
+ 2284/     ACB :                        ;**************************************
+ 2285/     ACB :                        ;POKE adr,wert
+ 2286/     ACB :                        ;**************************************
+ 2287/     ACB :                        ;
+ 2288/     ACB : CD 77 04               POKE:	CALL	EXPR			;adr holen
+ 2289/     ACE : E5                     	PUSH	HL
+ 2290/     ACF :                        ;
+ 2291/     ACF : CD 5F 01               	CALL	TSTC			;folgt ','
+ 2292/     AD2 : 2C                     	DB	","
+ 2293/     AD3 : DC 0A                  	DW	M0ADE-2			;nein --> Fehler
+ 2294/     AD5 :                        ;
+ 2295/     AD5 : CD 77 04               	CALL	EXPR			;wert holen
+ 2296/     AD8 : 7D                     	LD	A,L			;und in adr schreiben
+ 2297/     AD9 : E1                     	POP	HL
+ 2298/     ADA : 77                     	LD	(HL),A
+ 2299/     ADB : CD 25 01               	CALL	FINISH
+ 2300/     ADE :                        ;
+ 2301/     ADE : C3 36 06               M0ADE:	JP	QWHAT
+ 2302/     AE1 :                        ;
+ 2303/     AE1 :                        ;**************************************
+ 2304/     AE1 :                        ;BYTE (n)         Anzeige ein Byte hexa
+ 2305/     AE1 :                        ;**************************************
+ 2306/     AE1 :                        ;
+ 2307/     AE1 : CD 75 05               BYTE:	CALL	PARN			;n holen
+ 2308/     AE4 : 7D                     	LD	A,L
+ 2309/     AE5 : CD F9 0A               	CALL	M0AF9			;n hexa ausgeben
+ 2310/     AE8 : CD 25 01               	CALL	FINISH
+ 2311/     AEB :                        ;
+ 2312/     AEB :                        ;**************************************
+ 2313/     AEB :                        ;WORD (nn)          Anzeige 2 Byte hexa
+ 2314/     AEB :                        ;**************************************
+ 2315/     AEB :                        ;
+ 2316/     AEB : CD 75 05               WORD:	CALL	PARN			;nn holen
+ 2317/     AEE : 7C                     	LD	A,H			;1. Byte anzeigen
+ 2318/     AEF : CD F9 0A               	CALL	M0AF9
+ 2319/     AF2 : 7D                     	LD	A,L			;2. Byte anzeigen
+ 2320/     AF3 : CD F9 0A               	CALL	M0AF9
+ 2321/     AF6 : CD 25 01               	CALL	FINISH
+ 2322/     AF9 :                        ;
+ 2323/     AF9 :                        ;Anzeige A hexa.
+ 2324/     AF9 :                        ;
+ 2325/     AF9 : F5                     M0AF9:	PUSH	AF
+ 2326/     AFA : 0F                     	RRCA
+ 2327/     AFB : 0F                     	RRCA
+ 2328/     AFC : 0F                     	RRCA
+ 2329/     AFD : 0F                     	RRCA
+ 2330/     AFE : CD 02 0B               	CALL	M0B02
+ 2331/     B01 : F1                     	POP	AF
+ 2332/     B02 :                        ;
+ 2333/     B02 : E6 0F                  M0B02:	AND	A, 0FH			;eine Stelle separieren
+ 2334/     B04 : C6 90                  	ADD	A, 90H			;ASCII-Korrektur
+ 2335/     B06 : 27                     	DAA
+ 2336/     B07 : CE 40                  	ADC	A, 40H			;wenn Ziffer A..F
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 40 - 8/15/2024 13:20:0
+
+
+ 2337/     B09 : 27                     	DAA
+ 2338/     B0A : C3 E7 07               	JP	OTSTC
+ 2339/     B0D :                        ;
+ 2340/     B0D :                        ;**************************************
+ 2341/     B0D :                        ;'zeichen'                   ASCII-Code
+ 2342/     B0D :                        ;**************************************
+ 2343/     B0D :                        ;
+ 2344/     B0D : 1A                     CHRP:	LD	A,(DE)			;zeichen holen
+ 2345/     B0E : 13                     	INC	DE
+ 2346/     B0F : 6F                     	LD	L,A			;HL erhaelt ASCII-Code
+ 2347/     B10 : 26 00                  	LD	H,0
+ 2348/     B12 : CD 5F 01               	CALL	TSTC			;folgt noch ein ' ?
+ 2349/     B15 : 27                     	DB	27H
+ 2350/     B16 : 17 0B                  	DW	M0B19-2			;nein, dann Fehler
+ 2351/     B18 : C9                     	RET
+ 2352/     B19 :                        ;
+ 2353/     B19 : C3 36 06               M0B19:	JP	QWHAT
+ 2354/     B1C :                        ;
+ 2355/     B1C :                        ;**************************************
+ 2356/     B1C :                        ;TOP - erste Adresse hinter Pgm
+ 2357/     B1C :                        ;**************************************
+ 2358/     B1C :                        ;
+ 2359/     B1C : 2A 1F 10               TOP:	LD	HL,(TXTUNF)		;Programmende
+ 2360/     B1F : 23                     	INC	HL
+ 2361/     B20 : C9                     	RET
+ 2362/     B21 :                        ;
+ 2363/     B21 :                        ;**************************************
+ 2364/     B21 :                        ;LEN
+ 2365/     B21 :                        ;**************************************
+ 2366/     B21 :                        ;
+ 2367/     B21 : 2A 00 10               LEN:	LD	HL,(LENZK)		;Laenge Zeichenkette
+ 2368/     B24 : 2B                     	DEC	HL
+ 2369/     B25 : C9                     	RET
+ 2370/     B26 :                        ;
+ 2371/     B26 :                        ;**************************************
+ 2372/     B26 :                        ;OUTTSTC code
+ 2373/     B26 :                        ;**************************************
+ 2374/     B26 :                        ;
+ 2375/     B26 : CD 77 04               OUTCHAR:	CALL	EXPR			;code holen
+ 2376/     B29 : 7D                     	LD	A,L
+ 2377/     B2A : CD E7 07               	CALL	OTSTC			;und Zeichen ausgeben
+ 2378/     B2D : CD 25 01               	CALL	FINISH
+ 2379/     B30 :                        ;
+ 2380/     B30 :                        ;**************************************
+ 2381/     B30 :                        ;INTSTC
+ 2382/     B30 :                        ;**************************************
+ 2383/     B30 :                        ;
+ 2384/     B30 : CD 09 01               INCHAR:	CALL	INCH			;Zeicheneingabe
+ 2385/     B33 : FE 03                  	CP	A, 3			;>STOP< ?
+ 2386/     B35 : CA BB 01               	JP	Z, RSTART		;dann Warmstart
+ 2387/     B38 : 26 00                  	LD	H,0
+ 2388/     B3A : 6F                     	LD	L,A			;sonst Code in HL
+ 2389/     B3B : C9                     	RET		;uebergeben
+ 2390/     B3C :                        ;
+ 2391/     B3C :                        ;**************************************
+ 2392/     B3C :                        ;HEX (EXPR)
+ 2393/     B3C :                        ;**************************************
+ 2394/     B3C :                        ;
+ 2395/     B3C : C5                     HEX:	PUSH	BC
+ 2396/     B3D : 21 00 00               	LD	HL,0			;Startwert
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 41 - 8/15/2024 13:20:0
+
+
+ 2397/     B40 : CD 5F 01               	CALL	TSTC			;folgt "("?
+ 2398/     B43 : 28                     	DB	"("
+ 2399/     B44 : 60 0B                  	DW	M0B62-2			;nein -> Fehler
+ 2400/     B46 : 1A                     M0B46:	LD	A,(DE)			;Ziffer holen
+ 2401/     B47 : FE 0D                  	CP	A, CR
+ 2402/     B49 : CA 36 06               	JP	Z, QWHAT		;Fehler, wenn ")" fehlt
+ 2403/     B4C : CD 67 0B               	CALL	M0B67			;ZahlenTSTNUMertierung
+ 2404/     B4F : 29                     	ADD	HL,HL			;EXPR*16
+ 2405/     B50 : 29                     	ADD	HL,HL
+ 2406/     B51 : 29                     	ADD	HL,HL
+ 2407/     B52 : 29                     	ADD	HL,HL
+ 2408/     B53 : 06 00                  	LD	B,0			;+neue Ziffer
+ 2409/     B55 : 4F                     	LD	C,A
+ 2410/     B56 : 09                     	ADD	HL,BC
+ 2411/     B57 : 13                     	INC	DE
+ 2412/     B58 : CD 5F 01               	CALL	TSTC			;naechstes Zeichen
+ 2413/     B5B : 29                     	DB	")"
+ 2414/     B5C : 5E 0B                  	DW	M0B60-2			;wenn EXPR zu Ende
+ 2415/     B5E : 18 05                  	JR	M0B65			;sonst weiter
+ 2416/     B60 :                        ;
+ 2417/     B60 : 18 E4                  M0B60:	JR	M0B46
+ 2418/     B62 :                        ;
+ 2419/     B62 : C3 36 06               M0B62:	JP	QWHAT			;wenn Fehler
+ 2420/     B65 :                        ;
+ 2421/     B65 : C1                     M0B65:	POP	BC
+ 2422/     B66 : C9                     	RET
+ 2423/     B67 :                        ;
+ 2424/     B67 :                        ;Konvertierung ASCII-HEX
+ 2425/     B67 :                        ;
+ 2426/     B67 : FE 30                  M0B67:	CP	A, '0'
+ 2427/     B69 : FA 36 06               	JP	M, QWHAT		;keine Ziffer
+ 2428/     B6C : FE 39                  	CP	A, '9'
+ 2429/     B6E : FA 7E 0B               	JP	M, M0B7E
+ 2430/     B71 : CA 7E 0B               	JP	Z, M0B7E
+ 2431/     B74 : FE 41                  	CP	A, 'A'
+ 2432/     B76 : FA 36 06               	JP	M, QWHAT		;keine HEX-Ziffer
+ 2433/     B79 : FE 47                  	CP	A, 'G'
+ 2434/     B7B : F2 36 06               	JP	P, QWHAT		;keine HEX-Ziffer
+ 2435/     B7E : D6 30                  M0B7E:	SUB	'0'			;ASCII-Wandlung
+ 2436/     B80 : FE 0A                  	CP	A, 0AH
+ 2437/     B82 : F8                     	RET	M
+ 2438/     B83 : D6 07                  	SUB	7			;Korrektur bei A..F
+ 2439/     B85 : C9                     	RET
+ 2440/     B86 :                        ;
+ 2441/     B86 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2442/     B86 :                        ;Tastaturpolling
+ 2443/     B86 :                        ;++++++++++++++++++++++++++++++++++++++
+ 2444/     B86 :                        ;
+ 2445/     B86 :                        ;fuer Flachfolientastatur !!!
+ 2446/     B86 :                        ;
+ 2447/     B86 : CD 93 0B               CHKIO:	CALL	M0B93
+ 2448/     B89 : FE 03                  	CP	A, 3			;S4-S? (PAUSE)
+ 2449/     B8B : 28 0F                  	JR	Z, M0B9C		;dann Zeitschleife
+ 2450/     B8D : FE 05                  	CP	A, 5			;S4-K? (STOP)
+ 2451/     B8F : C0                     	RET	NZ
+ 2452/     B90 : C3 BB 01               	JP	RSTART			;dann Warmstart
+ 2453/     B93 :                        ;Tastaturabfrage
+ 2454/     B93 : 3E 03                  M0B93:	LD	A,3			;aktivieren Spalte 3
+ 2455/     B95 : D3 08                  	OUT	8, A
+ 2456/     B97 : DB 02                  	IN	A, 2
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 42 - 8/15/2024 13:20:0
+
+
+ 2457/     B99 : E6 0F                  	AND	A, 0FH
+ 2458/     B9B : C9                     	RET
+ 2459/     B9C :                        ;Zeitschleife
+ 2460/     B9C : D5                     M0B9C:	PUSH	DE
+ 2461/     B9D : 11 FF FF               	LD	DE,0FFFFH
+ 2462/     BA0 : 1B                     M0BA0:	DEC	DE
+ 2463/     BA1 : 7A                     	LD	A,D
+ 2464/     BA2 : B3                     	OR	E
+ 2465/     BA3 : 20 FB                  	JR	NZ, M0BA0
+ 2466/     BA5 : D1                     M0BA5:	POP	DE
+ 2467/     BA6 : C9                     	RET
+ 2468/     BA7 :                        
+ 2469/     BA7 : =0BA7H                 PEND:	EQU	$
+ 2470/     BA7 :                        
+ 2471/     BA7 :                        	END
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 43 - 8/15/2024 13:20:0
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+ ABS :                          5AD C |  AHOW :                         19E C |
+ ALFA :                         115 C |  ARBRM :                       1000 - |
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+ ARG1 :                          1B - |  ARG2 :                          1D - |
+ AWHAT :                        637 C |  BUFFER :                      114E - |
+ BYE :                          9A0 C |  BYTE :                        0AE1 C |
+ CALLP :                       0A25 C | *CASESENSITIVE :                  0 - |
+ CHGSGN :                       5E2 C |  CHKIO :                       0B86 C |
+ CHKSGN :                       5DF C |  CHRP :                        0B0D C |
+ CKHLDE :                       5F7 C |  CLOAD :                        9E7 C |
+ COLD :                         7AF C |  COMP :                         118 C |
+ COMP1 :                        5FD C | *CONSTPI :        3.141592653589793 - |
+ CR :                            0D - |  CRLF :                         7E5 C |
+ CSAVE :                        9A4 C |  CUPOS :                         2B - |
+ CURRNT :                      100B - | *DATE :                 "8/15/2024" - |
+ DEFLT :                        464 C |  DHLD1 :                        5CE C |
+ DHLD2 :                        5D0 C |  DIRECT :                       934 C |
+ DIVIDE :                       5C3 C |  END :                          96F C |
+ ENDCHK :                       630 C |  ERROR :                        63A C |
+ ERSOR :                        665 C |  EX1 :                          93B C |
+ EX2 :                          94B C |  EX3 :                          954 C |
+ EX4 :                          956 C |  EX5 :                          95A C |
+ EXEC :                         937 C |  EXPR :                         477 C |
+ EXPR2 :                        4BF C |  EXPR3 :                        4FD C |
+ EXPR4 :                        55F C |  FAADR :                        0E0 - |
+*FALSE :                          0 - |  FEADR :                        0E2 - |
+ FI1 :                          625 C |  FI2 :                          62F C |
+ FIN :                          61B C |  FINISH :                       125 C |
+ FL1 :                          6A4 C |  FL2 :                          6BA C |
+ FNAME :                        0F0 - |  FNDLN :                        69C C |
+ FNDLNP :                       6A4 - |  FNDNXT :                       6B9 C |
+ FNDSKP :                       6BB C |  FOR :                          328 C |
+ FR1 :                          338 C |  FR2 :                          344 C |
+ FR3 :                          349 C |  FR4 :                          34C C |
+ FR7 :                          364 C |  FR8 :                          382 C |
+*FULLPMMU :                       1 - |  GETLN :                        66C C |
+ GOSUB :                        2EB C |  GOTO :                         26A C |
+*HAS64 :                          0 - | *HASFPU :                         0 - |
+*HASPMMU :                        0 - |  HEX :                         0B3C C |
+ HEXUM :                        112 C |  HLOU1 :                        70B C |
+ HLOU2 :                        712 C |  HLOU3 :                        720 C |
+ HLOU4 :                        721 C |  HLOU5 :                        72E C |
+ HLOU6 :                        734 C |  HOW :                          1A4 C |
+ IF1 :                          3EF C |  IFF :                          3EC C |
+ IGNBLK :                       11E C |  INCH :                         109 C |
+ INCHAR :                      0B30 C |  INLI1 :                        673 C |
+ INLI2 :                        684 C |  INLI3 :                        685 C |
+ INLI4 :                        691 C |  INOT :                        1006 - |
+ INP :                         0A69 C |  INPERR :                       3FD C |
+ INPND :                       1150 - |  INPSTR :                      0A90 C |
+ INPT4 :                        461 C |  INPUT :                        407 C |
+*INSUPMODE :                      0 - |  IP2 :                          415 C |
+ IP3 :                          427 C |  IP4 :                          457 C |
+ LEN :                         0B21 C |  LENZK :                       1000 - |
+ LET :                          469 C |  LIST :                         27B C |
+ LIST1 :                        28A C | *LISTON :                         1 - |
+ LOAD :                         10F C |  LOPINC :                      1015 - |
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 44 - 8/15/2024 13:20:0
+
+
+ LOPLMT :                      1017 - |  LOPLN :                       1019 - |
+ LOPPT :                       101B - |  LOPVAR :                      1013 - |
+ LS1 :                          28D C |  LSTZL :                       1002 - |
+ LT1 :                          474 C |  M0961 :                        961 C |
+ M0968 :                        968 C |  M09B0 :                        9B0 C |
+ M09B6 :                        9B6 C |  M09BE :                        9BE C |
+ M09CB :                        9CB C |  M0A0C :                       0A0C C |
+ M0A19 :                       0A19 C |  M0A2E :                       0A2E C |
+ M0A56 :                       0A56 C |  M0A5C :                       0A5C C |
+ M0ADE :                       0ADE C |  M0AF9 :                       0AF9 C |
+ M0B02 :                       0B02 C |  M0B19 :                       0B19 C |
+ M0B46 :                       0B46 C |  M0B60 :                       0B60 C |
+ M0B62 :                       0B62 C |  M0B65 :                       0B65 C |
+ M0B67 :                       0B67 C |  M0B7E :                       0B7E C |
+ M0B93 :                       0B93 C |  M0B9C :                       0B9C C |
+ M0BA0 :                       0BA0 C | *M0BA5 :                       0BA5 C |
+ M101D :                       101D - | *MACEXP :                         7 - |
+ MD1 :                          766 C | *MOMCPU :                        80 - |
+*MOMCPUNAME :                 "Z80" - |  MVDOWN :                       75F C |
+ MVUP :                         755 C | *NESTMAX :                      100 - |
+ NEW :                          23D C |  NEXT :                         389 C |
+ NEXT3 :                        3BC C |  NEXT5 :                        3DF C |
+ NX0 :                          392 C |  NX1 :                          3CC C |
+ NX2 :                          3E1 C |  NX3 :                          3AA C |
+ OK :                           1A9 C |  OTSTC :                        7E7 C |
+ OUTCH :                        106 C |  OUTCHAR :                     0B26 C |
+ OUTP :                        0A32 C |  OUTSTR :                      0A83 C |
+*PADDING :                        1 - |  PARN :                         575 C |
+ PEEK :                        0AC4 C | *PEND :                        0BA7 - |
+ POKE :                        0ACB C |  POPA :                         76C C |
+ PP1 :                          785 C |  PR0 :                          2BF C |
+ PR1 :                          2CB C |  PR2 :                          2B3 C |
+ PR3 :                          2D0 C |  PR6 :                          2DB C |
+ PR8 :                          2E1 C |  PRINT :                        2A5 C |
+ PRTLN :                        740 C |  PRTNUM :                       700 C |
+ PRTSTG :                       6C3 C |  PU1 :                          7AC C |
+ PUSHA :                        787 C |  QHOW :                         19D C |
+ QSORRY :                       666 C |  QTSTG :                        6D0 C |
+ QWHAT :                        636 C |  RA1 :                          5A4 C |
+ RANPNT :                      1004 - | *RELAXED :                        0 - |
+ REM :                          3E7 C |  RETURN :                       30D C |
+ RND :                          588 C |  RSTART :                       1BB C |
+ RUN :                          24C C |  RUNNXL :                       252 C |
+ RUNSML :                       261 C |  RUNTSL :                       25B C |
+ SAVE :                         10C C |  SETVAL :                       601 C |
+ SIZE :                         5B6 C |  SORRY :                        1B5 C |
+ ST2 :                          1D3 C |  ST3 :                          1DC C |
+ ST4 :                          213 C |  STACK :                       1113 - |
+ STEND :                       3094 - |  STKGOS :                      100D - |
+ STKINP :                      1011 - |  STMAX :                       1049 - |
+ STOP :                         246 C |  STRN1 :                        6C4 C |
+ SUBDE :                        5D8 C |  SV1 :                          618 C |
+ SYSSK :                        0B0 - |  TAB :                         0A59 C |
+ TBFKT :                        8C3 - |  TBKDO :                        808 - |
+ TBPRC :                        837 - |  TBSTP :                        90C - |
+ TBTO :                         904 - |  TBVGL :                        916 - |
+*TIME :                   "13:20:0" - |  TITEL :                        7EF C |
+ TN1 :                          17B C |  TOP :                         0B1C C |
+*TRUE :                           1 - |  TSTC :                         15F C |
+ TSTC1 :                        16F C |  TSTC2 :                        170 C |
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 45 - 8/15/2024 13:20:0
+
+
+ TSTNUM :                       174 C |  TV1 :                          14F C |
+ TXOU1 :                        6D8 C |  TXOU2 :                        6E1 C |
+ TXOU3 :                        6E4 C |  TXOU4 :                        6EE C |
+ TXOU5 :                        6FF C |  TXTBGN :                      1152 - |
+ TXTEND :                      114C - |  TXTUNF :                      101F - |
+ VARAD :                        12C C |  VARBGN :                      1115 - |
+ VARNXT :                      100F - | *VERSION :                     142F - |
+ WHAT :                         1AF C |  WORD :                        0AEB C |
+ XP11 :                         481 C |  XP12 :                         487 C |
+ XP13 :                         48D C |  XP14 :                         494 C |
+ XP15 :                         49C C |  XP16 :                         4A2 C |
+ XP17 :                         4A8 C |  XP18 :                         4AA C |
+ XP21 :                         4CA C |  XP22 :                         4D0 C |
+ XP23 :                         4D3 C |  XP24 :                         4DD C |
+ XP25 :                         4EE C |  XP26 :                         4F4 C |
+ XP31 :                         500 C |  XP32 :                         51F C |
+ XP33 :                         526 C |  XP34 :                         52F C |
+ XP35 :                         551 C |  XP40 :                         565 C |
+ XP41 :                         56F C |  XP42 :                         584 C |
+ XP43 :                         585 C |
+
+    272 symbols
+     22 unused symbols
+
+ AS V1.42 Beta [Bld 249] - Source File basic_3k.asm - Page 46 - 8/15/2024 13:20:0
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.05 seconds assembly time
+
+   2472 lines source file
+      2 passes
+      0 errors
+      0 warnings

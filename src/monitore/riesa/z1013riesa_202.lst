@@ -1,0 +1,2250 @@
+ AS V1.42 Beta [Bld 64] - source file z1013riesa.asm - page 1 - 12/15/2011 10:24:49
+
+
+       1/       0 :                     	page	0
+       2/       0 :                     	CPU	z80
+       3/       0 :                     
+       4/       0 :                     ;Z1013-MONITOR 2.02, A.2
+       5/       0 :                     ;reass: 1988-1990 Volker Pohlers, Lomonossowallee 41/81, Greifswald, 2200
+       6/       0 :                     ;basierend auf GENS3M-Listing des 2.02-Monitors von C.Fischer/Ilmenau
+       7/       0 :                     ;Fassung für den Arnold-Assembler und vielfach erweiterte Kommentare
+       8/       0 :                     ;Volker Pohlers, Sanitz, 23.04.2004
+       9/       0 :                     ;letzte Änderung 07.12.2011
+      10/       0 :                     
+      11/       0 :                     ;
+      12/       0 :                     ;gewünschten Monitortyp auskommentieren
+      13/       0 :                     ;
+      14/       0 : =Z1013_202          MONTYP	EQU	"Z1013_202"
+      15/       0 :                     ;MONTYP	EQU	"Z1013_A2"
+      16/       0 :                     
+      17/       0 :                     ;die wichtigsten Unterschiede A2 <-> 2.02
+      18/       0 :                     ;- kein H- und A- und F-Kommandos
+      19/       0 :                     ;- andere Adressen Windows-Speicher
+      20/       0 :                     ;- andere INKEY-Routine und auch INCH-Routine!
+      21/       0 :                     ;- KDO mit RST-Aufrufen programmiert, damit Verschiebung aller Routinen des Monitors!
+      22/       0 :                     
+      23/       0 :                     ; Makros
+      24/       0 :                     hi              function x, (x>>8) & 0ffh	; High-Byte
+      25/       0 :                     lo              function x, x & 0ffh		; Low-Byte
+      26/       0 :                     
+      27/       0 :                     ;
+      28/       0 :                     ;RAM-Zellen
+      29/       0 :                     ;
+      30/       0 : =3H                 R20BT:	EQU	00003H			;Nummer des RST20-Calls
+      31/       0 : =4H                 LAKEY:	EQU	00004H			;letztes Zeichen von Tastatur
+      32/       0 : =BH                 BPADR:	EQU	0000BH			;Breakpointadresse
+      33/       0 : =DH                 BPOPC:	EQU	0000DH			;Operandenfolge bei Breakpoint
+      34/       0 : =13H                DATA:	EQU	00013H			;Adresse bei INHEX; intern f. INKEY b. A2
+      35/       0 :                     ;SHILO:	EQU	00015H			;
+      36/       0 : =16H                SOIL:	EQU	00016H			;Beginn Eingabezeile
+      37/       0 : =1BH                ARG1:	EQU	0001BH			;1. Argument
+      38/       0 : =1DH                ARG2:	EQU	0001DH			;2. Argument
+      39/       0 : =1FH                BUFFA:	EQU	0001FH			;vom Cursor verdecktes Zeichen
+      40/       0 : =20H                RST20:	EQU	00020H			;RST 20H
+      41/       0 : =23H                ARG3:	EQU	00023H			;3. Argument
+      42/       0 : =25H                SOIL2:	EQU	00025H			;Rest Eingabezeile
+      43/       0 : =2BH                CUPOS:	EQU	0002BH			;aktuelle Cursorposition
+      44/       0 : =33H                LSYNC:	EQU	00033H			;Kenntonlaenge
+      45/       0 : =38H                RST38:	EQU	00038H			;RST 38H
+      46/       0 : =>FALSE             	IF MONTYP == "Z1013_A2"
+      47/       0 :                     WINDL:	EQU	00035H			;Windowlaenge
+      48/       0 :                     KYBTS:	equ	00037h			;Tastaturroutinenzelle (Bit 4=Repeat)
+      49/       0 :                     WINDA:	EQU	0003BH			;Windowanfang
+      50/       0 :                     WINDE:	EQU	0003DH			;Windowende+1
+      51/       0 : =>TRUE              	ELSE
+      52/       0 : =27H                KYBTS:	EQU	00027H			;Tastaturroutinenzelle (0=ASCII,80h=Grafik)
+      53/       0 : =47H                WINDL:	EQU	00047H			;Windowlaenge
+      54/       0 : =49H                WINDA:	EQU	00049H			;Windowanfang
+      55/       0 : =4BH                WINDE:	EQU	0004BH			;Windowende+1
+      56/       0 : [46]                	ENDIF
+      57/       0 : =4DH                REGBR:	EQU	0004DH			;Registerrettebereich
+      58/       0 : =5BH                REGAF:	EQU	0005BH			;Register AF
+      59/       0 : =61H                REGPC:	EQU	00061H			;Register PC
+      60/       0 : =63H                REGSP:	EQU	00063H			;Userstack
+      61/       0 : =66H                NMI:	EQU	00066H
+      62/       0 : =69H                NBYTE:	EQU	00069H			;Operand bei NEXT
+      63/       0 : =6AH                SPADR:	EQU	0006AH			;SP-Zwischenspeicher
+      64/       0 : =6CH                FBANZ:	EQU	0006CH			;Zwsp. Anz. Suchbytes bei FIND
+      65/       0 : =90H                USRSK:	EQU	00090H			;Userstack
+      66/       0 : =B0H                SYSSK:	EQU	000B0H			;Systemstack
+      67/       0 : =B0H                USRKD:	EQU	SYSSK
+      68/       0 :                     ;Bildschirm
+      69/       0 : =EC00H              BWS:	EQU	0EC00H			;Beginn BWS
+      70/       0 : =20H                BWSROW	EQU	32			;Anzahl Zeilen
+      71/       0 : =20H                BWSCOL	EQU	32			;Anzahl Zeichen/Zeile
+      72/       0 : =400H               BWSSZ	EQU	BWSROW*BWSCOL
+      73/       0 :                     ;
+      74/       0 :                     ;Markenvereinbarungen
+      75/       0 :                     ;
+      76/       0 : =CH                 CLS:	EQU	0CH
+      77/       0 : =DH                 CR:	EQU	0DH
+      78/       0 : =1BH                ESC:	EQU	27
+      79/       0 : =1EH                NL:	EQU	1EH
+      80/       0 : =AH                 LF:	EQU	0AH
+      81/       0 :                     ;
+      82/       0 :                     ;PIO
+      83/       0 : =0H                 PIOAD	equ	00h 			; PIO A User
+      84/       0 : =1H                 PIOAC	equ	01h
+      85/       0 : =2H                 PIOBD	equ	02h			; PIO B, Bit0..4 Tastaturzeile
+      86/       0 : =3H                 PIOBC	equ	03h			; Bit5->AB0 in, Bit6->TB in, Bit7->TB out
+      87/       0 : =8H                 KEYP	equ	08h			; Port Ausgabe Tastaturspalte
+      88/       0 :                     ;
+      89/       0 :                     ; Makros für Systemaufrufe über RST 20h
+      90/       0 :                     ;
+      91/       0 :                     ROUTC:	MACRO
+      92/       0 :                     	RST	20H
+      93/       0 :                     	DB	0			; OUTCH
+      94/       0 :                     	ENDM
+      95/       0 :                     RINCH:	MACRO
+      96/       0 :                     	RST	20H
+      97/       0 :                     	DB	01h			; INCH
+      98/       0 :                     	ENDM
+      99/       0 :                     RPRST:	MACRO
+     100/       0 :                     	RST	20H
+     101/       0 :                     	DB	02h			; PRST
+     102/       0 :                     	ENDM
+     103/       0 :                     RINHX:	MACRO
+     104/       0 :                     	RST	20H
+     105/       0 :                     	DB	03h			; INHEX
+     106/       0 :                     	ENDM
+     107/       0 :                     RINKY:	MACRO
+     108/       0 :                     	RST	20H
+     109/       0 :                     	DB	04h			; INKEY
+     110/       0 :                     	ENDM
+     111/       0 :                     RINLN:	MACRO
+     112/       0 :                     	RST	20H
+     113/       0 :                     	DB	05h			; INLIN
+     114/       0 :                     	ENDM
+     115/       0 :                     ROTHX:	MACRO
+     116/       0 :                     	RST	20H
+     117/       0 :                     	DB	06h			; OUTHX
+     118/       0 :                     	ENDM
+     119/       0 :                     ROTHL:	MACRO
+     120/       0 :                     	RST	20H
+     121/       0 :                     	DB	07h			; OUTHL
+     122/       0 :                     	ENDM
+     123/       0 :                     ROTHS:	MACRO
+     124/       0 :                     	RST	20H
+     125/       0 :                     	DB	0Ch			; OTHLS
+     126/       0 :                     	ENDM
+     127/       0 :                     ROTDP:	MACRO
+     128/       0 :                     	RST	20H
+     129/       0 :                     	DB	0Dh			; OUTDP
+     130/       0 :                     	ENDM
+     131/       0 :                     ROTSP:	MACRO
+     132/       0 :                     	RST	20H
+     133/       0 :                     	DB	0Eh			; OUTSP
+     134/       0 :                     	ENDM
+     135/       0 :                     ;
+     136/       0 :                     ;
+     137/       0 :                     ;
+     138/    F000 :                     	ORG	0F000H
+     139/    F000 :                     ;
+     140/    F000 :                     ;-------------------------------------------------------------------------------
+     141/    F000 :                     ; Start
+     142/    F000 :                     ;-------------------------------------------------------------------------------
+     143/    F000 :                     
+     144/    F000 : 18 0D               INIT:	JR	INIT2
+     145/    F002 :                     ;Initialisierung
+     146/    F002 : 21 4D 00            INIT1:	LD	HL,REGBR		;Registerrette-
+     147/    F005 : 11 4E 00            	LD	DE,REGBR+1		;bereich loeschen
+     148/    F008 : 36 00               	LD	(HL),0
+     149/    F00A : 01 15 00            	LD	BC,0015H
+     150/    F00D : ED B0               	LDIR
+     151/    F00F : 31 B0 00            INIT2:	LD	SP,SYSSK		;System-Stack
+     152/    F012 : =>TRUE              	IF MONTYP == "Z1013_202"
+     153/    F012 : AF                  	xor	a			;Tastaturschalter
+     154/    F013 : 32 27 00            	ld	(KYBTS), a		;auf ASCII
+     155/    F016 : [152]               	ENDIF
+     156/    F016 : 3E C3               	LD	A,0C3H			;JMP ...
+     157/    F018 : 32 20 00            	LD	(RST20),A
+     158/    F01B : 21 E8 F0            	LD	HL,RST1			;RST20 eintragen
+     159/    F01E : 22 21 00            	LD	(RST20+1),HL
+     160/    F021 : 3E CF               	LD	A,11001111b		;PIO Port B init.
+     161/    F023 : D3 03               	OUT	PIOBC, A		;BIT-Mode 3
+     162/    F025 : =>TRUE              	IF	MONTYP <> "Z1013_A2"
+     163/    F025 : 3E 7F               	LD	A,01111111b		;BIT7-Ausgang
+     164/    F027 : =>FALSE             	ELSE
+     165/    F027 :                     	LD	A,01101111b		;Bit7 und Bit4 Ausg.
+     166/    F027 : [162]               	ENDIF
+     167/    F027 : D3 03               	OUT	PIOBC, A
+     168/    F029 : 21 F2 F1            	LD	HL,MONTB		;System-RAM init.
+     169/    F02C : 11 33 00            	LD	DE,LSYNC
+     170/    F02F : 01 1A 00            	LD	BC,INCH-MONTB		;Laenge Tabelle
+     171/    F032 : ED B0               	LDIR
+     172/    F034 :                     ;Systemmeldung
+     173/    F034 : (MACRO)             	RPRST
+     173/    F034 : E7                          RST     20H
+     173/    F035 : 02                          DB      02h                     ; PRST
+     174/    F036 : 0C                  	DB	CLS
+     175/    F037 : 0D                  	DB	CR
+     176/    F038 : 0D                  	DB	CR
+     177/    F039 : =>TRUE              	IF MONTYP == "Z1013_202"
+     178/    F039 : 72 6F 62 6F 74 72   	DB	"robotron Z 1013/2.02"
+                    6F 6E 20 5A 20 31 
+                    30 31 33 2F 32 2E 
+                    30 32 
+     179/    F04D : =>FALSE             	ELSEIF MONTYP == "Z1013_A2"
+     180/    F04D :                     	DB	"robotron Z 1013/A.2"
+     181/    F04D : [177]               	ENDIF
+     182/    F04D : 8D                  	DB	CR+80H
+     183/    F04E :                     ;
+     184/    F04E : 21 90 00            	LD	HL,USRSK		;User-Stack
+     185/    F051 : 22 63 00            	LD	(REGSP),HL
+     186/    F054 : ED 5E               	IM	2
+     187/    F056 : 18 07               	JR	KDO2
+     188/    F058 :                     ;
+     189/    F058 :                     ;-------------------------------------------------------------------------------
+     190/    F058 :                     ;Eingang Kommandomodus
+     191/    F058 :                     ;-------------------------------------------------------------------------------
+     192/    F058 :                     ;
+     193/    F058 : 31 B0 00            KDO1:	LD	SP,SYSSK		;System-Stack
+     194/    F05B : =>FALSE             	IF MONTYP == "Z1013_A2"
+     195/    F05B :                     	RPRST
+     196/    F05B : =>TRUE              	ELSE
+     197/    F05B : CD A5 F2            	CALL	PRST7
+     198/    F05E : [194]               	ENDIF
+     199/    F05E : BF                  	DB	'?'+80H
+     200/    F05F :                     KDO2:
+     201/    F05F : =>FALSE             	IF MONTYP == "Z1013_A2"
+     202/    F05F :                     	RINLN
+     203/    F05F : =>TRUE              	ELSE
+     204/    F05F : CD B3 F2            	CALL	INLIN			;Zeile eingeben
+     205/    F062 : [201]               	ENDIF
+     206/    F062 : ED 5B 16 00         	LD	DE,(SOIL)
+     207/    F066 : CD CA F2            	CALL	SPACE			;Leerzeichen uebergehen
+     208/    F069 : 47                  	LD	B,A			;B=1. Zeichen
+     209/    F06A : 13                  	INC	DE
+     210/    F06B : 1A                  	LD	A,(DE)
+     211/    F06C : 4F                  	LD	C,A			;C=2. Zeichen
+     212/    F06D : C5                  	PUSH	BC
+     213/    F06E : 13                  	INC	DE
+     214/    F06F : =>FALSE             	IF MONTYP == "Z1013_A2"
+     215/    F06F :                     	RINHX
+     216/    F06F : =>TRUE              	ELSE
+     217/    F06F : CD F4 F2            	CALL	INHEX
+     218/    F072 : [214]               	ENDIF
+     219/    F072 : 20 05               	JR	NZ, KDO3
+     220/    F074 : 1A                  	LD	A,(DE)
+     221/    F075 : FE 3A               	CP	A, ':'			;die alten Werte nehmen ?
+     222/    F077 : 28 0F               	JR	Z, KDO4
+     223/    F079 : 22 1B 00            KDO3:	LD	(ARG1),HL		;neue Argumente holen
+     224/    F07C : =>FALSE             	IF MONTYP == "Z1013_A2"
+     225/    F07C :                     	RINHX
+     226/    F07C : =>TRUE              	ELSE
+     227/    F07C : CD F4 F2            	CALL	INHEX
+     228/    F07F : [224]               	ENDIF
+     229/    F07F : 22 1D 00            	LD	(ARG2),HL
+     230/    F082 : =>FALSE             	IF MONTYP == "Z1013_A2"
+     231/    F082 :                     	RINHX
+     232/    F082 : =>TRUE              	ELSE
+     233/    F082 : CD F4 F2            	CALL	INHEX
+     234/    F085 : [230]               	ENDIF
+     235/    F085 : 22 23 00            	LD	(ARG3),HL
+     236/    F088 : C1                  KDO4:	POP	BC
+     237/    F089 : 08                  	EX	AF, AF'
+     238/    F08A : ED 53 25 00         	LD	(SOIL2),DE		;Anfang 4. Argument
+     239/    F08E :                     ;Kommando (in Reg B) suchen
+     240/    F08E : 21 B1 F0            	LD	HL,KDOTB		;in Kommandotabelle
+     241/    F091 : 7E                  KDO5:	LD	A,(HL)
+     242/    F092 : B8                  	CP	A, B
+     243/    F093 : 28 11               	JR	Z, KDO6			;wenn gefunden
+     244/    F095 : 23                  	INC	HL
+     245/    F096 : 23                  	INC	HL
+     246/    F097 : 23                  	INC	HL
+     247/    F098 : B7                  	OR	A			;Tabellenende?
+     248/    F099 : 20 F6               	JR	NZ, KDO5		;nein
+     249/    F09B : 78                  	LD	A,B
+     250/    F09C : FE 40               	CP	A, '@'			;"@"-Kommando?
+     251/    F09E : 20 B8               	JR	NZ, KDO1		;nein -> Eingabefehler
+     252/    F0A0 : 21 B0 00            	LD	HL,USRKD		;Suchen in "@"-Kdo.tab.
+     253/    F0A3 : 41                  	LD	B,C
+     254/    F0A4 : 18 EB               	JR	KDO5
+     255/    F0A6 :                     ;
+     256/    F0A6 : 23                  KDO6:	INC	HL
+     257/    F0A7 : 5E                  	LD	E,(HL)
+     258/    F0A8 : 23                  	INC	HL
+     259/    F0A9 : 56                  	LD	D,(HL)
+     260/    F0AA : EB                  	EX	DE,HL			;HL=UP-Adresse
+     261/    F0AB : 08                  	EX	AF, AF'
+     262/    F0AC : 01 5F F0            	LD	BC,KDO2			;Returnadresse
+     263/    F0AF : C5                  	PUSH	BC
+     264/    F0B0 : E9                  	JP	(HL)			;Sprung zur Routine
+     265/    F0B1 :                     ;
+     266/    F0B1 :                     KDOTB:
+     267/    F0B1 : =>TRUE              	IF MONTYP == "Z1013_202"
+     268/    F0B1 : 41                  	DB	"A"
+     269/    F0B2 : C5 F6               	DW	A_KDO
+     270/    F0B4 : [267]               	ENDIF
+     271/    F0B4 : 42                  	DB	"B"
+     272/    F0B5 : 87 F5               	DW	B_KDO
+     273/    F0B7 : 43                  	DB	"C"
+     274/    F0B8 : 77 F7               	DW	C_KDO
+     275/    F0BA : 44                  	DB	"D"
+     276/    F0BB : CE F4               	DW	D_KDO
+     277/    F0BD : 45                  	DB	"E"
+     278/    F0BE : 99 F5               	DW	E_KDO
+     279/    F0C0 : =>TRUE              	IF MONTYP <> "Z1013_A2"
+     280/    F0C0 : 46                  	DB	"F"
+     281/    F0C1 : A2 F7               	DW	F_KDO
+     282/    F0C3 : [279]               	ENDIF
+     283/    F0C3 : 47                  	DB	"G"
+     284/    F0C4 : B3 F5               	DW	G_KDO
+     285/    F0C6 : =>TRUE              	IF MONTYP == "Z1013_202"
+     286/    F0C6 : 48                  	DB	"H"
+     287/    F0C7 : B8 F6               	DW	H_KDO
+     288/    F0C9 : [285]               	ENDIF
+     289/    F0C9 : 49                  	DB	"I"
+     290/    F0CA : 02 F0               	DW	INIT1
+     291/    F0CC : 4A                  	DB	"J"
+     292/    F0CD : A5 F5               	DW	J_KDO
+     293/    F0CF : 4B                  	DB	"K"
+     294/    F0D0 : 0B F5               	DW	K_KDO
+     295/    F0D2 : 4C                  	DB	"L"
+     296/    F0D3 : F8 F3               	DW	CLOAD
+     297/    F0D5 : 4D                  	DB	"M"
+     298/    F0D6 : 25 F3               	DW	MEM
+     299/    F0D8 : 4E                  	DB	"N"
+     300/    F0D9 : 27 F7               	DW	N_KDO
+     301/    F0DB : 52                  	DB	"R"
+     302/    F0DC : DF F5               	DW	R_KDO
+     303/    F0DE : 53                  	DB	"S"
+     304/    F0DF : 69 F3               	DW	CSAVE
+     305/    F0E1 : 54                  	DB	"T"
+     306/    F0E2 : 1D F5               	DW	T_KDO
+     307/    F0E4 : 57                  	DB	"W"
+     308/    F0E5 : D1 F6               	DW	W_KDO
+     309/    F0E7 : 00                  	DB	0
+     310/    F0E8 :                     ;
+     311/    F0E8 :                     ;-------------------------------------------------------------------------------
+     312/    F0E8 :                     ;Eingang bei RST 20H
+     313/    F0E8 :                     ;-------------------------------------------------------------------------------
+     314/    F0E8 :                     ;
+     315/    F0E8 : E3                  RST1:	EX	(SP),HL
+     316/    F0E9 : F5                  	PUSH	AF
+     317/    F0EA : 7E                  	LD	A,(HL)			;Datenbyte hinter Ruf holen
+     318/    F0EB : 32 03 00            	LD	(R20BT),A		;und ablegen
+     319/    F0EE : 23                  	INC	HL			;Returnadresse erhoehen
+     320/    F0EF : F1                  	POP	AF
+     321/    F0F0 : E3                  	EX	(SP),HL
+     322/    F0F1 :                     ;
+     323/    F0F1 : E5                  	PUSH	HL
+     324/    F0F2 : C5                  	PUSH	BC
+     325/    F0F3 : F5                  	PUSH	AF
+     326/    F0F4 : 21 08 F1            	LD	HL,RSTTB
+     327/    F0F7 : 3A 03 00            	LD	A,(R20BT)
+     328/    F0FA : CB 27               	SLA	A
+     329/    F0FC : 4F                  	LD	C,A
+     330/    F0FD : 06 00               	LD	B,0
+     331/    F0FF : 09                  	ADD	HL,BC			;HL=Adresse in Tab.
+     332/    F100 : 7E                  	LD	A,(HL)
+     333/    F101 : 23                  	INC	HL
+     334/    F102 : 66                  	LD	H,(HL)
+     335/    F103 : 6F                  	LD	L,A			;HL=UP-Adresse
+     336/    F104 : F1                  	POP	AF
+     337/    F105 : C1                  	POP	BC
+     338/    F106 : E3                  	EX	(SP),HL			;Ansprung der
+     339/    F107 : C9                  	RET				;Routine
+     340/    F108 :                     ;
+     341/    F108 : 1B F2               RSTTB:	DW	OUTCH			;DB 0
+     342/    F10A : 0C F2               	DW	INCH			;DB 1
+     343/    F10C : A5 F2               	DW	PRST7			;DB 2
+     344/    F10E : F4 F2               	DW	INHEX			;DB 3
+     345/    F110 : 30 F1               	DW	INKEY			;DB 4
+     346/    F112 : B3 F2               	DW	INLIN			;DB 5
+     347/    F114 : 01 F3               	DW	OUTHX			;DB 6
+     348/    F116 : 1A F3               	DW	OUTHL			;DB 7
+     349/    F118 : 69 F3               	DW	CSAVE			;DB 8
+     350/    F11A : F8 F3               	DW	CLOAD			;DB 9
+     351/    F11C : 25 F3               	DW	MEM			;DB 10
+     352/    F11E : D1 F6               	DW	W_KDO			;DB 11
+     353/    F120 : C7 F5               	DW	OTHLS			;DB 12
+     354/    F122 : C4 F5               	DW	OUTDP			;DB 13
+     355/    F124 : CF F5               	DW	OUTSP			;DB 14
+     356/    F126 : 1D F5               	DW	T_KDO			;DB 15
+     357/    F128 : B9 F2               	DW	INSTR			;DB 16
+     358/    F12A : 0B F5               	DW	K_KDO			;DB 17
+     359/    F12C : =>TRUE              	IF MONTYP <> "Z1013_A2"
+     360/    F12C : B8 F6               	DW	H_KDO			;DB 18
+     361/    F12E : C5 F6               	DW	A_KDO			;DB 19
+     362/    F130 : [359]               	ENDIF
+     363/    F130 :                     
+     364/    F130 :                     ;
+     365/    F130 :                     ;-------------------------------------------------------------------------------
+     366/    F130 :                     ;Eingabe ein Zeichen von der Tastatur in A
+     367/    F130 :                     ;-------------------------------------------------------------------------------
+     368/    F130 :                     ;
+     369/    F130 : =>TRUE              	IF MONTYP == "Z1013_202"
+     370/    F130 :                     
+     371/    F130 :                     ; Tastatur
+     372/    F130 :                     ; --------
+     373/    F130 :                     ;
+     374/    F130 :                     ;      -------------------------------------------------        I-------I
+     375/    F130 :                     ;      I X   I Y   I Z   I [ { I \ | I ] } I ^ ~ I _   I        I S1 S2 I
+     376/    F130 :                     ;  RZ0-I     I     I     I     I     I     I     I     I        I       I
+     377/    F130 :                     ;      I @ ` I A   I B   I C   I D   I E   I F   I G   I        I S0    I
+     378/    F130 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I        I-------I
+     379/    F130 :                     ;      I 0   I 1 ! I 2 " I 3 # I 4 $ I 5 % I 6 & I 7 ' I
+     380/    F130 :                     ;  RZ1-I     I     I     I     I     I     I     I     I        S0 = normal, Großbuchstaben
+     381/    F130 :                     ;      I H   I I   I J   I K   I L   I M   I N   I O   I        S1 = Ziffern etc.
+     382/    F130 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I        S2 = Sonderzeichen etc.
+     383/    F130 :                     ;      I 8 ( I 9 ) I : * I ; + I < , I = - I > . I ? / I        S3 = Kleinbuchstaben
+     384/    F130 :                     ;  RZ2-I     I     I     I     I     I     I     I     I        S4 = Ctrl.
+     385/    F130 :                     ;      I P   I Q   I R   I S   I T   I U   I V   I W   I
+     386/    F130 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     387/    F130 :                     ;      I     I     I     I     I     I     I     I     I
+     388/    F130 :                     ;  RZ3-I     I     I     I     I     I     I     I     I
+     389/    F130 :                     ;      I S1  I S2  I S3  I S4  I <-  I SP  I ->  I ENT I
+     390/    F130 :                     ;      -------------------------------------------------
+     391/    F130 :                     ;         !     !     !     !     !     !     !     !
+     392/    F130 :                     ;        RS0   RS1   RS2   RS3   RS4   RS5   RS6   RS7
+     393/    F130 :                     ;
+     394/    F130 :                     ; IN 2 |                     OUT 8
+     395/    F130 :                     
+     396/    F130 :                     
+     397/    F130 :                     inkey:					;bei Ret A=ASCII
+     398/    F130 : AF                  	xor	a
+     399/    F131 : 67                  	ld	h, a
+     400/    F132 : 6F                  	ld	l, a
+     401/    F133 : CD 88 F1            	call	ink9			;Tastenabfrage
+     402/    F136 : 30 4B               	jr	nc, ink8		;Cy=0 keine Taste
+     403/    F138 : 19                  	add	hl, de
+     404/    F139 : CD 9E F1            	call	ink12			;restl. Spalten
+     405/    F13C : 0E 44               	ld	c, 44h			;Tastaturcodetabelle 0044H Shift-Ebene 0 40h,48h,50h
+     406/    F13E : 38 07               	jr	c, ink1			;Cy=1 2.Taste gedr.
+     407/    F140 : EB                  	ex	de, hl
+     408/    F141 : CB 5A               	bit	3, d			;Abfrage Zeile 3
+     409/    F143 : 28 0B               	jr	z, ink2			;Z=1 Taste gedr.
+     410/    F145 : 18 14               	jr	ink3
+     411/    F147 : CB 5A               ink1:	bit	3, d			;2. Taste ? Zeile 3
+     412/    F149 : 28 05               	jr	z, ink2			;Z=1 Taste gedr.
+     413/    F14B : EB                  	ex	de, hl
+     414/    F14C : CB 5A               	bit	3, d			;1. Taste ? Zeile 3
+     415/    F14E : 20 0B               	jr	nz, ink3		;Z=1 Taste gedr.
+     416/    F150 : CD A5 F1            ink2:	call	ink13			;Welche Taste in Z3
+     417/    F153 : C5                  	push	bc
+     418/    F154 : CD DC F1            	call	ink22			;Summand holen
+     419/    F157 : C1                  	pop	bc
+     420/    F158 : 28 06               	jr	z, ink4			;Z=0 kein Summ.
+     421/    F15A : EB                  	ex	de, hl
+     422/    F15B : CD DC F1            ink3:	call	ink22			;Summand holen
+     423/    F15E : 20 23               	jr	nz, ink8		;Z=0 kein Summ.
+     424/    F160 : 83                  ink4:	add	a, e
+     425/    F161 : 21 27 00            	ld	hl, KYBTS
+     426/    F164 : 86                  	add	a, (hl)
+     427/    F165 :                     ;Berechnung Ascii-Wert abgeschlossen
+     428/    F165 : 21 04 00            ink5:	ld	hl, LAKEY		;Softwareentprel-
+     429/    F168 : BE                  	cp	(hl)			;lung, verhindert
+     430/    F169 : 28 C5               	jr	z, inkey		;Repeat-Funktion
+     431/    F16B : 47                  	ld	b, a
+     432/    F16C : 7E                  	ld	a, (hl)
+     433/    F16D : B7                  	or	a
+     434/    F16E : 78                  	ld	a, b
+     435/    F16F : 20 BF               	jr	nz, inkey		;Z=1 vorher keine
+     436/    F171 : 32 04 00            	ld	(LAKEY), a		;Taste gedrueckt
+     437/    F174 : FE 91               	cp	91h			;(S4/A)
+     438/    F176 : 28 07               	jr	z, ink6			;Z=1- ASCII
+     439/    F178 : FE 17               	cp	17h			;(S4/G)
+     440/    F17A : C0                  	ret	nz			;Z=0 Ruecksprung
+     441/    F17B : 3E 80               	ld	a, 80h
+     442/    F17D : 18 01               	jr	ink7
+     443/    F17F : AF                  ink6:	xor	a
+     444/    F180 : 32 27 00            ink7:	ld	(KYBTS), a
+     445/    F183 : AF                  ink8:	xor	a			;Ruecksprung wenn
+     446/    F184 : 32 04 00            	ld	(LAKEY), a		;keine Taste gedr.
+     447/    F187 : C9                  	ret				;mit A=0
+     448/    F188 :                     ;UP Tastenabfrage
+     449/    F188 : 5F                  ink9:	ld	e, a			;E=Spaltennummer
+     450/    F189 : D3 08               	out	(KEYP), a		;Ausgabe Spalte
+     451/    F18B : 06 20               	ld	b, 20h
+     452/    F18D : DB 02               ink10:	in	a, (PIOBD)
+     453/    F18F : E6 0F               	and	0Fh
+     454/    F191 : 57                  	ld	d, a			;D=Zeilennummer
+     455/    F192 : DB 02               	in	a, (PIOBD)
+     456/    F194 : E6 0F               	and	0Fh
+     457/    F196 : BA                  	cp	d
+     458/    F197 : 20 03               	jr	nz, ink11		;Z=0 Taste prellt
+     459/    F199 : FE 0F               	cp	0Fh
+     460/    F19B : C0                  	ret	nz			;Z=0 Taste gedr.
+     461/    F19C : 10 EF               ink11:	djnz	ink10
+     462/    F19E : 7B                  ink12:	ld	a, e			;Erhoeh. Spalten-
+     463/    F19F : 3C                  	inc	a			;zahl
+     464/    F1A0 : FE 08               	cp	8
+     465/    F1A2 : 20 E4               	jr	nz, ink9		;Z=1 alle Tasten
+     466/    F1A4 : C9                  	ret				;abgefragt
+     467/    F1A5 :                     ;Taste in Z3
+     468/    F1A5 : 3E 01               ink13:	ld	a, 1			;Untersuchung
+     469/    F1A7 : BB                  	cp	e			;welche Taste in
+     470/    F1A8 : 28 29               	jr	z, ink19		;Zeile 3 gedr. ist
+     471/    F1AA : 30 24               	jr	nc, ink18		;E=Spaltenzahl
+     472/    F1AC : C6 02               	add	a, 2			;E=0 - C=41H
+     473/    F1AE : BB                  	cp	e			;E=1 - C=3EH
+     474/    F1AF : 28 28               	jr	z, ink21		;E=2 - C=3BH
+     475/    F1B1 : 30 23               	jr	nc, ink20		;E=3 - C=35H
+     476/    F1B3 : C6 02               	add	a, 2			;E=4 - A=08H
+     477/    F1B5 : BB                  	cp	e			;E=5 - A=20H
+     478/    F1B6 : 28 0F               	jr	z, ink15		;E=6 - A=09H
+     479/    F1B8 : 30 11               	jr	nc, ink16		;E=7 - A=0DH
+     480/    F1BA : C6 02               	add	a, 2
+     481/    F1BC : BB                  	cp	e
+     482/    F1BD : 28 04               	jr	z, ink14
+     483/    F1BF : 3E 09               	ld	a, 9			; ->
+     484/    F1C1 : 18 0A               	jr	ink17
+     485/    F1C3 : 3E 0D               ink14:	ld	a, 0Dh			; ENT
+     486/    F1C5 : 18 06               	jr	ink17
+     487/    F1C7 : 3E 20               ink15:	ld	a, 20h			; SPACE
+     488/    F1C9 : 18 02               	jr	ink17
+     489/    F1CB : 3E 08               ink16:	ld	a, 8			; <-
+     490/    F1CD : C1                  ink17:	pop	bc
+     491/    F1CE : 18 95               	jr	ink5
+     492/    F1D0 : 0E 41               ink18:	ld	c, 41h			;Tastaturcodetabelle 0041H Shift-Ebene 1 58h,30h,38h
+     493/    F1D2 : C9                  	ret
+     494/    F1D3 : 0E 3E               ink19:	ld	c, 3Eh			;Tastaturcodetabelle 003EH Shift-Ebene 2 78h,20h,28h
+     495/    F1D5 : C9                  	ret
+     496/    F1D6 : 0E 3B               ink20:	ld	c, 3Bh			;Tastaturcodetabelle 003BH Shift-Ebene 3 60h,68h,70h
+     497/    F1D8 : C9                  	ret
+     498/    F1D9 : 0E 35               ink21:	ld	c, 35h			;Tastaturcodetabelle 0035H Shift-Ebene 4 10h,00h,08h
+     499/    F1DB : C9                  	ret
+     500/    F1DC :                     
+     501/    F1DC :                     ;Summand holen
+     502/    F1DC : CB 42               ink22:	bit	0, d			;Abfrage Zeile 0
+     503/    F1DE : 20 05               	jr	nz, ink24		;Z=0 keine Taste
+     504/    F1E0 : 69                  ink23:	ld	l, c
+     505/    F1E1 : 26 00               	ld	h, 0
+     506/    F1E3 : 7E                  	ld	a, (hl)
+     507/    F1E4 : C9                  	ret
+     508/    F1E5 : 0C                  ink24:	inc	c
+     509/    F1E6 : CB 4A               	bit	1, d			;Abfrage Zeile 1
+     510/    F1E8 : 20 02               	jr	nz, ink25		;Z=0 keine Taste
+     511/    F1EA : 18 F4               	jr	ink23
+     512/    F1EC : 0C                  ink25:	inc	c
+     513/    F1ED : CB 52               	bit	2, d			;Abfrage Zeile 2
+     514/    F1EF : C0                  	ret	nz			;Z=0 keine Taste
+     515/    F1F0 : 18 EE               	jr	ink23
+     516/    F1F2 :                     
+     517/    F1F2 : =>FALSE             	ELSEIF MONTYP == "Z1013_A2"
+     518/    F1F2 :                     
+     519/    F1F2 :                     ; Tastatur
+     520/    F1F2 :                     ; --------
+     521/    F1F2 :                     ;
+     522/    F1F2 :                     ;      -------------------------------------------------
+     523/    F1F2 :                     ;      I   ! I   # I   % I   ' I   ) I   = I     I     I
+     524/    F1F2 :                     ;  RZ0-I     I     I     I     I     I     I     I     I
+     525/    F1F2 :                     ;      I 1   I 3   I 5   I 7   I 9   I -   I GRA I     I
+     526/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     527/    F1F2 :                     ;      I     I     I     I     I     I   ` I     I     I
+     528/    F1F2 :                     ;  RZ1-I     I     I     I     I     I     I     I     I
+     529/    F1F2 :                     ;      I Q   I E   I T   I U   I O   I @   I ENT I     I
+     530/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     531/    F1F2 :                     ;      I     I     I     I     I     I   : I     I     I
+     532/    F1F2 :                     ;  RZ2-I     I     I     I     I     I     I Cu  I     I
+     533/    F1F2 :                     ;      I A   I D   I G   I J   I L   I *   I leftI     I
+     534/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     535/    F1F2 :                     ;      I     I     I     I     I   > I   ~ I     I     I
+     536/    F1F2 :                     ;  RZ3-I     I     I     I     I     I     I Cu  I     I
+     537/    F1F2 :                     ;      I Y   I C   I B   I M   I     I ^   I rghtI     I
+     538/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     539/    F1F2 :                     ;      I   " I   $ I   & I   ( I     I   { I     I     I
+     540/    F1F2 :                     ;  RZ4-I     I     I     I     I     I     I     I     I
+     541/    F1F2 :                     ;  RZ0 I 2   I 4   I 6   I 8   I 0   I [   I Spc I     I
+     542/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     543/    F1F2 :                     ;      I     I     I     I     I     I         } I     I
+     544/    F1F2 :                     ;  RZ5-I     I     I     I     I     I     I     I     I
+     545/    F1F2 :                     ;  RZ1 I W   I R   I Z   I I   I P   I ]   I CTRLI     I
+     546/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     547/    F1F2 :                     ;      I     I     I     I     I   ; I   | I     I     I
+     548/    F1F2 :                     ;  RZ6-I     I     I     I     I     I     I Cu  I     I
+     549/    F1F2 :                     ;  RZ2 I S   I F   I H   I K   I +   I \\  I up  I ShftI
+     550/    F1F2 :                     ;      I-----+-----+-----+-----+-----+-----+-----+-----I
+     551/    F1F2 :                     ;      I     I     I     I   < I   ? I    I     I     I
+     552/    F1F2 :                     ;  RZ7-I     I     I     I     I     I     I Cu  I ShftI
+     553/    F1F2 :                     ;  RZ3 I X   I V   I N   I ,   I /   I _   I downI LockI
+     554/    F1F2 :                     ;      -------------------------------------------------
+     555/    F1F2 :                     ;         !     !     !     !     !     !     !     !
+     556/    F1F2 :                     ;        RS0   RS1   RS2   RS3   RS4   RS5   RS6   RS7
+     557/    F1F2 :                     ;
+     558/    F1F2 :                     ; IN 2 |                     OUT 8
+     559/    F1F2 :                     ;
+     560/    F1F2 :                     ; Zeile 4..7 werden auf Zeile 0..3 gemuxt, wenn Pio B4=1
+     561/    F1F2 :                     
+     562/    F1F2 :                     inkey:	ld	hl, KYBTS		; Merkzelle
+     563/    F1F2 :                     	ld	a, 01011011b
+     564/    F1F2 :                     	and	(hl)
+     565/    F1F2 :                     	ld	(hl), a
+     566/    F1F2 :                     	ld	ix, keytab		; Tastaturcodetabelle
+     567/    F1F2 :                     	call	ink16			; normale Taste gedrückt?
+     568/    F1F2 :                     	jr	nc, ink1		; nein, dann evtl. Fkt.taste?
+     569/    F1F2 :                     	push	de			;
+     570/    F1F2 :                     	set	7, (hl)
+     571/    F1F2 :                     	call	ink20			; ASCII-Code aus Tabelle ermitteln
+     572/    F1F2 :                     	ld	(DATA), a		; ASCII-Code
+     573/    F1F2 :                     	pop	de			;
+     574/    F1F2 :                     	call	ink18			;
+     575/    F1F2 :                     ; Funktionstasten (Spalte 6)
+     576/    F1F2 :                     ink1:	ld	ix, tab2		; Tastaturcodetabelle
+     577/    F1F2 :                     	ld	e, 6			; Spalte 6
+     578/    F1F2 :                     	call	ink19			; Spalte abfragen
+     579/    F1F2 :                     	jr	z, ink9			; wenn keine Taste gedrückt
+     580/    F1F2 :                     	bit	0, c			; GRA ?
+     581/    F1F2 :                     	jr	z, ink2
+     582/    F1F2 :                     	bit	5, c			; CTRL ?
+     583/    F1F2 :                     	jr	z, ink5
+     584/    F1F2 :                     	call	ink20			; ASCII-Code aus Tabelle ermitteln
+     585/    F1F2 :                     	ret				; A = ASCII-Code
+     586/    F1F2 :                     ; GRA
+     587/    F1F2 :                     ink2:	ld	a, 2
+     588/    F1F2 :                     	res	3, (hl)
+     589/    F1F2 :                     ink3:	bit	6, (hl)
+     590/    F1F2 :                     	jr	nz, ink4
+     591/    F1F2 :                     	set	6, (hl)			; Statusbit Grafikmode setzen
+     592/    F1F2 :                     	xor	(hl)
+     593/    F1F2 :                     	ld	(hl), a
+     594/    F1F2 :                     ink4:	xor	a
+     595/    F1F2 :                     	ret
+     596/    F1F2 :                     ; CTRL
+     597/    F1F2 :                     ink5:	set	5, (hl)			; Statusbit CTRL setzen
+     598/    F1F2 :                     	bit	7, (hl)
+     599/    F1F2 :                     	jr	z, ink9
+     600/    F1F2 :                     	ld	a, (DATA)
+     601/    F1F2 :                     	bit	6, a
+     602/    F1F2 :                     	jr	nz, ink6
+     603/    F1F2 :                     	set	4, a
+     604/    F1F2 :                     ink6:	and	1Fh
+     605/    F1F2 :                     ink7:	bit	1, (hl)
+     606/    F1F2 :                     	ret	z
+     607/    F1F2 :                     	set	7, a			; Bit 7 := 1 (Grafikzeichen)
+     608/    F1F2 :                     	ret
+     609/    F1F2 :                     ; Shift
+     610/    F1F2 :                     ink8:	res	6, (hl)
+     611/    F1F2 :                     	bit	7, (hl)
+     612/    F1F2 :                     	ret	z
+     613/    F1F2 :                     	ld	a, (DATA)
+     614/    F1F2 :                     	jr	ink7
+     615/    F1F2 :                     ;
+     616/    F1F2 :                     ink9:	ld	e, 7			; Spalte 7 (Shift)
+     617/    F1F2 :                     	call	ink19			; Taste gedrückt?
+     618/    F1F2 :                     	jr	z, ink10		; nein
+     619/    F1F2 :                     	bit	7, c			; Shift Lock
+     620/    F1F2 :                     	jr	z, ink15
+     621/    F1F2 :                     	bit	6, c			; Shift
+     622/    F1F2 :                     	jr	nz, ink8
+     623/    F1F2 :                     	bit	5, (hl)
+     624/    F1F2 :                     	jr	nz, ink15
+     625/    F1F2 :                     ink10:	bit	7, (hl)			;
+     626/    F1F2 :                     	ret	z			; nein
+     627/    F1F2 :                     ; Repeat
+     628/    F1F2 :                     	ld	a, (DATA)
+     629/    F1F2 :                     	bit	6, c
+     630/    F1F2 :                     	jr	z, ink11
+     631/    F1F2 :                     	bit	3, (hl)
+     632/    F1F2 :                     	jr	z, ink7
+     633/    F1F2 :                     	jr	ink12
+     634/    F1F2 :                     ink11:	bit	3, (hl)
+     635/    F1F2 :                     	jr	nz, ink7
+     636/    F1F2 :                     ink12:	ld	b, a
+     637/    F1F2 :                     	and	30h
+     638/    F1F2 :                     	ld	a, b
+     639/    F1F2 :                     	jp	po, ink13
+     640/    F1F2 :                     	res	4, a
+     641/    F1F2 :                     	jr	ink14
+     642/    F1F2 :                     ink13:	set	4, a
+     643/    F1F2 :                     ink14:	set	5, a
+     644/    F1F2 :                     	jr	ink7
+     645/    F1F2 :                     ; Shift Lock
+     646/    F1F2 :                     ink15:	ld	a, 8
+     647/    F1F2 :                     	jp	ink3
+     648/    F1F2 :                     ; normale Taste gedrückt?
+     649/    F1F2 :                     ; IN: IX: Tastaturcodetabelle
+     650/    F1F2 :                     ; OUT: Z-Flag=1: Taste gedrückt
+     651/    F1F2 :                     ;      E = Spalte
+     652/    F1F2 :                     ;      Cy=0: keine Taste gedrückt
+     653/    F1F2 :                     ;	IX: Tastaturcodetabelle aktuelle Zeile
+     654/    F1F2 :                     ink16:	ld	e, 0			; e = Spalte (0..5)
+     655/    F1F2 :                     ink17:	call	ink19			; Taste in Spalte gedrückt?
+     656/    F1F2 :                     	scf
+     657/    F1F2 :                     	ret	nz			; wenn gedrueckt
+     658/    F1F2 :                     ink18:	inc	e			; sonst naechste Spalte
+     659/    F1F2 :                     	ld	bc, 8			; und Pointer auf Tastaturcode-
+     660/    F1F2 :                     	add	ix, bc			; tabelle erhöhen
+     661/    F1F2 :                     	ld	a, e
+     662/    F1F2 :                     	cp	6			; Spalte RS6 erreicht?
+     663/    F1F2 :                     	jr	nz, ink17		; bis alle 7 Spalten
+     664/    F1F2 :                     	scf
+     665/    F1F2 :                     	ccf				; Cy=0
+     666/    F1F2 :                     	ret
+     667/    F1F2 :                     ; Abfrage einer Spalte
+     668/    F1F2 :                     ; IN E: Spalte
+     669/    F1F2 :                     ; OUT: C: Zeile
+     670/    F1F2 :                     ;      A = 0
+     671/    F1F2 :                     ;      Z-Flag=1: Taste gedrückt
+     672/    F1F2 :                     ink19:	ld	a, e			; e = Spalte
+     673/    F1F2 :                     	out	(KEYP), a		; Spalte aktivieren
+     674/    F1F2 :                     	out	(PIOBD), a		; Pio B4 = 0 (Zeile 0..3)
+     675/    F1F2 :                     	in	a, (PIOBD)		; Zeilen 0..3 einlesen
+     676/    F1F2 :                     	and	0Fh
+     677/    F1F2 :                     	ld	c, a
+     678/    F1F2 :                     	set	4, a			; PIO B4 = 1 (Zeile 4..7)
+     679/    F1F2 :                     	out	(PIOBD), a
+     680/    F1F2 :                     	in	a, (PIOBD)		; Zeilen 4..7 einlesen
+     681/    F1F2 :                     	sla	a			; in obere 4 Bits verschieben
+     682/    F1F2 :                     	sla	a
+     683/    F1F2 :                     	sla	a
+     684/    F1F2 :                     	sla	a
+     685/    F1F2 :                     	ld	d, a			; d = Zeile 4..7
+     686/    F1F2 :                     	add	a, c
+     687/    F1F2 :                     	ld	c, a			; c = Zeile 0..7
+     688/    F1F2 :                     ; Entprellen ...
+     689/    F1F2 :                     	xor	a			; a = 0
+     690/    F1F2 :                     	out	(PIOBD), a		; Pio B4 = 0 (Zeile 0..3)
+     691/    F1F2 :                     	in	a, (PIOBD)		; Zeilen 0..3 einlesen
+     692/    F1F2 :                     	and	0Fh
+     693/    F1F2 :                     	add	a, d
+     694/    F1F2 :                     	cp	c			; noch gleicher Wert?
+     695/    F1F2 :                     	jr	nz, ink19		; nein
+     696/    F1F2 :                     	cpl
+     697/    F1F2 :                     	or	a
+     698/    F1F2 :                     	ld	a, 0
+     699/    F1F2 :                     	ret
+     700/    F1F2 :                     ; ASCII-Code aus Tabelle ermitteln
+     701/    F1F2 :                     ; IN: C = Zeile = Bit 0..7
+     702/    F1F2 :                     ;     IX = Tastaturcodetabelle
+     703/    F1F2 :                     ink20:	ld	de, 0
+     704/    F1F2 :                     	ld	b, 8			; max 8 Zeilen
+     705/    F1F2 :                     ink21:	sra	c			; nächste Zeile
+     706/    F1F2 :                     	jr	nc, ink22
+     707/    F1F2 :                     	inc	e
+     708/    F1F2 :                     	djnz	ink21
+     709/    F1F2 :                     ink22:	add	ix, de
+     710/    F1F2 :                     	ld	a, (ix+0)		; A = ASCII-Code
+     711/    F1F2 :                     	res	6, (hl)			;
+     712/    F1F2 :                     	ret
+     713/    F1F2 :                     
+     714/    F1F2 : [369]               	ENDIF
+     715/    F1F2 :                     ;
+     716/    F1F2 :                     ;-------------------------------------------------------------------------------
+     717/    F1F2 :                     ;Monitorinit., wird nach 0033H (LSYNC) umgeladen
+     718/    F1F2 :                     ;-------------------------------------------------------------------------------
+     719/    F1F2 :                     ;
+     720/    F1F2 :                     MONTB:
+     721/      33 :                     	phase	0033H
+     722/      33 :                     
+     723/      33 : =>TRUE              	IF MONTYP == "Z1013_202"
+     724/      33 :                     
+     725/      33 : D0 07               	DW	2000			;Kenntonlaenge LSYNC
+     726/      35 : 10 00 08            	DB	10h,00h,08h		;Tastaturcodetabelle 0035H Shift-Ebene 4
+     727/      38 : C3 58 F0            	JP	KDO1			;RST38-Sprung	RST38
+     728/      3B : 60 68 70            	db	60h,68h,70h		;Tastaturcodetabelle 003BH Shift-Ebene 3
+     729/      3E : 78 20 28            	db	78h,20h,28h		;Tastaturcodetabelle 003EH Shift-Ebene 2
+     730/      41 : 58 30 38            	db	58h,30h,38h		;Tastaturcodetabelle 0041H Shift-Ebene 1
+     731/      44 : 40 48 50            	db	40h,48h,50h		;Tastaturcodetabelle 0044H Shift-Ebene 0
+     732/      47 : E0 03               	DW	03E0H			;WINDOW-Laenge	WINDL
+     733/      49 : 00 EC               	DW	BWS			;WINDOW-Anfang	WINDA
+     734/      4B : 00 F0               	DW	BWS+BWSSZ		;WINDOW-Ende	WINDE
+     735/      4D :                     
+     736/      4D : =>FALSE             	ELSEIF MONTYP == "Z1013_A2"
+     737/      4D :                     
+     738/      4D :                     	dw	2000			;Kenntonlaenge 	LSYNC
+     739/      4D :                     	DW	BWSSZ-BWSCOL		;WINDOW-Laenge 	WINDL
+     740/      4D :                     	db	0			;Status-Merkzelle f. INKEY KYBTS
+     741/      4D :                     	jp	KDO1			;RST38-Sprung	RST38
+     742/      4D :                     	DW	BWS			;WINDOW-Anfang	WINDA
+     743/      4D :                     	DW	BWS+BWSSZ		;WINDOW-Ende	WINDE
+     744/      4D :                     
+     745/      4D : [723]               	ENDIF
+     746/      4D :                     
+     747/    F20C :                     	dephase
+     748/    F20C :                     ;
+     749/    F20C :                     ;-------------------------------------------------------------------------------
+     750/    F20C :                     ;Zeichen von Tastatur holen, warten bis Taste gedrueckt
+     751/    F20C :                     ;-------------------------------------------------------------------------------
+     752/    F20C :                     ;
+     753/    F20C : =>TRUE              	IF MONTYP == "Z1013_202"
+     754/    F20C :                     
+     755/    F20C : C5                  INCH:	push	bc
+     756/    F20D : D5                  	push	de
+     757/    F20E : E5                  	push	hl
+     758/    F20F : CD 30 F1            INC1:	CALL	INKEY
+     759/    F212 : B7                  	OR	A
+     760/    F213 : 28 FA               	JR	Z, INC1			;keine Taste gedrueckt
+     761/    F215 : E1                  	pop	hl
+     762/    F216 : D1                  	pop	de
+     763/    F217 : C1                  	pop	bc
+     764/    F218 : C9                  	RET
+     765/    F219 :                     
+     766/    F219 : =>FALSE             	ELSEIF MONTYP == "Z1013_A2"
+     767/    F219 :                     
+     768/    F219 :                     INCH:	push	ix
+     769/    F219 :                     	push	bc
+     770/    F219 :                     	push	de
+     771/    F219 :                     	push	hl
+     772/    F219 :                     	ld	bc, 1000h		; B := 16; C := 0 (256)
+     773/    F219 :                     INC1:	PUSH	BC
+     774/    F219 :                     	CALL	INKEY			; ret: hl=KYBTS
+     775/    F219 :                     	POP	BC
+     776/    F219 :                     	LD	IX, LAKEY
+     777/    F219 :                     	CP	(IX+0)
+     778/    F219 :                     	JR	NZ, INC6		; wenn anderes Zeichen
+     779/    F219 :                     	OR	A			; A = 0?
+     780/    F219 :                     	JR	Z, INC5			; wenn keine Taste gedückt
+     781/    F219 :                     INC2:	DEC	C
+     782/    F219 :                     	JR	NZ, INC2		; kurz warten
+     783/    F219 :                     	BIT	4, (HL)			; Repeat?
+     784/    F219 :                     	JR	NZ, INC4		; ja -> gleich weiter
+     785/    F219 :                     	LD	DE, 800H		; sonst längeres Warten
+     786/    F219 :                     INC3:	DEC	DE
+     787/    F219 :                     	LD	A, E
+     788/    F219 :                     	OR	D
+     789/    F219 :                     	JR	NZ, INC3
+     790/    F219 :                     INC4:	DJNZ	INC1			; 16x
+     791/    F219 :                     	SET	4, (HL)			; Repeat ein
+     792/    F219 :                     	XOR	A			; A := 0, kein Zeichen
+     793/    F219 :                     	JR	INC6
+     794/    F219 :                     INC5:	RES	4, (HL)			; kein Repeat mehr
+     795/    F219 :                     INC6:	LD	(IX+0),	A		; LAKEY füllen
+     796/    F219 :                     	OR	A			; A = 0?
+     797/    F219 :                     	JR	Z, INC1			; nochmal, bis Taste gedrückt
+     798/    F219 :                     	POP	HL
+     799/    F219 :                     	POP	DE
+     800/    F219 :                     	POP	BC
+     801/    F219 :                     	POP	IX
+     802/    F219 :                     	RET
+     803/    F219 :                     
+     804/    F219 : [753]               	ENDIF
+     805/    F219 :                     ;
+     806/    F219 :                     ;-------------------------------------------------------------------------------
+     807/    F219 :                     ;Ausgabe Zeichen auf Bildschirm
+     808/    F219 :                     ;-------------------------------------------------------------------------------
+     809/    F219 :                     ;
+     810/    F219 :                     ; Zeichenausgabe f. PRST7: Reset Bit 7
+     811/    F219 : E6 7F               OUT0:	AND	A, 7FH
+     812/    F21B :                     ; Zeichenausgabe
+     813/    F21B : F5                  OUTCH:	push	af
+     814/    F21C : C5                  	push	bc
+     815/    F21D : D5                  	push	de
+     816/    F21E : E5                  	PUSH	HL
+     817/    F21F : 2A 2B 00            	LD	HL,(CUPOS)
+     818/    F222 : F5                  	PUSH	AF
+     819/    F223 : 3A 1F 00            	LD	A,(BUFFA)		;Zeichen unter Cursor
+     820/    F226 : 77                  	LD	(HL),A			;zurueckschreiben
+     821/    F227 : F1                  	POP	AF
+     822/    F228 : FE 0D               	CP	A, CR			;neue Zeile?
+     823/    F22A : 28 53               	JR	Z, OUT8
+     824/    F22C : FE 0C               	CP	A, CLS			;Bildschirm loeschen?
+     825/    F22E : 28 5E               	JR	Z, OUT10
+     826/    F230 : FE 08               	CP	A, 8			;Cursor links?
+     827/    F232 : 28 48               	JR	Z, OUT7
+     828/    F234 : FE 09               	CP	A, 9			;Cursor rechts?
+     829/    F236 : 28 01               	JR	Z, OUT2
+     830/    F238 : 77                  	LD	(HL),A			;sonst Zeichen in BWS
+     831/    F239 : 23                  OUT2:	INC	HL
+     832/    F23A :                     ;
+     833/    F23A : EB                  OUT3:	EX	DE,HL
+     834/    F23B : 2A 4B 00            	LD	HL,(WINDE)
+     835/    F23E : AF                  	XOR	A			;Test, ob neue Cursor-
+     836/    F23F : ED 52               	SBC	HL,DE			;position schon
+     837/    F241 : EB                  	EX	DE,HL			;ausserhalb Window
+     838/    F242 : 20 2A               	JR	NZ, OUT6		;nein
+     839/    F244 :                     ;
+     840/    F244 : ED 5B 49 00         	LD	DE,(WINDA)		;scrollen um
+     841/    F248 : 21 20 00            	LD	HL,BWSCOL		;eine Zeile im Window
+     842/    F24B : 19                  	ADD	HL,DE
+     843/    F24C : ED 4B 47 00         	LD	BC,(WINDL)		;Windowlaenge
+     844/    F250 : 78                  	LD	A,B
+     845/    F251 : B1                  	OR	C			;=0?
+     846/    F252 : 28 02               	JR	Z, OUT5			;ja --> kein Scrollen
+     847/    F254 : ED B0               	LDIR
+     848/    F256 : D5                  OUT5:	PUSH	DE			;letzte Zeile loeschen
+     849/    F257 : E1                  	POP	HL
+     850/    F258 : E5                  	PUSH	HL
+     851/    F259 : 13                  	INC	DE
+     852/    F25A : 36 20               	LD	(HL),' '
+     853/    F25C : 01 1F 00            	LD	BC,BWSCOL-1
+     854/    F25F : ED B0               	LDIR
+     855/    F261 :                     ;
+     856/    F261 : 2A 16 00            	LD	HL,(SOIL)		;SOIL um eine Zeile
+     857/    F264 : 11 20 00            	LD	DE,BWSCOL		;erhoehen
+     858/    F267 : AF                  	XOR	A
+     859/    F268 : ED 52               	SBC	HL,DE
+     860/    F26A : 22 16 00            	LD	(SOIL),HL
+     861/    F26D : E1                  	POP	HL
+     862/    F26E :                     ;
+     863/    F26E : 7E                  OUT6:	LD	A,(HL)			;Zeichen unter Cursor
+     864/    F26F : 32 1F 00            	LD	(BUFFA),A		;sichern
+     865/    F272 : 36 FF               	LD	(HL),0FFH		;Cursor setzen
+     866/    F274 : 22 2B 00            	LD	(CUPOS),HL
+     867/    F277 : E1                  	POP	HL
+     868/    F278 : D1                  	POP	DE
+     869/    F279 : C1                  	POP	BC
+     870/    F27A : F1                  	POP	AF
+     871/    F27B : C9                  	RET
+     872/    F27C :                     ;Cursor links
+     873/    F27C : 2B                  OUT7:	DEC	HL
+     874/    F27D : 18 BB               	JR	OUT3
+     875/    F27F :                     ;neue Zeile
+     876/    F27F : 3E E0               OUT8:	LD	A, 0E0H			;auf Zeilenanfang stellen
+     877/    F281 : A5                  	AND	A, L			;A=Anfang akt. Zeile
+     878/    F282 : C6 20               	ADD	A, BWSCOL		;A=NWB der Position
+     879/    F284 : 4F                  	LD	C,A			;eine Zeile tiefer
+     880/    F285 : 36 20               OUT9:	LD	(HL),' '		;Rest der Zeile ab
+     881/    F287 : 23                  	INC	HL			;ENTER loeschen
+     882/    F288 : 7D                  	LD	A,L
+     883/    F289 : B9                  	CP	A, C
+     884/    F28A : 20 F9               	JR	NZ, OUT9
+     885/    F28C : 18 AC               	JR	OUT3
+     886/    F28E :                     ;
+     887/    F28E :                     ;Window loeschen
+     888/    F28E : 2A 47 00            OUT10:	LD	HL,(WINDL)
+     889/    F291 : 01 1F 00            	LD	BC,BWSCOL-1
+     890/    F294 : 09                  	ADD	HL,BC
+     891/    F295 : E5                  	PUSH	HL
+     892/    F296 : C1                  	POP	BC
+     893/    F297 : 2A 49 00            	LD	HL,(WINDA)
+     894/    F29A : E5                  	PUSH	HL
+     895/    F29B : 36 20               	LD	(HL),' '
+     896/    F29D : E5                  	PUSH	HL
+     897/    F29E : D1                  	POP	DE
+     898/    F29F : 13                  	INC	DE
+     899/    F2A0 : ED B0               	LDIR
+     900/    F2A2 : E1                  	POP	HL
+     901/    F2A3 : 18 C9               	JR	OUT6
+     902/    F2A5 :                     ;
+     903/    F2A5 :                     ;-------------------------------------------------------------------------------
+     904/    F2A5 :                     ;Ausgabe String, bis Bit7=1
+     905/    F2A5 :                     ;-------------------------------------------------------------------------------
+     906/    F2A5 :                     ;
+     907/    F2A5 : E3                  PRST7:	EX	(SP),HL			;Adresse hinter CALL
+     908/    F2A6 : 7E                  PRS1:	LD	A,(HL)
+     909/    F2A7 : 23                  	INC	HL
+     910/    F2A8 : F5                  	PUSH	AF
+     911/    F2A9 : CD 19 F2            	CALL	OUT0
+     912/    F2AC : F1                  	POP	AF
+     913/    F2AD : CB 7F               	BIT	7,A			;Bit7 gesetzt?
+     914/    F2AF : 28 F5               	JR	Z, PRS1			;nein
+     915/    F2B1 : E3                  	EX	(SP),HL			;neue Returnadresse
+     916/    F2B2 : C9                  	RET
+     917/    F2B3 :                     ;
+     918/    F2B3 :                     ;-------------------------------------------------------------------------------
+     919/    F2B3 :                     ;Eingabe einer Zeile mit Promptsymbol
+     920/    F2B3 :                     ;-------------------------------------------------------------------------------
+     921/    F2B3 :                     ;
+     922/    F2B3 : CD A5 F2            INLIN:	CALL	PRST7
+     923/    F2B6 : 20 23               	DB	" #"
+     924/    F2B8 : A0                  	DB	' '+80H
+     925/    F2B9 :                     ;
+     926/    F2B9 :                     ;-------------------------------------------------------------------------------
+     927/    F2B9 :                     ;Eingabe einer Zeichenkette
+     928/    F2B9 :                     ;-------------------------------------------------------------------------------
+     929/    F2B9 :                     ;
+     930/    F2B9 : E5                  INSTR:	PUSH	HL
+     931/    F2BA : 2A 2B 00            	LD	HL,(CUPOS)
+     932/    F2BD : 22 16 00            	LD	(SOIL),HL		;SOIL=1.Position
+     933/    F2C0 : (MACRO)             INS1:	RINCH				;Zeichen von Tastatur
+     933/    F2C0 : E7                          RST     20H
+     933/    F2C1 : 01                          DB      01h                     ; INCH
+     934/    F2C2 : (MACRO)             	ROUTC				;anzeigen
+     934/    F2C2 : E7                          RST     20H
+     934/    F2C3 : 00                          DB      0                       ; OUTCH
+     935/    F2C4 : FE 0D               	CP	A, CR			;>ENTER<?
+     936/    F2C6 : 20 F8               	JR	NZ, INS1		;nein --> weiter eingeben
+     937/    F2C8 : E1                  	POP	HL
+     938/    F2C9 : C9                  	RET
+     939/    F2CA :                     ;
+     940/    F2CA :                     ;-------------------------------------------------------------------------------
+     941/    F2CA :                     ;fuehrende Leerzeichen ueberlesen
+     942/    F2CA :                     ;-------------------------------------------------------------------------------
+     943/    F2CA :                     ;
+     944/    F2CA : 1A                  SPACE:	LD	A,(DE)
+     945/    F2CB : FE 20               	CP	A, ' '
+     946/    F2CD : C0                  	RET	NZ
+     947/    F2CE : 13                  	INC	DE
+     948/    F2CF : 18 F9               	JR	SPACE
+     949/    F2D1 :                     ;
+     950/    F2D1 :                     ;-------------------------------------------------------------------------------
+     951/    F2D1 :                     ;letzen vier Zeichen als Hexzahl konvertieren
+     952/    F2D1 :                     ;und in DATA ablegen
+     953/    F2D1 :                     ;-------------------------------------------------------------------------------
+     954/    F2D1 :                     ;
+     955/    F2D1 : CD CA F2            KONVX:	CALL	SPACE
+     956/    F2D4 : AF                  	XOR	A
+     957/    F2D5 : 21 13 00            	LD	HL,DATA
+     958/    F2D8 : 77                  	LD	(HL),A			;DATA=0
+     959/    F2D9 : 23                  	INC	HL
+     960/    F2DA : 77                  	LD	(HL),A
+     961/    F2DB : 1A                  KON1:	LD	A,(DE)
+     962/    F2DC : 2B                  	DEC	HL
+     963/    F2DD : D6 30               	SUB	30H			;Zeichen<"0"?
+     964/    F2DF : F8                  	RET	M
+     965/    F2E0 : FE 0A               	CP	A, 0AH			;Zeichen<="9"?
+     966/    F2E2 : 38 08               	JR	C, KON2
+     967/    F2E4 : D6 07               	SUB	7
+     968/    F2E6 : FE 0A               	CP	A, 0AH			;Zeichen<"A"?
+     969/    F2E8 : F8                  	RET	M
+     970/    F2E9 : FE 10               	CP	A, 10H			;Zeichen>"F"?
+     971/    F2EB : F0                  	RET	P
+     972/    F2EC : 13                  KON2:	INC	DE			;Hexziffer eintragen
+     973/    F2ED : ED 6F               	RLD
+     974/    F2EF : 23                  	INC	HL
+     975/    F2F0 : ED 6F               	RLD
+     976/    F2F2 : 18 E7               	JR	KON1			;naechste Ziffer
+     977/    F2F4 :                     ;
+     978/    F2F4 :                     ;-------------------------------------------------------------------------------
+     979/    F2F4 :                     ;Konvertierung ASCII-Hex ab (DE) --> (HL)
+     980/    F2F4 :                     ;-------------------------------------------------------------------------------
+     981/    F2F4 :                     ;
+     982/    F2F4 : C5                  INHEX:	PUSH	BC
+     983/    F2F5 : CD D1 F2            	CALL	KONVX			;Konvertierung
+     984/    F2F8 : 44                  	LD	B,H			;BC=HL=DATA+1
+     985/    F2F9 : 4D                  	LD	C,L
+     986/    F2FA : 6E                  	LD	L,(HL)			;unteres Byte
+     987/    F2FB : 03                  	INC	BC
+     988/    F2FC : 0A                  	LD	A,(BC)
+     989/    F2FD : 67                  	LD	H,A			;oberes Byte
+     990/    F2FE : B5                  	OR	L			;Z-Flag setzen
+     991/    F2FF : C1                  	POP	BC
+     992/    F300 : C9                  	RET
+     993/    F301 :                     ;
+     994/    F301 :                     ;-------------------------------------------------------------------------------
+     995/    F301 :                     ;Ausgabe (A) hexadezimal
+     996/    F301 :                     ;-------------------------------------------------------------------------------
+     997/    F301 :                     ;
+     998/    F301 : F5                  OUTHX:	PUSH	AF
+     999/    F302 : 1F                  	RRA
+    1000/    F303 : 1F                  	RRA
+    1001/    F304 : 1F                  	RRA
+    1002/    F305 : 1F                  	RRA
+    1003/    F306 : CD 0A F3            	CALL	OUX1			;obere Tetrade ausgeben
+    1004/    F309 : F1                  	POP	AF			;und die untere
+    1005/    F30A : F5                  OUX1:	PUSH	AF
+    1006/    F30B : E6 0F               	AND	A, 0FH
+    1007/    F30D : C6 30               	ADD	A, 30H			;Konvertierung --> ASCII
+    1008/    F30F : FE 3A               	CP	A, ':'			;Ziffer "A" ... "F"?
+    1009/    F311 : 38 02               	JR	C, OUX2			;nein
+    1010/    F313 : C6 07               	ADD	A, 7			;sonst Korrektur
+    1011/    F315 : CD 1B F2            OUX2:	CALL	OUTCH			;und Ausgabe
+    1012/    F318 : F1                  	POP	AF
+    1013/    F319 : C9                  	RET
+    1014/    F31A :                     ;
+    1015/    F31A :                     ;-------------------------------------------------------------------------------
+    1016/    F31A :                     ;Ausgabe HL hexadezimal
+    1017/    F31A :                     ;-------------------------------------------------------------------------------
+    1018/    F31A :                     ;
+    1019/    F31A : F5                  OUTHL:	PUSH	AF
+    1020/    F31B : 7C                  	LD	A,H
+    1021/    F31C : CD 01 F3            	CALL	OUTHX
+    1022/    F31F : 7D                  	LD	A,L
+    1023/    F320 : CD 01 F3            	CALL	OUTHX
+    1024/    F323 : F1                  	POP	AF
+    1025/    F324 : C9                  	RET
+    1026/    F325 :                     ;
+    1027/    F325 :                     ;-------------------------------------------------------------------------------
+    1028/    F325 :                     ;Speicherinhalt modifizieren
+    1029/    F325 :                     ;-------------------------------------------------------------------------------
+    1030/    F325 :                     ;
+    1031/    F325 : 2A 1B 00            MEM:	LD	HL,(ARG1)
+    1032/    F328 : (MACRO)             MEM1:	ROTHL				;Ausgabe Adresse
+    1032/    F328 : E7                          RST     20H
+    1032/    F329 : 07                          DB      07h                     ; OUTHL
+    1033/    F32A : E5                  	PUSH	HL
+    1034/    F32B : (MACRO)             	ROTSP				;Leerzeichen
+    1034/    F32B : E7                          RST     20H
+    1034/    F32C : 0E                          DB      0Eh                     ; OUTSP
+    1035/    F32D : 7E                  	LD	A,(HL)
+    1036/    F32E : (MACRO)             	ROTHX				;Ausgabe Byte
+    1036/    F32E : E7                          RST     20H
+    1036/    F32F : 06                          DB      06h                     ; OUTHX
+    1037/    F330 : CD B3 F2            	CALL	INLIN
+    1038/    F333 : ED 5B 16 00         	LD	DE,(SOIL)
+    1039/    F337 : 1A                  	LD	A,(DE)
+    1040/    F338 : 08                  	EX	AF, AF'
+    1041/    F339 : E1                  	POP	HL
+    1042/    F33A : 2B                  	DEC	HL
+    1043/    F33B : 23                  MEM2:	INC	HL
+    1044/    F33C : E5                  	PUSH	HL
+    1045/    F33D : CD F4 F2            	CALL	INHEX
+    1046/    F340 : 28 0D               	JR	Z, MEM4			;Trennzeichen
+    1047/    F342 : 7D                  MEM3:	LD	A,L
+    1048/    F343 : E1                  	POP	HL
+    1049/    F344 : 77                  	LD	(HL),A
+    1050/    F345 : BE                  	CP	A, (HL)			;RAM-Test
+    1051/    F346 : 28 F3               	JR	Z, MEM2			;i.O.
+    1052/    F348 : (MACRO)             	RPRST
+    1052/    F348 : E7                          RST     20H
+    1052/    F349 : 02                          DB      02h                     ; PRST
+    1053/    F34A : 45 52               	DB	"ER"
+    1054/    F34C : A0                  	DB	' '+80H
+    1055/    F34D : 18 D9               	JR	MEM1
+    1056/    F34F :                     ;
+    1057/    F34F : 1A                  MEM4:	LD	A,(DE)			;Test Datenbyte=0
+    1058/    F350 : FE 20               	CP	A, ' '			;wenn ja --> Z=1
+    1059/    F352 : 28 EE               	JR	Z, MEM3
+    1060/    F354 : E1                  	POP	HL
+    1061/    F355 : 23                  	INC	HL
+    1062/    F356 : 22 1D 00            	LD	(ARG2),HL		;1. nichtbearb. Adr.
+    1063/    F359 : FE 3B               	CP	A, ';'
+    1064/    F35B : C8                  	RET	Z			;Return, wenn ";" gegeben
+    1065/    F35C : 08                  	EX	AF, AF'
+    1066/    F35D : FE 20               	CP	A, ' '
+    1067/    F35F : 28 C7               	JR	Z, MEM1			;Z=1 keine Eingabe
+    1068/    F361 : 2B                  	DEC	HL
+    1069/    F362 : FE 52               	CP	A, 'R'			;"R" gegeben?
+    1070/    F364 : 20 C2               	JR	NZ, MEM1		;nein
+    1071/    F366 : 2B                  	DEC	HL			;sonst eine Adresse
+    1072/    F367 : 18 BF               	JR	MEM1			;zurueck
+    1073/    F369 :                     ;
+    1074/    F369 :                     ;-------------------------------------------------------------------------------
+    1075/    F369 :                     ;Speichern auf Kassette
+    1076/    F369 :                     ;-------------------------------------------------------------------------------
+    1077/    F369 :                     ;
+    1078/    F369 : 2A 1B 00            CSAVE:	LD	HL,(ARG1)
+    1079/    F36C : CD 7D F3            	CALL	SAV2			;Ausgabe 20H Bytes
+    1080/    F36F : EB                  SAV1:	EX	DE,HL
+    1081/    F370 : 2A 1D 00            	LD	HL,(ARG2)
+    1082/    F373 : A7                  	AND	A, A
+    1083/    F374 : ED 52               	SBC	HL,DE
+    1084/    F376 : EB                  	EX	DE,HL
+    1085/    F377 : D8                  	RET	C			;wenn File zu Ende
+    1086/    F378 : CD 83 F3            	CALL	SAV3			;Ausgabe 20H Byte
+    1087/    F37B : 18 F2               	JR	SAV1
+    1088/    F37D :                     ;
+    1089/    F37D : ED 5B 33 00         SAV2:	LD	DE,(LSYNC)		;langer Vorton
+    1090/    F381 : 18 03               	JR	SAV4
+    1091/    F383 :                     ;Ausgabe ein Block = 20H Bytes
+    1092/    F383 : 11 0E 00            SAV3:	LD	DE,14			;kurzer Vorton
+    1093/    F386 :                     ;Vorton: DE Halbschwingungen a 640 Hz
+    1094/    F386 : 06 70               SAV4:	LD	B,70H			;Ausg. Vorton
+    1095/    F388 : 10 FE               SAV5:	DJNZ	SAV5
+    1096/    F38A : CD F1 F3            	CALL	SAV21			;Flanke wechseln
+    1097/    F38D : 1B                  	DEC	DE
+    1098/    F38E : 7B                  	LD	A,E
+    1099/    F38F : B2                  	OR	D
+    1100/    F390 : 20 F4               	JR	NZ,SAV4
+    1101/    F392 :                     ;Trennschwingung: 1 Vollschwingung a 1280 Hz	
+    1102/    F392 : 0E 02               	LD	C,02H			;Ausgabe Synchron-
+    1103/    F394 : 06 35               SAV6:	LD	B,35H			;impulse
+    1104/    F396 : 10 FE               SAV7:	DJNZ	SAV7
+    1105/    F398 : CD F1 F3            	CALL	SAV21			;Flanke wechseln
+    1106/    F39B : 0D                  	DEC	C
+    1107/    F39C : 11 00 00            	LD	DE,0
+    1108/    F39F : 20 F3               	JR	NZ,SAV6
+    1109/    F3A1 :                     ;
+    1110/    F3A1 : D5                  	PUSH	DE			;DE=IX=0000
+    1111/    F3A2 : DD E1               	POP	IX
+    1112/    F3A4 :                     ;Kopfinhalt ausgeben
+    1113/    F3A4 : 06 12               	LD	B,12H			;kurze Pause
+    1114/    F3A6 : 10 FE               SAV8:	DJNZ	SAV8
+    1115/    F3A8 : CD D0 F3            	CALL	SAV14			;Ausgabe DE
+    1116/    F3AB : 06 0F               	LD	B,0FH			;kurze Pause
+    1117/    F3AD : 10 FE               SAV9:	DJNZ	SAV9
+    1118/    F3AF :                     ;20H Bytes ausgeben
+    1119/    F3AF : 0E 10               	LD	C,10H			;10H*2 Bytes
+    1120/    F3B1 : 5E                  SAV10:	LD	E,(HL)
+    1121/    F3B2 : 23                  	INC	HL
+    1122/    F3B3 : 56                  	LD	D,(HL)
+    1123/    F3B4 : DD 19               	ADD	IX,DE			;Pruefsumme bilden
+    1124/    F3B6 : 23                  	INC	HL
+    1125/    F3B7 : C5                  	PUSH	BC
+    1126/    F3B8 : CD D0 F3            	CALL	SAV14			;Ausgabe DE
+    1127/    F3BB : C1                  	POP	BC
+    1128/    F3BC : 0D                  	DEC	C
+    1129/    F3BD : 28 06               	JR	Z, SAV12		;Block fertig geschrieben
+    1130/    F3BF : 06 0E               	LD	B,0EH			;kurze Pause
+    1131/    F3C1 : 10 FE               SAV11:	DJNZ	SAV11
+    1132/    F3C3 : 18 EC               	JR	SAV10
+    1133/    F3C5 :                     ;Pruefsumme ausgeben
+    1134/    F3C5 : DD E5               SAV12:	PUSH	IX
+    1135/    F3C7 : D1                  	POP	DE			;DE = Pruefsumme
+    1136/    F3C8 : 06 10               	LD	B,10H			;kurze Pause
+    1137/    F3CA : 10 FE               SAV13:	DJNZ	SAV13			
+    1138/    F3CC : CD D0 F3            	CALL	SAV14			;DE ausgeben
+    1139/    F3CF : C9                  	RET
+    1140/    F3D0 :                     ;Ausgabe 16 Bit DE
+    1141/    F3D0 : 0E 10               SAV14:	LD	C,16			;16 Bit
+    1142/    F3D2 : CB 3A               SAV15:	SRL	D			;Hi-Bit in Cy schieben
+    1143/    F3D4 : CB 1B               	RR	E
+    1144/    F3D6 : 30 07               	JR	NC, SAV17		;Cy=1, wenn Bit=1
+    1145/    F3D8 :                     ;1-Bit 1 Halbschwingung mit 1280 Hz 
+    1146/    F3D8 : 06 03               	LD	B,3
+    1147/    F3DA : 10 FE               SAV16:	DJNZ	SAV16
+    1148/    F3DC : 00                  	NOP
+    1149/    F3DD : 18 03               	JR	SAV18
+    1150/    F3DF :                     ;0-Bit 1 Vollschwingung mit 2560 Hz 
+    1151/    F3DF : CD F1 F3            SAV17:	CALL	SAV21			;Flanke ausgeben
+    1152/    F3E2 : 06 19               SAV18:	LD	B,19H
+    1153/    F3E4 : 10 FE               SAV19:	DJNZ	SAV19
+    1154/    F3E6 : CD F1 F3            	CALL	SAV21			;Flanke ausgeben
+    1155/    F3E9 : 0D                  	DEC	C
+    1156/    F3EA : C8                  	RET	Z			;wenn fertig
+    1157/    F3EB : 06 15               	LD	B,15H
+    1158/    F3ED : 10 FE               SAV20:	DJNZ	SAV20
+    1159/    F3EF : 18 E1               	JR	SAV15
+    1160/    F3F1 :                     ;Flanke ausgeben
+    1161/    F3F1 : DB 02               SAV21:	IN	A, PIOBD		;Flanke ausgeben
+    1162/    F3F3 : EE 80               	XOR	80H			;durch Bit-Negierung Bit7
+    1163/    F3F5 : D3 02               	OUT	PIOBD, A
+    1164/    F3F7 : C9                  	RET
+    1165/    F3F8 :                     ;
+    1166/    F3F8 :                     ;-------------------------------------------------------------------------------
+    1167/    F3F8 :                     ;Laden von Kassette
+    1168/    F3F8 :                     ;-------------------------------------------------------------------------------
+    1169/    F3F8 :                     ;
+    1170/    F3F8 : 2A 1B 00            CLOAD:	LD	HL,(ARG1)
+    1171/    F3FB : CD 17 F4            LOA1:	CALL	LOA3			;laden 20H Bytes
+    1172/    F3FE : 28 0C               	JR	Z, LOA2			;wenn kein Ladefehler
+    1173/    F400 : CD A5 F2            	CALL	PRST7			;sonst Fehler
+    1174/    F403 : 43 53               	DB	"CS"
+    1175/    F405 : BC                  	DB	'<'+80h
+    1176/    F406 : CD 1A F3            	CALL	OUTHL			;Adresse ausgeben
+    1177/    F409 : CD CF F5            	CALL	OUTSP
+    1178/    F40C : EB                  LOA2:	EX	DE,HL
+    1179/    F40D : 2A 1D 00            	LD	HL,(ARG2)
+    1180/    F410 : A7                  	AND	A, A
+    1181/    F411 : ED 52               	SBC	HL,DE			;Endadresse erreicht?
+    1182/    F413 : EB                  	EX	DE,HL
+    1183/    F414 : D8                  	RET	C			;ja --> fertig
+    1184/    F415 : 18 E4               	JR	LOA1			;sonst weiterlesen
+    1185/    F417 :                     ;20H Bytes laden nach (HL)
+    1186/    F417 : CD BC F4            LOA3:	CALL	LOA24			;synchronisieren
+    1187/    F41A : CD C6 F4            	CALL	LOA25			;Flanke abwarten
+    1188/    F41D : 0E 07               	LD	C,7
+    1189/    F41F : 11 10 09            LOA5:	LD	DE,0910H		;D=9, E=10h
+    1190/    F422 : 3E 07               	LD	A,7
+    1191/    F424 : 3D                  LOA6:	DEC	A
+    1192/    F425 : 20 FD               	JR	NZ, LOA6
+    1193/    F427 : CD BC F4            	CALL	LOA24			;synchronisieren
+    1194/    F42A : CD BC F4            LOA7:	CALL	LOA24			;Flanke ?
+    1195/    F42D : 20 E8               	JR	NZ, LOA3		;wenn nicht Vorton
+    1196/    F42F : 15                  	DEC	D
+    1197/    F430 : 20 F8               	JR	NZ, LOA7
+    1198/    F432 : 0D                  	DEC	C
+    1199/    F433 : 28 0C               	JR	Z, LOA9
+    1200/    F435 : DB 02               LOA8:	IN	A, 2
+    1201/    F437 : A8                  	XOR	B
+    1202/    F438 : CB 77               	BIT	6,A
+    1203/    F43A : 20 E3               	JR	NZ, LOA5
+    1204/    F43C : 1D                  	DEC	E
+    1205/    F43D : 20 F6               	JR	NZ, LOA8
+    1206/    F43F : 18 D6               	JR	LOA3
+    1207/    F441 :                     ;Synchronisierimpulse lesen
+    1208/    F441 : CD C6 F4            LOA9:	CALL	LOA25			;Flanke abwarten
+    1209/    F444 : 3E 44               	LD	A,44H
+    1210/    F446 : 3D                  LOA10:	DEC	A
+    1211/    F447 : 20 FD               	JR	NZ, LOA10
+    1212/    F449 : CD BC F4            	CALL	LOA24			;Flanke ?
+    1213/    F44C : 20 F3               	JR	NZ, LOA9		;wenn nicht
+    1214/    F44E : CD C6 F4            	CALL	LOA25			;Flanke abwarten
+    1215/    F451 : 3E 1E               	LD	A,1EH
+    1216/    F453 : 3D                  LOA11:	DEC	A
+    1217/    F454 : 20 FD               	JR	NZ, LOA11
+    1218/    F456 :                     ;2 Bytes Kopf lesen
+    1219/    F456 : CD 9D F4            	CALL	LOA19			;lesen DE
+    1220/    F459 :                     ;20H Byte Daten lesen
+    1221/    F459 : 0E 10               	LD	C,10H			;10H x 2 Bytes
+    1222/    F45B : D5                  	PUSH	DE
+    1223/    F45C : DD E1               	POP	IX			;IX-Pruefsummenzaehler=
+    1224/    F45E : 3E 1A               	LD	A,1AH
+    1225/    F460 : 3D                  LOA12:	DEC	A
+    1226/    F461 : 20 FD               	JR	NZ, LOA12
+    1227/    F463 : CD 9D F4            LOA13:	CALL	LOA19			;laden DE
+    1228/    F466 : DD 19               	ADD	IX,DE			;Pruefsumme bilden
+    1229/    F468 : C5                  	PUSH	BC
+    1230/    F469 : 4D                  	LD	C,L
+    1231/    F46A : 44                  	LD	B,H
+    1232/    F46B : 2A 1D 00            	LD	HL,(ARG2)
+    1233/    F46E : AF                  	XOR	A
+    1234/    F46F : ED 42               	SBC	HL,BC			;Endadresse erreicht?
+    1235/    F471 : 69                  	LD	L,C
+    1236/    F472 : 60                  	LD	H,B
+    1237/    F473 : C1                  	POP	BC
+    1238/    F474 : 38 05               	JR	C, LOA14		;ja --> Leseende
+    1239/    F476 : 73                  	LD	(HL),E
+    1240/    F477 : 23                  	INC	HL
+    1241/    F478 : 72                  	LD	(HL),D
+    1242/    F479 : 18 06               	JR	LOA16
+    1243/    F47B : 3E 01               LOA14:	LD	A,1
+    1244/    F47D : 3D                  LOA15:	DEC	A
+    1245/    F47E : 20 FD               	JR	NZ, LOA15
+    1246/    F480 : 23                  	INC	HL
+    1247/    F481 : 23                  LOA16:	INC	HL
+    1248/    F482 : 0D                  	DEC	C
+    1249/    F483 : 28 07               	JR	Z, LOA18		;wenn Blockende
+    1250/    F485 : 3E 12               	LD	A,12H
+    1251/    F487 : 3D                  LOA17:	DEC	A
+    1252/    F488 : 20 FD               	JR	NZ, LOA17
+    1253/    F48A : 18 D7               	JR	LOA13			;naechte 2 Byte
+    1254/    F48C : 3E 12               LOA18:	LD	A,12H
+    1255/    F48E : 3D                  LOA27:	DEC	A
+    1256/    F48F : 20 FD               	JR	NZ, LOA27
+    1257/    F491 :                     ;Pruefsumme lesen	
+    1258/    F491 : CD 9D F4            	CALL	LOA19			;laden DE
+    1259/    F494 : EB                  	EX	DE,HL
+    1260/    F495 : DD E5               	PUSH	IX
+    1261/    F497 : C1                  	POP	BC
+    1262/    F498 : AF                  	XOR	A
+    1263/    F499 : ED 42               	SBC	HL,BC			;Prüfsumme gleich?
+    1264/    F49B : EB                  	EX	DE,HL			;Z=0 Ladefehler
+    1265/    F49C : C9                  	RET
+    1266/    F49D :                     ;Laden 2 Byte nach DE
+    1267/    F49D : E5                  LOA19:	PUSH	HL
+    1268/    F49E : 2E 10               	LD	L,10H			;16 Datenbits
+    1269/    F4A0 : CD BC F4            LOA20:	CALL	LOA24			;Flanke ?
+    1270/    F4A3 : 20 03               	JR	NZ, LOA21
+    1271/    F4A5 : AF                  	XOR	A			;Cy=0
+    1272/    F4A6 : 18 01               	JR	LOA22
+    1273/    F4A8 : 37                  LOA21:	SCF
+    1274/    F4A9 : CB 1A               LOA22:	RR	D
+    1275/    F4AB : CB 1B               	RR	E
+    1276/    F4AD : CD C6 F4            	CALL	LOA25			;Flanke abwarten
+    1277/    F4B0 : 2D                  	DEC	L
+    1278/    F4B1 : 28 07               	JR	Z, LOA23		;wenn fertig
+    1279/    F4B3 : 3E 1E               	LD	A,1EH
+    1280/    F4B5 : 3D                  LOA26:	DEC	A
+    1281/    F4B6 : 20 FD               	JR	NZ, LOA26
+    1282/    F4B8 : 18 E6               	JR	LOA20
+    1283/    F4BA : E1                  LOA23:	POP	HL
+    1284/    F4BB : C9                  	RET
+    1285/    F4BC :                     ;Portabfrage
+    1286/    F4BC : DB 02               LOA24:	IN	A, PIOBD
+    1287/    F4BE : A8                  	XOR	B
+    1288/    F4BF : CB 77               	BIT	6,A			;Bit6->TB in
+    1289/    F4C1 : F5                  	PUSH	AF
+    1290/    F4C2 : A8                  	XOR	B
+    1291/    F4C3 : 47                  	LD	B,A
+    1292/    F4C4 : F1                  	POP	AF			;Z=0 --> Flanke
+    1293/    F4C5 : C9                  	RET
+    1294/    F4C6 :                     ;Warten auf Flankenwechsel
+    1295/    F4C6 : DB 02               LOA25:	IN	A, PIOBD
+    1296/    F4C8 : A8                  	XOR	B
+    1297/    F4C9 : CB 77               	BIT	6,A			;Bit6->TB in
+    1298/    F4CB : 28 F9               	JR	Z, LOA25
+    1299/    F4CD : C9                  	RET
+    1300/    F4CE :                     ;
+    1301/    F4CE :                     ;-------------------------------------------------------------------------------
+    1302/    F4CE :                     ;Speicherinhalt mit Checksumme anzeigen
+    1303/    F4CE :                     ;-------------------------------------------------------------------------------
+    1304/    F4CE :                     ;
+    1305/    F4CE : 2A 1B 00            D_KDO:	LD	HL,(ARG1)
+    1306/    F4D1 : ED 5B 1D 00         DKO1:	LD	DE,(ARG2)
+    1307/    F4D5 : 37                  	SCF
+    1308/    F4D6 : E5                  	PUSH	HL
+    1309/    F4D7 : ED 52               	SBC	HL,DE
+    1310/    F4D9 : E1                  	POP	HL
+    1311/    F4DA : D0                  	RET	NC			;wenn EADR<AADR
+    1312/    F4DB : (MACRO)             	ROTHL
+    1312/    F4DB : E7                          RST     20H
+    1312/    F4DC : 07                          DB      07h                     ; OUTHL
+    1313/    F4DD : 01 00 08            	LD	BC,0800H		;B=8
+    1314/    F4E0 : 1E 00               	LD	E,0			;EC=0 - Checksumme
+    1315/    F4E2 : (MACRO)             DKO2:	RPRST
+    1315/    F4E2 : E7                          RST     20H
+    1315/    F4E3 : 02                          DB      02h                     ; PRST
+    1316/    F4E4 : A0                  	DB	' '+80H
+    1317/    F4E5 : 7E                  	LD	A,(HL)
+    1318/    F4E6 : (MACRO)             	ROTHX
+    1318/    F4E6 : E7                          RST     20H
+    1318/    F4E7 : 06                          DB      06h                     ; OUTHX
+    1319/    F4E8 : 81                  	ADD	A, C			;Checksumme bilden
+    1320/    F4E9 : 4F                  	LD	C,A
+    1321/    F4EA : 30 04               	JR	NC, DKO3
+    1322/    F4EC : 3E 00               	LD	A,0
+    1323/    F4EE : 8B                  	ADC	A, E
+    1324/    F4EF : 5F                  	LD	E,A
+    1325/    F4F0 : 23                  DKO3:	INC	HL
+    1326/    F4F1 : 10 EF               	DJNZ	DKO2
+    1327/    F4F3 : (MACRO)             	RPRST
+    1327/    F4F3 : E7                          RST     20H
+    1327/    F4F4 : 02                          DB      02h                     ; PRST
+    1328/    F4F5 : A0                  	DB	' '+80H
+    1329/    F4F6 : 7B                  	LD	A,E
+    1330/    F4F7 : CD 0A F3            	CALL	OUX1			;Checksumme ausgeben
+    1331/    F4FA : 79                  	LD	A,C
+    1332/    F4FB : (MACRO)             	ROTHX
+    1332/    F4FB : E7                          RST     20H
+    1332/    F4FC : 06                          DB      06h                     ; OUTHX
+    1333/    F4FD : 18 D2               	JR	DKO1
+    1334/    F4FF :                     ;
+    1335/    F4FF :                     ;-------------------------------------------------------------------------------
+    1336/    F4FF :                     ;Argumente uebergeben
+    1337/    F4FF :                     ;-------------------------------------------------------------------------------
+    1338/    F4FF :                     ;
+    1339/    F4FF : 2A 1B 00            PARA:	LD	HL,(ARG1)
+    1340/    F502 : ED 5B 1D 00         	LD	DE,(ARG2)
+    1341/    F506 : ED 4B 23 00         	LD	BC,(ARG3)
+    1342/    F50A : C9                  	RET
+    1343/    F50B :                     ;
+    1344/    F50B :                     ;-------------------------------------------------------------------------------
+    1345/    F50B :                     ;Speicherbereich mit Byte beschreiben
+    1346/    F50B :                     ;-------------------------------------------------------------------------------
+    1347/    F50B :                     ;
+    1348/    F50B : CD FF F4            K_KDO:	CALL	PARA
+    1349/    F50E : 71                  	LD	(HL),C			;C=Fuellbyte
+    1350/    F50F : E5                  	PUSH	HL
+    1351/    F510 : AF                  	XOR	A
+    1352/    F511 : EB                  	EX	DE,HL
+    1353/    F512 : ED 52               	SBC	HL,DE
+    1354/    F514 : 44                  	LD	B,H
+    1355/    F515 : 4D                  	LD	C,L			;BC=Laenge
+    1356/    F516 : E1                  	POP	HL
+    1357/    F517 : 54                  	LD	D,H
+    1358/    F518 : 5D                  	LD	E,L
+    1359/    F519 : 13                  	INC	DE
+    1360/    F51A : ED B0               	LDIR
+    1361/    F51C : C9                  	RET
+    1362/    F51D :                     ;
+    1363/    F51D :                     ;-------------------------------------------------------------------------------
+    1364/    F51D :                     ;Speicherbereich verschieben
+    1365/    F51D :                     ;-------------------------------------------------------------------------------
+    1366/    F51D :                     ;
+    1367/    F51D : CD FF F4            T_KDO:	CALL	PARA
+    1368/    F520 : AF                  	XOR	A
+    1369/    F521 : E5                  	PUSH	HL
+    1370/    F522 : ED 52               	SBC	HL,DE
+    1371/    F524 : E1                  	POP	HL
+    1372/    F525 : 38 03               	JR	C, TKO1			;wenn Zieladr. groesser
+    1373/    F527 : ED B0               	LDIR				;Vorwaertstransfer
+    1374/    F529 : C9                  	RET
+    1375/    F52A : 09                  TKO1:	ADD	HL,BC
+    1376/    F52B : EB                  	EX	DE,HL
+    1377/    F52C : 09                  	ADD	HL,BC
+    1378/    F52D : EB                  	EX	DE,HL
+    1379/    F52E : 2B                  	DEC	HL
+    1380/    F52F : 1B                  	DEC	DE
+    1381/    F530 : ED B8               	LDDR				;Rueckwaertstransfer
+    1382/    F532 : C9                  	RET
+    1383/    F533 :                     ;
+    1384/    F533 :                     ;-------------------------------------------------------------------------------
+    1385/    F533 :                     ;Debugging-Funktionen
+    1386/    F533 :                     ;-------------------------------------------------------------------------------
+    1387/    F533 :                     ;
+    1388/    F533 :                     ;Register im Registerrettebereich ablegen
+    1389/    F533 :                     ;
+    1390/    F533 : ED 73 13 00         REGA:	LD	(DATA),SP
+    1391/    F537 : 31 61 00            	LD	SP,REGPC
+    1392/    F53A : DD E5               	PUSH	IX
+    1393/    F53C : FD E5               	PUSH	IY
+    1394/    F53E : F5                  	PUSH	AF
+    1395/    F53F : C5                  	PUSH	BC
+    1396/    F540 : D5                  	PUSH	DE
+    1397/    F541 : E5                  	PUSH	HL
+    1398/    F542 : D9                  	EXX
+    1399/    F543 : 08                  	EX	AF, AF'
+    1400/    F544 : F5                  	PUSH	AF
+    1401/    F545 : C5                  	PUSH	BC
+    1402/    F546 : D5                  	PUSH	DE
+    1403/    F547 : E5                  	PUSH	HL
+    1404/    F548 : 18 15               	JR	REG1
+    1405/    F54A :                     ;Register aus Registerrettebereich holen
+    1406/    F54A : ED 73 13 00         REGH:	LD	(DATA),SP
+    1407/    F54E : 31 4D 00            	LD	SP,REGBR
+    1408/    F551 : E1                  	POP	HL
+    1409/    F552 : D1                  	POP	DE
+    1410/    F553 : C1                  	POP	BC
+    1411/    F554 : F1                  	POP	AF
+    1412/    F555 : D9                  	EXX
+    1413/    F556 : 08                  	EX	AF, AF'
+    1414/    F557 : E1                  	POP	HL
+    1415/    F558 : D1                  	POP	DE
+    1416/    F559 : C1                  	POP	BC
+    1417/    F55A : F1                  	POP	AF
+    1418/    F55B : FD E1               	POP	IY
+    1419/    F55D : DD E1               	POP	IX
+    1420/    F55F : ED 7B 13 00         REG1:	LD	SP,(DATA)
+    1421/    F563 : C9                  	RET
+    1422/    F564 :                     ;
+    1423/    F564 :                     ;Einsprung bei Breakpoint
+    1424/    F564 :                     ;
+    1425/    F564 : CD 33 F5            BREAK:	CALL	REGA			;Register ablegen
+    1426/    F567 : E1                  	POP	HL			;HL=Breakadr.+3
+    1427/    F568 : ED 73 63 00         	LD	(REGSP),SP		;SP sichern
+    1428/    F56C : 31 B0 00            	LD	SP,SYSSK		;Systemstack nutzen
+    1429/    F56F : 2B                  	DEC	HL
+    1430/    F570 : 2B                  	DEC	HL
+    1431/    F571 : 2B                  	DEC	HL
+    1432/    F572 : 22 61 00            	LD	(REGPC),HL		;Breakadresse
+    1433/    F575 : ED 5B 0B 00         	LD	DE,(BPADR)		;die originalen 3 Byte
+    1434/    F579 : 21 0D 00            	LD	HL,BPOPC		;Operanden zurueckbringen
+    1435/    F57C : 01 03 00            	LD	BC,3
+    1436/    F57F : ED B0               	LDIR
+    1437/    F581 : CD E4 F5            	CALL	REGDA
+    1438/    F584 : C3 5F F0            	JP	KDO2
+    1439/    F587 :                     ;
+    1440/    F587 :                     ;-------------------------------------------------------------------------------
+    1441/    F587 :                     ;Breakpoint-Adresse setzen
+    1442/    F587 :                     ;-------------------------------------------------------------------------------
+    1443/    F587 :                     ;
+    1444/    F587 : 2A 1B 00            B_KDO:	LD	HL,(ARG1)
+    1445/    F58A : 22 0B 00            	LD	(BPADR),HL
+    1446/    F58D : 11 0D 00            	LD	DE,BPOPC		;3 Byte Operanden
+    1447/    F590 : 01 03 00            	LD	BC,3			;retten
+    1448/    F593 : ED B0               	LDIR
+    1449/    F595 : CD E4 F5            	CALL	REGDA			;Register anzeigen
+    1450/    F598 : C9                  	RET
+    1451/    F599 :                     ;
+    1452/    F599 :                     ;-------------------------------------------------------------------------------
+    1453/    F599 :                     ;Programm starten mit Breakpoint
+    1454/    F599 :                     ;-------------------------------------------------------------------------------
+    1455/    F599 :                     ;
+    1456/    F599 : 2A 0B 00            E_KDO:	LD	HL,(BPADR)
+    1457/    F59C : 36 CD               	LD	(HL),0CDH		;CALL ...
+    1458/    F59E : 23                  	INC	HL
+    1459/    F59F : 11 64 F5            	LD	DE,BREAK		;an Breakpoint Unter-
+    1460/    F5A2 : 73                  	LD	(HL),E			;Brechung zu BREAK eintragen
+    1461/    F5A3 : 23                  	INC	HL
+    1462/    F5A4 : 72                  	LD	(HL),D
+    1463/    F5A5 :                     ;
+    1464/    F5A5 :                     ;-------------------------------------------------------------------------------
+    1465/    F5A5 :                     ;Programm starten
+    1466/    F5A5 :                     ;-------------------------------------------------------------------------------
+    1467/    F5A5 :                     ;
+    1468/    F5A5 : 2A 1B 00            J_KDO:	LD	HL,(ARG1)		;Startadresse
+    1469/    F5A8 : 22 61 00            	LD	(REGPC),HL		;zwischenspeichern
+    1470/    F5AB : ED 7B 63 00         	LD	SP,(REGSP)		;Stack generieren
+    1471/    F5AF : E5                  	PUSH	HL			;Startadresse in Stack
+    1472/    F5B0 : C3 4A F5            	JP	REGH			;Register holen
+    1473/    F5B3 :                     					;und Pgm. durch RET starten
+    1474/    F5B3 :                     ;
+    1475/    F5B3 :                     ;-------------------------------------------------------------------------------
+    1476/    F5B3 :                     ;Programm nach Break fortsetzen
+    1477/    F5B3 :                     ;-------------------------------------------------------------------------------
+    1478/    F5B3 :                     ;
+    1479/    F5B3 : 2A 61 00            G_KDO:	LD	HL,(REGPC)
+    1480/    F5B6 : 22 1B 00            	LD	(ARG1),HL
+    1481/    F5B9 : ED 5B 0B 00         	LD	DE,(BPADR)
+    1482/    F5BD : AF                  	XOR	A			;Cy=0
+    1483/    F5BE : ED 52               	SBC	HL,DE
+    1484/    F5C0 : 20 D7               	JR	NZ, E_KDO		;wenn nicht Breakpoint
+    1485/    F5C2 : 18 E1               	JR	J_KDO			;starten
+    1486/    F5C4 :                     ;
+    1487/    F5C4 :                     ;-------------------------------------------------------------------------------
+    1488/    F5C4 :                     ;Ausgabe eines Doppelpunktes und (HL) und Leerzeichen
+    1489/    F5C4 :                     ;-------------------------------------------------------------------------------
+    1490/    F5C4 :                     ;
+    1491/    F5C4 : (MACRO)             OUTDP:	RPRST
+    1491/    F5C4 : E7                          RST     20H
+    1491/    F5C5 : 02                          DB      02h                     ; PRST
+    1492/    F5C6 : BA                  	DB	':'+80H
+    1493/    F5C7 :                     ;
+    1494/    F5C7 :                     ;-------------------------------------------------------------------------------
+    1495/    F5C7 :                     ;Ausgabe hex 2 Byte Speicher (HL) und (HL-1)
+    1496/    F5C7 :                     ;und ein Leerzeichen
+    1497/    F5C7 :                     ;-------------------------------------------------------------------------------
+    1498/    F5C7 :                     ;
+    1499/    F5C7 : 7E                  OTHLS:	LD	A,(HL)			;hoeherwertiges Byte
+    1500/    F5C8 : (MACRO)             	ROTHX				;ausgeben
+    1500/    F5C8 : E7                          RST     20H
+    1500/    F5C9 : 06                          DB      06h                     ; OUTHX
+    1501/    F5CA : 2B                  	DEC	HL
+    1502/    F5CB : 7E                  	LD	A,(HL)			;niederwertiges Byte
+    1503/    F5CC : (MACRO)             	ROTHX				;ausgeben
+    1503/    F5CC : E7                          RST     20H
+    1503/    F5CD : 06                          DB      06h                     ; OUTHX
+    1504/    F5CE : 2B                  	DEC	HL			;naechsten Aufruf vorbereiten
+    1505/    F5CF :                     ;
+    1506/    F5CF :                     ;-------------------------------------------------------------------------------
+    1507/    F5CF :                     ;Ausgabe ein Leerzeichen
+    1508/    F5CF :                     ;-------------------------------------------------------------------------------
+    1509/    F5CF :                     ;
+    1510/    F5CF : (MACRO)             OUTSP:	RPRST
+    1510/    F5CF : E7                          RST     20H
+    1510/    F5D0 : 02                          DB      02h                     ; PRST
+    1511/    F5D1 : A0                  	DB	' '+80H
+    1512/    F5D2 : C9                  	RET
+    1513/    F5D3 :                     ;
+    1514/    F5D3 :                     ;-------------------------------------------------------------------------------
+    1515/    F5D3 :                     ;Registermodifizerung und -anzeige
+    1516/    F5D3 :                     ;-------------------------------------------------------------------------------
+    1517/    F5D3 :                     ;
+    1518/    F5D3 :                     ;Z-Flag-Anzeige
+    1519/    F5D3 :                     ;
+    1520/    F5D3 : (MACRO)             AUS1:	RPRST				;Ausg. "1 "
+    1520/    F5D3 : E7                          RST     20H
+    1520/    F5D4 : 02                          DB      02h                     ; PRST
+    1521/    F5D5 : 31                  	DB	"1"
+    1522/    F5D6 : A0                  	DB	' '+80H
+    1523/    F5D7 : C9                  	RET
+    1524/    F5D8 : 20 F9               AUSX:	JR	NZ, AUS1
+    1525/    F5DA : (MACRO)             	RPRST				;Ausg. "0 "
+    1525/    F5DA : E7                          RST     20H
+    1525/    F5DB : 02                          DB      02h                     ; PRST
+    1526/    F5DC : 30                  	DB	"0"
+    1527/    F5DD : A0                  	DB	' '+80H
+    1528/    F5DE : C9                  	RET
+    1529/    F5DF :                     ;
+    1530/    F5DF :                     ; R-Kommando
+    1531/    F5DF :                     ;
+    1532/    F5DF : FE 3A               R_KDO:	CP	A, ':'
+    1533/    F5E1 : C2 5A F6            	JP	NZ, RKO3		;wenn Modifizierung
+    1534/    F5E4 :                     ;
+    1535/    F5E4 : (MACRO)             REGDA:	RPRST				;Anzeige Breakpointadresse
+    1535/    F5E4 : E7                          RST     20H
+    1535/    F5E5 : 02                          DB      02h                     ; PRST
+    1536/    F5E6 : 0D                  	DB	CR
+    1537/    F5E7 : 42                  	DB	"B"			;"BP"
+    1538/    F5E8 : D0                  	DB	'P'+80H
+    1539/    F5E9 : 21 0C 00            	LD	HL,BPADR+1
+    1540/    F5EC : (MACRO)             	ROTDP
+    1540/    F5EC : E7                          RST     20H
+    1540/    F5ED : 0D                          DB      0Dh                     ; OUTDP
+    1541/    F5EE : (MACRO)             	RPRST				;Ausgabe Operandenfolge
+    1541/    F5EE : E7                          RST     20H
+    1541/    F5EF : 02                          DB      02h                     ; PRST
+    1542/    F5F0 : 42 53               	DB	"BS"			;am Breakpoint
+    1543/    F5F2 : BA                  	DB	':'+80H
+    1544/    F5F3 : 06 03               	LD	B,3			;3 Byte
+    1545/    F5F5 : 21 0D 00            	LD	HL,BPOPC
+    1546/    F5F8 : 7E                  RKO1:	LD	A,(HL)
+    1547/    F5F9 : (MACRO)             	ROTHX
+    1547/    F5F9 : E7                          RST     20H
+    1547/    F5FA : 06                          DB      06h                     ; OUTHX
+    1548/    F5FB : 23                  	INC	HL
+    1549/    F5FC : 10 FA               	DJNZ	RKO1
+    1550/    F5FE :                     ;
+    1551/    F5FE : (MACRO)             	RPRST				;Flaganzeige
+    1551/    F5FE : E7                          RST     20H
+    1551/    F5FF : 02                          DB      02h                     ; PRST
+    1552/    F600 : 20 20 20 53 20 5A   	DB	"   S Z C"
+                    20 43 
+    1553/    F608 : A0                  	DB	' '+80H
+    1554/    F609 : 3A 5B 00            	LD	A,(REGAF)		;A-Flagregister
+    1555/    F60C : 6F                  	LD	L,A
+    1556/    F60D : CB 7D               	BIT	7,L			;S-Flag
+    1557/    F60F : CD D8 F5            	CALL	AUSX
+    1558/    F612 : CB 75               	BIT	6,L			;Z-Flag
+    1559/    F614 : CD D8 F5            	CALL	AUSX
+    1560/    F617 : CB 45               	BIT	0,L			;Cy-Flag
+    1561/    F619 : CD D8 F5            	CALL	AUSX
+    1562/    F61C :                     ;
+    1563/    F61C : 21 64 00            	LD	HL,REGSP+1		;Sonderregister-anzeige
+    1564/    F61F : 06 02               	LD	B,2			;2 Registersaetze
+    1565/    F621 : (MACRO)             	RPRST
+    1565/    F621 : E7                          RST     20H
+    1565/    F622 : 02                          DB      02h                     ; PRST
+    1566/    F623 : 53                  RKO2:	DB	"S"
+    1567/    F624 : D0                  	DB	'P'+80H
+    1568/    F625 : (MACRO)             	ROTDP
+    1568/    F625 : E7                          RST     20H
+    1568/    F626 : 0D                          DB      0Dh                     ; OUTDP
+    1569/    F627 : (MACRO)             	RPRST
+    1569/    F627 : E7                          RST     20H
+    1569/    F628 : 02                          DB      02h                     ; PRST
+    1570/    F629 : 50                  	DB	"P"
+    1571/    F62A : C3                  	DB	'C'+80H
+    1572/    F62B : (MACRO)             	ROTDP
+    1572/    F62B : E7                          RST     20H
+    1572/    F62C : 0D                          DB      0Dh                     ; OUTDP
+    1573/    F62D : (MACRO)             	RPRST
+    1573/    F62D : E7                          RST     20H
+    1573/    F62E : 02                          DB      02h                     ; PRST
+    1574/    F62F : 49                  	DB	"I"
+    1575/    F630 : D8                  	DB	'X'+80H
+    1576/    F631 : (MACRO)             	ROTDP
+    1576/    F631 : E7                          RST     20H
+    1576/    F632 : 0D                          DB      0Dh                     ; OUTDP
+    1577/    F633 : (MACRO)             	RPRST
+    1577/    F633 : E7                          RST     20H
+    1577/    F634 : 02                          DB      02h                     ; PRST
+    1578/    F635 : 49                  	DB	"I"
+    1579/    F636 : D9                  	DB	'Y'+80H
+    1580/    F637 : (MACRO)             	ROTDP
+    1580/    F637 : E7                          RST     20H
+    1580/    F638 : 0D                          DB      0Dh                     ; OUTDP
+    1581/    F639 :                     ;
+    1582/    F639 : (MACRO)             RKO4:	RPRST				;Registersatz anzeigen
+    1582/    F639 : E7                          RST     20H
+    1582/    F63A : 02                          DB      02h                     ; PRST
+    1583/    F63B : 41                  	DB	"A"
+    1584/    F63C : C6                  	DB	'F'+80H
+    1585/    F63D : (MACRO)             	ROTDP
+    1585/    F63D : E7                          RST     20H
+    1585/    F63E : 0D                          DB      0Dh                     ; OUTDP
+    1586/    F63F : (MACRO)             	RPRST
+    1586/    F63F : E7                          RST     20H
+    1586/    F640 : 02                          DB      02h                     ; PRST
+    1587/    F641 : 42                  	DB	"B"
+    1588/    F642 : C3                  	DB	'C'+80H
+    1589/    F643 : (MACRO)             	ROTDP
+    1589/    F643 : E7                          RST     20H
+    1589/    F644 : 0D                          DB      0Dh                     ; OUTDP
+    1590/    F645 : (MACRO)             	RPRST
+    1590/    F645 : E7                          RST     20H
+    1590/    F646 : 02                          DB      02h                     ; PRST
+    1591/    F647 : 44                  	DB	"D"
+    1592/    F648 : C5                  	DB	'E'+80H
+    1593/    F649 : (MACRO)             	ROTDP
+    1593/    F649 : E7                          RST     20H
+    1593/    F64A : 0D                          DB      0Dh                     ; OUTDP
+    1594/    F64B : (MACRO)             	RPRST
+    1594/    F64B : E7                          RST     20H
+    1594/    F64C : 02                          DB      02h                     ; PRST
+    1595/    F64D : 48                  	DB	"H"
+    1596/    F64E : CC                  	DB	'L'+80H
+    1597/    F64F : (MACRO)             	ROTDP
+    1597/    F64F : E7                          RST     20H
+    1597/    F650 : 0D                          DB      0Dh                     ; OUTDP
+    1598/    F651 : 10 E6               	DJNZ	RKO4
+    1599/    F653 :                     ;
+    1600/    F653 : 2A 2B 00            	LD	HL,(CUPOS)		;2. Satz als Schatten-
+    1601/    F656 : 2B                  	DEC	HL			;register markieren:
+    1602/    F657 : 36 27               	LD	(HL),27H		;"'"
+    1603/    F659 : C9                  	RET
+    1604/    F65A :                     ;
+    1605/    F65A : 01 00 04            RKO3:	LD	BC,0400H		;B=4, C-Registernummer
+    1606/    F65D : 2A 16 00            	LD	HL,(SOIL)
+    1607/    F660 : 23                  	INC	HL
+    1608/    F661 : 23                  	INC	HL
+    1609/    F662 : 11 23 F6            	LD	DE,RKO2
+    1610/    F665 : 1A                  RKO5:	LD	A,(DE)			;Vergleich Registereingabe
+    1611/    F666 : BE                  	CP	A, (HL)			;mit allen Registern
+    1612/    F667 : 28 17               	JR	Z, RKO8			;wenn gefunden
+    1613/    F669 : 13                  	INC	DE
+    1614/    F66A : E5                  RKO6:	PUSH	HL
+    1615/    F66B : 21 05 00            	LD	HL,5
+    1616/    F66E : 19                  	ADD	HL,DE
+    1617/    F66F : EB                  	EX	DE,HL			;naechster Reg.name
+    1618/    F670 : E1                  	POP	HL
+    1619/    F671 : 0C                  	INC	C			;C-Registernummer
+    1620/    F672 : 10 F1               	DJNZ	RKO5
+    1621/    F674 : 06 04               	LD	B,4
+    1622/    F676 : 79                  	LD	A,C
+    1623/    F677 : FE 08               	CP	A, 8
+    1624/    F679 : 20 EA               	JR	NZ, RKO5		;weitersuchen
+    1625/    F67B : F1                  	POP	AF			;sonst falsche Eingabe
+    1626/    F67C : FF                  	RST	38H			;--> zum KDO-Monitor
+    1627/    F67D :                     ;
+    1628/    F67D : 2B                  RKO7:	DEC	HL			;weitersuchen
+    1629/    F67E : 18 EA               	JR	RKO6
+    1630/    F680 :                     ;
+    1631/    F680 : 13                  RKO8:	INC	DE			;Ueberpruefen zweiter
+    1632/    F681 : 23                  	INC	HL			;Buchstabe
+    1633/    F682 : 1A                  	LD	A,(DE)
+    1634/    F683 : E6 7F               	AND	A, 7FH
+    1635/    F685 : BE                  	CP	A, (HL)
+    1636/    F686 : 20 F5               	JR	NZ, RKO7		;wenn ungleich
+    1637/    F688 : 23                  	INC	HL
+    1638/    F689 : 7E                  	LD	A,(HL)			;Schattenregister ?
+    1639/    F68A : FE 27               	CP	A, 27H			;"'"
+    1640/    F68C : 79                  	LD	A,C
+    1641/    F68D : 20 02               	JR	NZ, RKO9		;wenn nicht
+    1642/    F68F : C6 04               	ADD	A, 4
+    1643/    F691 : CB 27               RKO9:	SLA	A
+    1644/    F693 : 4F                  	LD	C,A
+    1645/    F694 : 06 00               	LD	B,0
+    1646/    F696 : 21 64 00            	LD	HL,REGSP+1
+    1647/    F699 : ED 42               	SBC	HL,BC
+    1648/    F69B : 44                  	LD	B,H			;HL=Adresse im
+    1649/    F69C : 4D                  	LD	C,L			;Registerrettebereich
+    1650/    F69D : (MACRO)             	ROTHS				;Ausgabe Wert
+    1650/    F69D : E7                          RST     20H
+    1650/    F69E : 0C                          DB      0Ch                     ; OTHLS
+    1651/    F69F : CD B3 F2            	CALL	INLIN			;Eingabe neuer Wert
+    1652/    F6A2 : ED 5B 16 00         	LD	DE,(SOIL)
+    1653/    F6A6 : CD F4 F2            	CALL	INHEX			;HL=neuer Wert
+    1654/    F6A9 : 20 04               	JR	NZ, RKO10		;wenn alles ok
+    1655/    F6AB : 1A                  	LD	A,(DE)			;keine Zahl, vielleicht
+    1656/    F6AC : FE 3B               	CP	A, ';'			;Abbruch ?
+    1657/    F6AE : C8                  	RET	Z
+    1658/    F6AF :                     ;
+    1659/    F6AF : EB                  RKO10:	EX	DE,HL
+    1660/    F6B0 : C5                  	PUSH	BC
+    1661/    F6B1 : E1                  	POP	HL			;Adr. im Reg.rettebereich
+    1662/    F6B2 : 72                  	LD	(HL),D			;neuen Wert eintragen
+    1663/    F6B3 : 2B                  	DEC	HL
+    1664/    F6B4 : 73                  	LD	(HL),E
+    1665/    F6B5 : C3 E4 F5            	JP	REGDA			;Registeranzeige
+    1666/    F6B8 :                     
+    1667/    F6B8 : =>TRUE              	IF MONTYP == "Z1013_202"
+    1668/    F6B8 :                     ;
+    1669/    F6B8 :                     ;-------------------------------------------------------------------------------
+    1670/    F6B8 :                     ;Hex-Umschaltung
+    1671/    F6B8 :                     ;-------------------------------------------------------------------------------
+    1672/    F6B8 :                     ;
+    1673/    F6B8 : 21 48 50            H_KDO:	ld	hl,5048h		;Aenderung der Tastaturcodetab.
+    1674/    F6BB : 22 42 00            	ld	(LSYNC+15),hl		;Shift-Ebene 1, Zeile 2 und 3
+    1675/    F6BE : 21 30 38            	ld	hl,3830h		;vertauschen mit
+    1676/    F6C1 : 22 45 00            	ld	(LSYNC+18),hl		;Shift-Ebene 0, Zeile 2 und 3
+    1677/    F6C4 : C9                  	RET
+    1678/    F6C5 :                     ;
+    1679/    F6C5 :                     ;-------------------------------------------------------------------------------
+    1680/    F6C5 :                     ;ASCII-Umschaltung
+    1681/    F6C5 :                     ;-------------------------------------------------------------------------------
+    1682/    F6C5 :                     ;
+    1683/    F6C5 : 21 F4 F1            A_KDO:	ld	hl,MONTB+2		;Laden der alten
+    1684/    F6C8 : 11 35 00            	ld	de,LSYNC+2		;Tastaturcodetab.
+    1685/    F6CB : 01 12 00            	ld	bc,12h
+    1686/    F6CE : ED B0               	ldir
+    1687/    F6D0 : C9                  	RET
+    1688/    F6D1 :                     
+    1689/    F6D1 : [1667]              	ENDIF
+    1690/    F6D1 :                     ;
+    1691/    F6D1 :                     ;-------------------------------------------------------------------------------
+    1692/    F6D1 :                     ;Window definieren
+    1693/    F6D1 :                     ;-------------------------------------------------------------------------------
+    1694/    F6D1 :                     ;
+    1695/    F6D1 : CD ED F6            W_KDO:	CALL	WKO1			;Kontrolle Parameter
+    1696/    F6D4 : 38 4C               	JR	C, WKO3			;wenn Fehleingabe
+    1697/    F6D6 : 22 47 00            	LD	(WINDL),HL		;neue Werte eintragen
+    1698/    F6D9 : ED 43 49 00         	LD	(WINDA),BC
+    1699/    F6DD : 2A 1D 00            	LD	HL,(ARG2)
+    1700/    F6E0 : 22 4B 00            	LD	(WINDE),HL
+    1701/    F6E3 : 2A 2B 00            	LD	HL,(CUPOS)		;Cursor loeschen
+    1702/    F6E6 : 36 20               	LD	(HL),' '
+    1703/    F6E8 : ED 43 2B 00         	LD	(CUPOS),BC		;Cursor home
+    1704/    F6EC : C9                  	RET
+    1705/    F6ED :                     ;
+    1706/    F6ED : 3A 1C 00            WKO1:	LD	A,(ARG1+1)
+    1707/    F6F0 : FE EC               	CP	A, hi(BWS)		;innerhalb BWS ?
+    1708/    F6F2 : D8                  	RET	C			;nein
+    1709/    F6F3 : 3A 1B 00            	LD	A,(ARG1)		;WINDOW-Anfang
+    1710/    F6F6 : E6 E0               	AND	A, 0E0H			;auf Zeilenanfang stellen
+    1711/    F6F8 : 32 1B 00            	LD	(ARG1),A
+    1712/    F6FB : 3A 1D 00            	LD	A,(ARG2)		;ebenso WINDOW-Ende
+    1713/    F6FE : E6 E0               	AND	A, 0E0H			;auf Zeilenanfang stellen
+    1714/    F700 : 32 1D 00            	LD	(ARG2),A
+    1715/    F703 : 2A 1D 00            	LD	HL,(ARG2)
+    1716/    F706 : ED 4B 1B 00         	LD	BC,(ARG1)
+    1717/    F70A : ED 42               	SBC	HL,BC
+    1718/    F70C : D8                  	RET	C			;Endadresse zu klein
+    1719/    F70D : 28 11               	JR	Z, WKO2			;kein Window --> Fehler
+    1720/    F70F : 2B                  	DEC	HL
+    1721/    F710 : 3E 03               	LD	A,3			;WINDOW zu gross ?
+    1722/    F712 : BC                  	CP	A, H
+    1723/    F713 : D8                  	RET	C			;ja
+    1724/    F714 : 23                  	INC	HL
+    1725/    F715 : 11 40 00            	LD	DE,2*BWSCOL
+    1726/    F718 : ED 52               	SBC	HL,DE
+    1727/    F71A : D8                  	RET	C			;wenn WINDOW zu klein
+    1728/    F71B : 11 20 00            	LD	DE,BWSCOL
+    1729/    F71E : 19                  	ADD	HL,DE
+    1730/    F71F : C9                  	RET
+    1731/    F720 :                     ;
+    1732/    F720 : 37                  WKO2:	SCF
+    1733/    F721 : C9                  	RET
+    1734/    F722 :                     ;
+    1735/    F722 : F1                  WKO3:	POP	AF
+    1736/    F723 : FF                  	RST	38H
+    1737/    F724 :                     ;
+    1738/    F724 :                     ;-------------------------------------------------------------------------------
+    1739/    F724 :                     ;NEXT-Kommando, Step-Betrieb
+    1740/    F724 :                     ;-------------------------------------------------------------------------------
+    1741/    F724 :                     ;
+    1742/    F724 :                     ;Initialisierungstabelle fuer PIO bei NEXT
+    1743/    F724 :                     ;PIO B5 => AB0 in
+    1744/    F724 :                     ;
+    1745/    F724 : FE                  NKTA:	DB	Lo(NINTA)		;Interruptvektor Low Byte
+    1746/    F725 : 97                  	DB	10010111b		;Interruptsteuerwort, EI, Low-aktiv, Mask folgt
+    1747/    F726 : DF                  	DB	11011111b		;Interruptmaske Bit5 aktiv
+    1748/    F727 :                     ;
+    1749/    F727 :                     ;NEXT-Kommando
+    1750/    F727 :                     ;
+    1751/    F727 : 3E F7               N_KDO:	LD	A,Hi(NINTA)
+    1752/    F729 : ED 47               	LD	I,A			;Interruptvektor
+    1753/    F72B : F3                  	DI
+    1754/    F72C : 21 24 F7            	LD	HL,NKTA 		;Initialisieren PIO Port B
+    1755/    F72F : 01 03 03            	LD	BC,0303H		;3 Bytes, Port PIOBC
+    1756/    F732 : ED B3               	OTIR				;loest selbstaendig INT aus
+    1757/    F734 : 2A 0B 00            	LD	HL,(BPADR)		;Byte vor Breakadr.(!)
+    1758/    F737 : 2B                  	DEC	HL			;wird EI
+    1759/    F738 : 7E                  	LD	A,(HL)
+    1760/    F739 : 32 69 00            	LD	(NBYTE),A		;Byte retten
+    1761/    F73C : 36 FB               	LD	(HL),0FBH		;Code EI einschreiben
+    1762/    F73E : ED 73 6A 00         	LD	(SPADR),SP
+    1763/    F742 : ED 7B 63 00         	LD	SP,(REGSP)
+    1764/    F746 : E5                  	PUSH	HL			;Adr. mit EI-Befehl
+    1765/    F747 : C3 4A F5            	JP	REGH			;Register holen und Start
+    1766/    F74A :                     ;Die PIO generiert bereits beim OTIR eine Interruptanforderung, da dabei AB0 => 0.
+    1767/    F74A :                     ;Sobald EI und nachfolgender Befehl ausgeführt wird, wird der Interrupt angenommen
+    1768/    F74A :                     ;und nachfolgende Routine über Inhalt der Adr. NINTA angesprungen (da IM 2)
+    1769/    F74A :                     ;
+    1770/    F74A :                     ;Eingang bei Interrupt
+    1771/    F74A : F3                  NINTR:	DI
+    1772/    F74B : CD 33 F5            	CALL	REGA			;Register retten
+    1773/    F74E : 3E 07               	LD	A,00000111b		;Interrupt von PIO
+    1774/    F750 : D3 03               	OUT	PIOBC, A		;verbieten
+    1775/    F752 : 2A 0B 00            	LD	HL,(BPADR)		;EI-Befehl durch Original-
+    1776/    F755 : 2B                  	DEC	HL			;Byte ersetzen
+    1777/    F756 : 3A 69 00            	LD	A,(NBYTE)
+    1778/    F759 : 77                  	LD	(HL),A
+    1779/    F75A : E1                  	POP	HL
+    1780/    F75B : 22 0B 00            	LD	(BPADR),HL		;neue Breakadresse
+    1781/    F75E : 22 61 00            	LD	(REGPC),HL
+    1782/    F761 : ED 73 63 00         	LD	(REGSP),SP
+    1783/    F765 : ED 7B 6A 00         	LD	SP,(SPADR)		;neue Operandenfolge
+    1784/    F769 : 11 0D 00            	LD	DE,BPOPC		;umladen
+    1785/    F76C : 01 03 00            	LD	BC,3
+    1786/    F76F : ED B0               	LDIR
+    1787/    F771 : 21 E4 F5            	LD	HL,REGDA
+    1788/    F774 : E5                  	PUSH	HL
+    1789/    F775 : ED 4D               	RETI				;Sprung zur Registeranzeige
+    1790/    F777 :                     ;
+    1791/    F777 :                     ;-------------------------------------------------------------------------------
+    1792/    F777 :                     ;Speicherbereiche vergleichen
+    1793/    F777 :                     ;-------------------------------------------------------------------------------
+    1794/    F777 :                     ;
+    1795/    F777 : CD FF F4            C_KDO:	CALL	PARA			;Parameter holen
+    1796/    F77A : 1A                  CKO1:	LD	A,(DE)
+    1797/    F77B : BE                  	CP	A, (HL)			;Vergleich
+    1798/    F77C : 20 08               	JR	NZ, CKO3		;wenn ungleich
+    1799/    F77E : 0B                  CKO2:	DEC	BC
+    1800/    F77F : 23                  	INC	HL
+    1801/    F780 : 13                  	INC	DE
+    1802/    F781 : 78                  	LD	A,B
+    1803/    F782 : B1                  	OR	C
+    1804/    F783 : C8                  	RET	Z			;wenn alles geprueft
+    1805/    F784 : 18 F4               	JR	CKO1			;sonst weitertesten
+    1806/    F786 :                     ;
+    1807/    F786 : (MACRO)             CKO3:	ROTHL				;1. Adresse
+    1807/    F786 : E7                          RST     20H
+    1807/    F787 : 07                          DB      07h                     ; OUTHL
+    1808/    F788 : (MACRO)             	ROTSP
+    1808/    F788 : E7                          RST     20H
+    1808/    F789 : 0E                          DB      0Eh                     ; OUTSP
+    1809/    F78A : 7E                  	LD	A,(HL)
+    1810/    F78B : (MACRO)             	ROTHX				;1. Byte
+    1810/    F78B : E7                          RST     20H
+    1810/    F78C : 06                          DB      06h                     ; OUTHX
+    1811/    F78D : (MACRO)             	ROTSP
+    1811/    F78D : E7                          RST     20H
+    1811/    F78E : 0E                          DB      0Eh                     ; OUTSP
+    1812/    F78F : EB                  	EX	DE,HL
+    1813/    F790 : (MACRO)             	ROTHL				;2. Adresse
+    1813/    F790 : E7                          RST     20H
+    1813/    F791 : 07                          DB      07h                     ; OUTHL
+    1814/    F792 : (MACRO)             	ROTSP
+    1814/    F792 : E7                          RST     20H
+    1814/    F793 : 0E                          DB      0Eh                     ; OUTSP
+    1815/    F794 : EB                  	EX	DE,HL
+    1816/    F795 : 1A                  	LD	A,(DE)
+    1817/    F796 : (MACRO)             	ROTHX				;2. Byte
+    1817/    F796 : E7                          RST     20H
+    1817/    F797 : 06                          DB      06h                     ; OUTHX
+    1818/    F798 : (MACRO)             	RPRST
+    1818/    F798 : E7                          RST     20H
+    1818/    F799 : 02                          DB      02h                     ; PRST
+    1819/    F79A : 8D                  	DB	CR+80H
+    1820/    F79B : (MACRO)             	RINCH				;warten auf Tastendruck
+    1820/    F79B : E7                          RST     20H
+    1820/    F79C : 01                          DB      01h                     ; INCH
+    1821/    F79D : FE 0D               	CP	A, CR
+    1822/    F79F : C0                  	RET	NZ			;Abbruch wenn <> >ENTER<
+    1823/    F7A0 : 18 DC               	JR	CKO2			;sonst weitertesten
+    1824/    F7A2 :                     
+    1825/    F7A2 : =>TRUE              	IF	MONTYP <> "Z1013_A2"
+    1826/    F7A2 :                     ;
+    1827/    F7A2 :                     ;-------------------------------------------------------------------------------
+    1828/    F7A2 :                     ;Bytefolge suchen
+    1829/    F7A2 :                     ;-------------------------------------------------------------------------------
+    1830/    F7A2 :                     ;
+    1831/    F7A2 : ED 5B 25 00         F_KDO:	LD	DE,(SOIL2)
+    1832/    F7A6 : 1B                  	DEC	DE
+    1833/    F7A7 : 1B                  	DEC	DE
+    1834/    F7A8 : ED 53 23 00         	LD	(ARG3),DE		;DE = Beginn Bytefolge
+    1835/    F7AC : ED 4B 1B 00         	LD	BC,(ARG1)		;Suchadresse
+    1836/    F7B0 : ED 5B 23 00         FKO1:	LD	DE,(ARG3)
+    1837/    F7B4 : (MACRO)             	RINHX				;L = 1. Suchbyte
+    1837/    F7B4 : E7                          RST     20H
+    1837/    F7B5 : 03                          DB      03h                     ; INHEX
+    1838/    F7B6 : 0A                  FKO2:	LD	A,(BC)
+    1839/    F7B7 : BD                  	CP	A, L			;L = Suchbyte
+    1840/    F7B8 : 28 07               	JR	Z, FKO3			;wenn Bytes gleich
+    1841/    F7BA : 03                  	INC	BC			;sonst naechste Suchadresse
+    1842/    F7BB : 78                  	LD	A,B
+    1843/    F7BC : B1                  	OR	C
+    1844/    F7BD : 28 32               	JR	Z, FKO7			;wenn Speicherende erreicht
+    1845/    F7BF : 18 F5               	JR	FKO2			;weitersuchen
+    1846/    F7C1 :                     ;
+    1847/    F7C1 : C5                  FKO3:	PUSH	BC
+    1848/    F7C2 : D5                  	PUSH	DE
+    1849/    F7C3 : ED 5B 1D 00         	LD	DE,(ARG2)		;Suchbyteanzahl
+    1850/    F7C7 : 1B                  	DEC	DE
+    1851/    F7C8 : ED 53 6C 00         	LD	(FBANZ),DE		;Zwischenspeicher fuer Anzahl
+    1852/    F7CC : 03                  	INC	BC
+    1853/    F7CD : 7A                  FKO4:	LD	A,D
+    1854/    F7CE : B3                  	OR	E			;alle Suchbytes verglichen?
+    1855/    F7CF : D1                  	POP	DE
+    1856/    F7D0 : 28 13               	JR	Z, FKO5			;wenn Bytefolge gefunden
+    1857/    F7D2 : (MACRO)             	RINHX				;naechstes Suchbyte holen
+    1857/    F7D2 : E7                          RST     20H
+    1857/    F7D3 : 03                          DB      03h                     ; INHEX
+    1858/    F7D4 : 0A                  	LD	A,(BC)
+    1859/    F7D5 : BD                  	CP	A, L
+    1860/    F7D6 : 20 15               	JR	NZ, FKO6		;wenn Folge nicht gefunden
+    1861/    F7D8 : D5                  	PUSH	DE
+    1862/    F7D9 : ED 5B 6C 00         	LD	DE,(FBANZ)		;1 Byte weniger zu vergleichen
+    1863/    F7DD : 1B                  	DEC	DE
+    1864/    F7DE : ED 53 6C 00         	LD	(FBANZ),DE
+    1865/    F7E2 : 03                  	INC	BC
+    1866/    F7E3 : 18 E8               	JR	FKO4			;weitervergleichen
+    1867/    F7E5 :                     ;Bytefolge gefunden
+    1868/    F7E5 : C1                  FKO5:	POP	BC
+    1869/    F7E6 : ED 43 1B 00         	LD	(ARG1),BC
+    1870/    F7EA : C3 25 F3            	JP	MEM			;Speicher modifizieren
+    1871/    F7ED :                     ;
+    1872/    F7ED : C1                  FKO6:	POP	BC
+    1873/    F7EE : 03                  	INC	BC
+    1874/    F7EF : 18 BF               	JR	FKO1
+    1875/    F7F1 :                     ;Bytefolge nirgends gefunden
+    1876/    F7F1 : (MACRO)             FKO7:	RPRST
+    1876/    F7F1 : E7                          RST     20H
+    1876/    F7F2 : 02                          DB      02h                     ; PRST
+    1877/    F7F3 : 4E 4F 54 20 46 4F   	DB	"NOT FOUND"
+                    55 4E 44 
+    1878/    F7FC : 8D                  	DB	CR+80H
+    1879/    F7FD : C9                  	RET
+    1880/    F7FE :                     
+    1881/    F7FE : [1825]              	ENDIF
+    1882/    F7FE :                     
+    1883/    F7FE : =>FALSE             	IF MONTYP == "Z1013_A2"
+    1884/    F7FE :                     ;
+    1885/    F7FE :                     ;-------------------------------------------------------------------------------
+    1886/    F7FE :                     ; Tastaturcodetabelle
+    1887/    F7FE :                     ;-------------------------------------------------------------------------------
+    1888/    F7FE :                     ;
+    1889/    F7FE :                     keytab:
+    1890/    F7FE :                     ; spalte 0
+    1891/    F7FE :                     	db  31h ; 1
+    1892/    F7FE :                     	db  51h ; Q
+    1893/    F7FE :                     	db  41h ; A
+    1894/    F7FE :                     	db  59h ; Y
+    1895/    F7FE :                     	db  32h ; 2
+    1896/    F7FE :                     	db  57h ; W
+    1897/    F7FE :                     	db  53h ; S
+    1898/    F7FE :                     	db  58h ; X
+    1899/    F7FE :                     ; Spalte 1
+    1900/    F7FE :                     	db  33h ; 3
+    1901/    F7FE :                     	db  45h ; E
+    1902/    F7FE :                     	db  44h ; D
+    1903/    F7FE :                     	db  43h ; C
+    1904/    F7FE :                     	db  34h ; 4
+    1905/    F7FE :                     	db  52h ; R
+    1906/    F7FE :                     	db  46h ; F
+    1907/    F7FE :                     	db  56h ; V
+    1908/    F7FE :                     ; Spalte 2
+    1909/    F7FE :                     	db  35h ; 5
+    1910/    F7FE :                     	db  54h ; T
+    1911/    F7FE :                     	db  47h ; G
+    1912/    F7FE :                     	db  42h ; B
+    1913/    F7FE :                     	db  36h ; 6
+    1914/    F7FE :                     	db  5Ah ; Z
+    1915/    F7FE :                     	db  48h ; H
+    1916/    F7FE :                     	db  4Eh ; N
+    1917/    F7FE :                     ; Spalte 3
+    1918/    F7FE :                     	db  37h ; 7
+    1919/    F7FE :                     	db  55h ; U
+    1920/    F7FE :                     	db  4Ah ; J
+    1921/    F7FE :                     	db  4Dh ; M
+    1922/    F7FE :                     	db  38h ; 8
+    1923/    F7FE :                     	db  49h ; I
+    1924/    F7FE :                     	db  4Bh ; K
+    1925/    F7FE :                     	db  2Ch ; ,
+    1926/    F7FE :                     ; Spalte 4
+    1927/    F7FE :                     	db  39h ; 9
+    1928/    F7FE :                     	db  4Fh ; O
+    1929/    F7FE :                     	db  4Ch ; L
+    1930/    F7FE :                     	db  2Eh ; .
+    1931/    F7FE :                     	db  30h ; 0
+    1932/    F7FE :                     	db  50h ; P
+    1933/    F7FE :                     	db  2Bh ; +
+    1934/    F7FE :                     	db  2Fh ; /
+    1935/    F7FE :                     ; Spalte 5
+    1936/    F7FE :                     	db  2Dh ; -
+    1937/    F7FE :                     	db  40h ; @
+    1938/    F7FE :                     	db  2Ah ; *
+    1939/    F7FE :                     	db  5Eh ; ^
+    1940/    F7FE :                     	db  5Bh ; [
+    1941/    F7FE :                     	db  5Dh ; ]
+    1942/    F7FE :                     	db  5Ch ;
+    1943/    F7FE :                     	db  5Fh ; _
+    1944/    F7FE :                     ; Spalte 6
+    1945/    F7FE :                     tab2:	db    0 ; Graph E/A
+    1946/    F7FE :                     	db  0Dh ; ENT
+    1947/    F7FE :                     	db    8 ; Cu. links
+    1948/    F7FE :                     	db    9 ; Cu. rechts
+    1949/    F7FE :                     	db  20h ; Leerz.
+    1950/    F7FE :                     	db    0 ; CTRL
+    1951/    F7FE :                     	db  0Bh ; Cu. hoch
+    1952/    F7FE :                     	db  0Ah ; Cu. runter
+    1953/    F7FE :                     
+    1954/    F7FE : [1883]              	ENDIF
+    1955/    F7FE :                     
+    1956/    F7FE :                     ;
+    1957/    F7FE :                     ;-------------------------------------------------------------------------------
+    1958/    F7FE :                     ;Interrupttabelle fuer Break
+    1959/    F7FE :                     ;-------------------------------------------------------------------------------
+    1960/    F7FE :                     ;
+    1961/    F7FE :                     
+    1962/    F7FE :                     	align	2
+    1963/    F7FE : 4A F7               NINTA:	DW	NINTR
+    1964/    F800 :                     
+    1965/    F800 :                     	END
+ AS V1.42 Beta [Bld 64] - source file z1013riesa.asm - page 2 - 12/15/2011 10:24:49
+
+
+  symbol table (* = unused):
+  ------------------------
+
+*ARCHITECTURE :  i386-unknown-win32 - |  ARG1 :                          1B - |
+ ARG2 :                          1D - |  ARG3 :                          23 - |
+ AUS1 :                        F5D3 C |  AUSX :                        F5D8 C |
+ A_KDO :                       F6C5 C | *BIGENDIAN :                      0 - |
+ BPADR :                          B - |  BPOPC :                          D - |
+*BRANCHEXT :                      0 - |  BREAK :                       F564 C |
+ BUFFA :                         1F - |  BWS :                         EC00 - |
+ BWSCOL :                        20 - |  BWSROW :                        20 - |
+ BWSSZ :                        400 - |  B_KDO :                       F587 C |
+*CASESENSITIVE :                  0 - |  CKO1 :                        F77A C |
+ CKO2 :                        F77E C |  CKO3 :                        F786 C |
+ CLOAD :                       F3F8 C |  CLS :                            C - |
+*CONSTPI :        3.141592653589793 - |  CR :                             D - |
+ CSAVE :                       F369 C |  CUPOS :                         2B - |
+ C_KDO :                       F777 C |  DATA :                          13 - |
+*DATE :                  12/15/2011 - |  DKO1 :                        F4D1 C |
+ DKO2 :                        F4E2 C |  DKO3 :                        F4F0 C |
+ D_KDO :                       F4CE C | *ESC :                           1B - |
+ E_KDO :                       F599 C | *FALSE :                          0 - |
+ FBANZ :                         6C - |  FKO1 :                        F7B0 C |
+ FKO2 :                        F7B6 C |  FKO3 :                        F7C1 C |
+ FKO4 :                        F7CD C |  FKO5 :                        F7E5 C |
+ FKO6 :                        F7ED C |  FKO7 :                        F7F1 C |
+*FULLPMMU :                       1 - |  F_KDO :                       F7A2 C |
+ G_KDO :                       F5B3 C | *HAS64 :                          1 - |
+*HASDSP :                         0 - | *HASFPU :                         0 - |
+*HASPMMU :                        0 - |  H_KDO :                       F6B8 C |
+ INC1 :                        F20F C |  INCH :                        F20C C |
+*INEXTMODE :                      0 - |  INHEX :                       F2F4 C |
+*INIT :                        F000 C |  INIT1 :                       F002 C |
+ INIT2 :                       F00F C |  INK1 :                        F147 C |
+ INK10 :                       F18D C |  INK11 :                       F19C C |
+ INK12 :                       F19E C |  INK13 :                       F1A5 C |
+ INK14 :                       F1C3 C |  INK15 :                       F1C7 C |
+ INK16 :                       F1CB C |  INK17 :                       F1CD C |
+ INK18 :                       F1D0 C |  INK19 :                       F1D3 C |
+ INK2 :                        F150 C |  INK20 :                       F1D6 C |
+ INK21 :                       F1D9 C |  INK22 :                       F1DC C |
+ INK23 :                       F1E0 C |  INK24 :                       F1E5 C |
+ INK25 :                       F1EC C |  INK3 :                        F15B C |
+ INK4 :                        F160 C |  INK5 :                        F165 C |
+ INK6 :                        F17F C |  INK7 :                        F180 C |
+ INK8 :                        F183 C |  INK9 :                        F188 C |
+ INKEY :                       F130 C |  INLIN :                       F2B3 C |
+*INLWORDMODE :                    0 - | *INMAXMODE :                      0 - |
+ INS1 :                        F2C0 C | *INSRCMODE :                      0 - |
+ INSTR :                       F2B9 C | *INSUPMODE :                      0 - |
+ J_KDO :                       F5A5 C |  KDO1 :                        F058 C |
+ KDO2 :                        F05F C |  KDO3 :                        F079 C |
+ KDO4 :                        F088 C |  KDO5 :                        F091 C |
+ KDO6 :                        F0A6 C |  KDOTB :                       F0B1 C |
+ KEYP :                           8 - |  KON1 :                        F2DB C |
+ KON2 :                        F2EC C |  KONVX :                       F2D1 C |
+ KYBTS :                         27 - |  K_KDO :                       F50B C |
+ LAKEY :                          4 - | *LF :                             A - |
+*LISTON :                         1 - |  LOA1 :                        F3FB C |
+ LOA10 :                       F446 C |  LOA11 :                       F453 C |
+ LOA12 :                       F460 C |  LOA13 :                       F463 C |
+ LOA14 :                       F47B C |  LOA15 :                       F47D C |
+ LOA16 :                       F481 C |  LOA17 :                       F487 C |
+ LOA18 :                       F48C C |  LOA19 :                       F49D C |
+ LOA2 :                        F40C C |  LOA20 :                       F4A0 C |
+ LOA21 :                       F4A8 C |  LOA22 :                       F4A9 C |
+ LOA23 :                       F4BA C |  LOA24 :                       F4BC C |
+ LOA25 :                       F4C6 C |  LOA26 :                       F4B5 C |
+ LOA27 :                       F48E C |  LOA3 :                        F417 C |
+ LOA5 :                        F41F C |  LOA6 :                        F424 C |
+ LOA7 :                        F42A C |  LOA8 :                        F435 C |
+ LOA9 :                        F441 C |  LSYNC :                         33 - |
+*MACEXP :                         1 - |  MEM :                         F325 C |
+ MEM1 :                        F328 C |  MEM2 :                        F33B C |
+ MEM3 :                        F342 C |  MEM4 :                        F34F C |
+*MOMCPU :                        80 - | *MOMCPUNAME :                   Z80 - |
+ MONTB :                       F1F2 C |  MONTYP :                 Z1013_202 - |
+ NBYTE :                         69 - | *NESTMAX :                      100 - |
+ NINTA :                       F7FE C |  NINTR :                       F74A C |
+ NKTA :                        F724 C | *NL :                            1E - |
+*NMI :                           66 - |  N_KDO :                       F727 C |
+ OTHLS :                       F5C7 C |  OUT0 :                        F219 C |
+ OUT10 :                       F28E C |  OUT2 :                        F239 C |
+ OUT3 :                        F23A C |  OUT5 :                        F256 C |
+ OUT6 :                        F26E C |  OUT7 :                        F27C C |
+ OUT8 :                        F27F C |  OUT9 :                        F285 C |
+ OUTCH :                       F21B C |  OUTDP :                       F5C4 C |
+ OUTHL :                       F31A C |  OUTHX :                       F301 C |
+ OUTSP :                       F5CF C |  OUX1 :                        F30A C |
+ OUX2 :                        F315 C | *PACKING :                        0 - |
+*PADDING :                        1 - |  PARA :                        F4FF C |
+*PIOAC :                          1 - | *PIOAD :                          0 - |
+ PIOBC :                          3 - |  PIOBD :                          2 - |
+ PRS1 :                        F2A6 C |  PRST7 :                       F2A5 C |
+ R20BT :                          3 - |  REG1 :                        F55F C |
+ REGA :                        F533 C |  REGAF :                         5B - |
+ REGBR :                         4D - |  REGDA :                       F5E4 C |
+ REGH :                        F54A C |  REGPC :                         61 - |
+ REGSP :                         63 - | *RELAXED :                        0 - |
+ RKO1 :                        F5F8 C |  RKO10 :                       F6AF C |
+ RKO2 :                        F623 C |  RKO3 :                        F65A C |
+ RKO4 :                        F639 C |  RKO5 :                        F665 C |
+ RKO6 :                        F66A C |  RKO7 :                        F67D C |
+ RKO8 :                        F680 C |  RKO9 :                        F691 C |
+ RST1 :                        F0E8 C |  RST20 :                         20 - |
+*RST38 :                         38 - |  RSTTB :                       F108 C |
+ R_KDO :                       F5DF C |  SAV1 :                        F36F C |
+ SAV10 :                       F3B1 C |  SAV11 :                       F3C1 C |
+ SAV12 :                       F3C5 C |  SAV13 :                       F3CA C |
+ SAV14 :                       F3D0 C |  SAV15 :                       F3D2 C |
+ SAV16 :                       F3DA C |  SAV17 :                       F3DF C |
+ SAV18 :                       F3E2 C |  SAV19 :                       F3E4 C |
+ SAV2 :                        F37D C |  SAV20 :                       F3ED C |
+ SAV21 :                       F3F1 C |  SAV3 :                        F383 C |
+ SAV4 :                        F386 C |  SAV5 :                        F388 C |
+ SAV6 :                        F394 C |  SAV7 :                        F396 C |
+ SAV8 :                        F3A6 C |  SAV9 :                        F3AD C |
+ SOIL :                          16 - |  SOIL2 :                         25 - |
+ SPACE :                       F2CA C |  SPADR :                         6A - |
+ SYSSK :                         B0 - | *TIME :                    10:24:49 - |
+ TKO1 :                        F52A C | *TRUE :                           1 - |
+ T_KDO :                       F51D C |  USRKD :                         B0 - |
+ USRSK :                         90 - | *VERSION :                     142F - |
+ WINDA :                         49 - |  WINDE :                         4B - |
+ WINDL :                         47 - |  WKO1 :                        F6ED C |
+ WKO2 :                        F720 C |  WKO3 :                        F722 C |
+ W_KDO :                       F6D1 C |
+
+    247 symbols
+     36 unused symbols
+
+ AS V1.42 Beta [Bld 64] - source file z1013riesa.asm - page 3 - 12/15/2011 10:24:49
+
+
+  defined macros:
+  ---------------
+
+RINCH                                 | RINHX                                
+RINKY                                 | RINLN                                
+ROTDP                                 | ROTHL                                
+ROTHS                                 | ROTHX                                
+ROTSP                                 | ROUTC                                
+RPRST                                 |
+
+     11 macros
+
+ AS V1.42 Beta [Bld 64] - source file z1013riesa.asm - page 4 - 12/15/2011 10:24:49
+
+
+  defined functions:
+  ------------------
+
+LO                                    | HI                                   
+
+ AS V1.42 Beta [Bld 64] - source file z1013riesa.asm - page 5 - 12/15/2011 10:24:49
+
+
+  codepages:
+  ----------
+
+STANDARD (0 changed characters)
+
+
+0.09 seconds assembly time
+
+   1966 lines source file
+   2070 lines incl. macro expansions
+      2 passes
+      0 errors
+      0 warnings

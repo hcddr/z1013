@@ -1,0 +1,121 @@
+ AS V1.42 Beta [Bld 249] - Source File sirene-as.asm - Page 1 - 8/15/2024 12:56:28
+
+
+    1/       0 :                        ; File Name   :	d:\hobby3\z1013_hb_programme\sirene.bin
+    2/       0 :                        ; Format      :	Binary file
+    3/       0 :                        ; Base Address:	0000h Range: 0380h - 03D0h Loaded length: 0050h
+    4/       0 :                        
+    5/       0 :                        		cpu	z80
+    6/       0 :                        
+    7/     380 :                        		org 380h
+    8/     380 :                        
+    9/     380 : 2E 30                  sirene:		ld	l, 30h		; l=Anzahl Schritte
+   10/     382 : 16 60                  		ld	d, 60h		; d=tonhoehe/pulsbreite
+   11/     384 : 1E 01                  		ld	e, 1
+   12/     386 :                        ; Tastatur abfragen S4+K->Ende
+   13/     386 : 3E 03                  		ld	a, 3
+   14/     388 : D3 08                  		out	(8), a		; Spalte aktivieren
+   15/     38A : DB 02                  		in	a, (2)		; Tastatur abfragen
+   16/     38C : E6 0F                  		and	0Fh		; Bit0..3
+   17/     38E : FE 05                  		cp	5		; S4+K
+   18/     390 : CA 38 00               		jp	z, 0038h	; dann Ende
+   19/     393 :                        ;anschwellen
+   20/     393 : 4B                     s1:		ld	c, e
+   21/     394 :                        ;
+   22/     394 : EE 80                  s2:		xor	80h		; Toggle Tonsignal
+   23/     396 : D3 02                  		out	(2), a
+   24/     398 : 42                     		ld	b, d
+   25/     399 : 10 FE                  s3:		djnz	$
+   26/     39B :                        ;
+   27/     39B : EE 80                  		xor	80h		; Toggle Tonsignal
+   28/     39D : D3 02                  		out	(2), a
+   29/     39F : 42                     		ld	b, d
+   30/     3A0 : 10 FE                  s4:		djnz	$
+   31/     3A2 :                        ;
+   32/     3A2 : 0D                     		dec	c
+   33/     3A3 : 20 EF                  		jr	nz, s2
+   34/     3A5 :                        ;
+   35/     3A5 : 15                     		dec	d
+   36/     3A6 : 1C                     		inc	e
+   37/     3A7 : 2D                     		dec	l
+   38/     3A8 : 20 E9                  		jr	nz, s1
+   39/     3AA :                        ;		
+   40/     3AA :                        ;abschwellen
+   41/     3AA : 2E 30                  		ld	l, 30h
+   42/     3AC : 4B                     s5:		ld	c, e
+   43/     3AD : EE 80                  s6:		xor	80h		; Toggle Tonsignal
+   44/     3AF : D3 02                  		out	(2), a
+   45/     3B1 : 42                     		ld	b, d
+   46/     3B2 : 10 FE                  s7:		djnz	$
+   47/     3B4 :                        ;
+   48/     3B4 : EE 80                  		xor	80h		; Toggle Tonsignal
+   49/     3B6 : D3 02                  		out	(2), a
+   50/     3B8 : 42                     		ld	b, d
+   51/     3B9 : 10 FE                  s8:		djnz	$
+   52/     3BB :                        ;
+   53/     3BB : 0D                     		dec	c
+   54/     3BC : 20 EF                  		jr	nz, s6
+   55/     3BE : 14                     		inc	d
+   56/     3BF : 1D                     		dec	e
+   57/     3C0 : 2D                     		dec	l
+   58/     3C1 : 20 E9                  		jr	nz, s5
+   59/     3C3 : 18 BB                  		jr	sirene
+   60/     3C5 :                        
+ AS V1.42 Beta [Bld 249] - Source File sirene-as.asm - Page 2 - 8/15/2024 12:56:28
+
+
+   61/     3C5 :                        ;ENDE
+   62/     3C5 : C3                     		db 0C3h
+   63/     3C6 : C3                     		db 0C3h
+   64/     3C7 : 01                     		db    1
+   65/     3C8 : DD                     		db 0DDh
+   66/     3C9 : 36                     		db  36h
+   67/     3CA : 08                     		db    8
+   68/     3CB : 00                     		db    0
+   69/     3CC : CD                     		db 0CDh
+   70/     3CD : D5                     		db 0D5h
+   71/     3CE : 04                     		db    4
+   72/     3CF : 16                     		db  16h
+   73/     3D0 :                        ;
+   74/     3D0 :                        		end
+ AS V1.42 Beta [Bld 249] - Source File sirene-as.asm - Page 3 - 8/15/2024 12:56:28
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+*CASESENSITIVE :                  0 - | *CONSTPI :        3.141592653589793 - |
+*DATE :                 "8/15/2024" - | *FALSE :                          0 - |
+*FULLPMMU :                       1 - | *HAS64 :                          0 - |
+*HASFPU :                         0 - | *HASPMMU :                        0 - |
+*INSUPMODE :                      0 - | *LISTON :                         1 - |
+*MACEXP :                         7 - | *MOMCPU :                        80 - |
+*MOMCPUNAME :                 "Z80" - | *NESTMAX :                      100 - |
+*PADDING :                        1 - | *RELAXED :                        0 - |
+ S1 :                           393 C |  S2 :                           394 C |
+*S3 :                           399 C | *S4 :                           3A0 C |
+ S5 :                           3AC C |  S6 :                           3AD C |
+*S7 :                           3B2 C | *S8 :                           3B9 C |
+ SIRENE :                       380 C | *TIME :                  "12:56:28" - |
+*TRUE :                           1 - | *VERSION :                     142F - |
+
+     29 symbols
+     24 unused symbols
+
+ AS V1.42 Beta [Bld 249] - Source File sirene-as.asm - Page 4 - 8/15/2024 12:56:28
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.01 seconds assembly time
+
+     75 lines source file
+      1 pass
+      0 errors
+      0 warnings

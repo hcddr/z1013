@@ -1,0 +1,375 @@
+*************************************************************
+*                                                           *
+*           Beschreibung für den Monitor FT'88              *
+*                                                           *
+*************************************************************
+
+1_Einleitung
+
+Der Monitor wurde entwickelt zum Anschluß einer Tastatur an den 
+Z 1013 auf Basis der seriellen Tastaturschaltung nach radio
+fernsehen elektronik 4, 1987, S. 251 (mit 2 x V 4017). Er ist
+voll kompatibel zum "alten" Monitor 2.02, da viele Probleme bei
+der Anpassung von Programmen an den Monitor A2 auftreten. Inte-
+griert wurden das Headersave 5.95, der Sprungverteiler lt. IG HC
+Dresden in vollem Umfang, ein logischer Druckertreiber sowie
+einige Sonderfunktionen, z. B. gesonderte NMI-Behandlung und ROM-
+Floppy. Minimal sind keine Hardwareänderungen außer dem Wechseln
+des EPROM notwendig. Im September 1990 wurde durch Änderung von 
+einigen Bytes ein Anschluß der Tastatur des A2-Monitor möglich 
+gemacht, so daß A2-Nutzer einen 2.02-kompatiblen, komfortablen
+ Monitor zur Verfügung haben. Außerdem können damit zwei Tasta-
+turspalten mehr genutzt werden (+ 16 Tasten). 
+
+2_Anschlußbedingungen
+
+2.1 Variante  serielle Tastatur mit V 4017
+
+Alle Anschlüsse sind L-aktiv und sind auf dem Tastatursteckver-
+binder der Grundplatine verfügbar; günstig ist die Verwendung 
+einer Diodenbuchse mit folgender Belegung:
+
+                                            Masse
+                                               ö
+/SPAL8 - Zählerreset (Ausgang)      Pegel   -     -  Zählerreset
+/SPAL9 - Zählertakt  (Ausgang)
+PB4    - Pegel       (Eingang).     +5 V    -  0  -  Zählertakt
+
+                                     Ansicht von der Lötseite
+
+Durch die Nutzung von ausschließlich CMOS-Schaltkreisen bleibt 
+ein geringer Stromverbrauch gesichert. Die Abfragezeit bei nicht-
+gedrückter Taste beträgt bei 2 MHz 4,8 ms (11,6 bei 2.02-Monitor). 
+Durch die sequentielle Ansteuerung sind die Tasten vollständig
+entprellt. Es ist günstiger, den schnellzählenden V 4017 tasta-
+turseitig mit Entkoppeldioden zu versehen, damit die Funktionen 
+CTRL und SHIFT auf beliebige Tasten gelegt werden können
+(gleichzeitige Tastenbetätigung). Betrieb bei 4 MHz ergab beim 
+Testrechner keine Probleme seitens der CMOS-Schaltkreise.
+
+2.2 Variante A2-Tastatur
+
+Die A2-Tastatur bleibt angeschlossen wie im Original. Sie kann
+um zwei Spalten erweitert werden, indem /SPAL8 (X2/A7) und  
+/X2/A7) und  
+/SPAL9 (X2/A8) ueber Dioden mit A9 und A10 des Steckers der 
+K 7659 verbunden werden. Die Tasten sind durch die unten be-
+schriebenen Funktionen belegt sowie durch CTRL-Codes fuer Basic
+und MicroWORD (ausprobieren). Geaendert im Vgl. zur alten A2-
+Tastatur wurden lediglich die Tasten fuer ae, oe, ue, +, *, ..., 
+so dass eine schreibmaschinenrichtige Belegung entsteht. Die
+Leuchtdioden auf der Tastatur koennen so angesteuert werden,
+dass Tastaturabfrage, ShiftLock und Graphikmodus angezeigt 
+werden, indem man die Ausgaenge von A47 auswertet. Normal-,
+ShiftLock- und Graphikmodus unterscheiden sich in der Zaehl-
+weise der Bits am Tastaturspaltentreiber.       
+
+3_Tastaturinstallation
+
+3.1 Tastaturmatrix
+
+Die Tastaturmatrix kann wahlweise festgelegt werden, befindet
+sich im Monitor ab Adresse 0FF00H bis 0FFA1H (entspr. 50H Tasten) 
+und kann durch Eintrag des hoeherwertigen Adressbytes (normal: FF) 
+auf eine andere Adresse xx00H gelegt werden (s. 5.). Verwendung
+finden die Zeichen von 20H bis 7FH, die Zeichen von 80H bis FFH
+koennen fuer die Sonderfunktionen reserviert werden. Dabei ist
+zu beachten, dass moeglichst alle Zeichen von 2AH bis 2FH (bzw.
+39H) fuer die Stringfeldfunktion und die Zeichen von 5BH bis 5FH
+(fuer die Erzeugung 1BH ... 1FH mit CTRL) in die Normalebene ge-
+legt werden. Die Normalebene wird in der Tastaturmatrix ab
+xx01H, die Shiftebene ab xx51H eingetragen. Zur Bestimmung der 
+Tastaturmatrix wird das Programm TC-ERMITTL.  mitgeliefert in
+den Varianten A2 und seriell; es arbeitet mit der Tastatur ueber
+RST 20, DB 1 und 10, fragt aber die serielle bzw. A2-Tastatur
+mit dem Verfahren des Monitor FT88 ab, so dass man nur die jewei-
+lige Taste zu druecken braucht und dann die Codes fuer Normal- und
+Shiftebene eingeben kann. Die Abfrage erfolgt im Dialog. Bei Pro-
+grammende wird die Tabelle automatisch auf Tonband gespeichert,
+wenn vorhanden mit Headersave ueber Sprungverteiler, und man kann
+sie auf Adresse FF00 in den Monitor einfuegen. Das Programm te-
+stet selbstaendig, welche Tastatur angeschlossen ist (anhand der
+PIO-Initialisierung von Port B 4).
+  
+3.2 Tastaturfunktionen
+
+Es wurde eine Erweiterung der RST 20-Tabelle vorgenommen: alle
+Routinen koennen gleichzeitig von Tastatur aus und ueber RST 20 
+DB nn genutzt werden. Die beiden RST 20 DB 12 und 13 (ehemals 
+Hexum und Alpha) wurden neu belegt, aber mit Funktionen, die kei-
+ne "verheerenden" Folgen haben koennen, wenn sie aus einem Pro-
+gramm versehentlich aufgerufen werden. 
+
+Folgende Sonderfunktionen sind von Tastatur und ueber RST 20 
+verwendbar:
+     
+Code_RST_Name___Zweck_________________________________________
+
+92   12  Bell   Tastenclick Ein/Aus
+                wenn SLock gesetzt: Stringfeld Ein/Aus
+93   13  SpUms  Speicherumschaltung in den aktuellen Zustand
+                entsprechend Inhalt von Adresse 027H (s. u.) 
+94   14  Shift  Umschaltung auf Shift- bzw. bei SLock=aktiv auf
+                Normalebene
+95   15  CTRL   Erzeugt Codes von 01H bis 1FH
+96   16  Graph  Umschaltung auf Grafik (d. h. alle Zeichen +80H)
+                !Graph und SLock schliessen sich gegenseitig aus! 
+97   17  Reloc  Monitor-Warmstart: alle Initialisierungen ausser
+                dem RAM-Test und dem Druckertreibereintrag 
+                werden ausgefuehrt
+98   18  Takt   Umschaltung 
+                auf     I/O-Adresse    mit
+                1 MHz   1DH            Graphik gesetzt
+                2 MHz   1CH            normal
+                4 MHz   1EH            ShiftLock gesetzt
+                oder
+                zwischen      I/O-Adresse    mit
+                2/4 MHz       4, Bit 6       ShiftLock gesetzt
+                64/32 Zei.    4, Bit 7       Graphik gesetzt
+99   19  SLock  Umschaltfeststeller, setzt Graph zurueck; Tas-
+                ten mit Codes kleiner 40H in der Normalebene 
+                werden nicht mit umgeschalten
+9A   1A  DrkTr  Druckertreiber Ein/Aus; jedes mit RST 20H, DB 0
+                oder Call Outch auf BWS ausgegebene Zeichen wird
+                an logischen Druckertreiber uebergeben. Dieser
+                ruft den physischen Druckertreiber auf Adresse
+                35H auf, der bei Reset mit JMP BEEP initiali-
+                siert wird.
+                Mit SLock gesetzt wird der Bildschirm kopiert 
+                (vorher DRINI) auf Drucker ueber Adr. 35H.
+9B   1B  BwsUm  Umschalten zw. BWS 1/2 auf I/O-Adr. 10H/11H
+                (der 2. BWS kann durch Aufsetzen von 2 U214 auf 
+                A30/31 und Anschluss an einen DL074 eingesetzt
+                werden - CS Pin 8 von Masse trennen und jeweils
+                an Q bzw. /Q des Flip-Flop anschliessen.)
+                Achtung bei Speicherkonfig. 32K/32K kann bei
+                Schaltvariante 3 bei Vorhandensein der ROM-
+                Floppy durch Umschaltung auf BWS2 der EPROM ange-
+                sprochen werden, damit der Platz "hinter" dem BWS 
+                nicht verschwendet wird --) kein BWS vorhanden! 
+9C   1C  DTab   Dezimaltabulator (8 Zeichen rechts) 
+9D   1D  CrsO   Cursor eine Zeile hoeher
+9E   1E  CrsU   Cursor eine Zeile tiefer
+9F   1F  K59    Umschaltung auf 59K dRAM/ 4K EPROM durch OUT 14H
+A0   20  K32    Umschaltung auf 32K dRAM/ 31K/32K EPROM; OUT 15H
+A1   21  PrSt   Startet Programm auf Adresse, die in 0E4H steht
+                (Headers.-Startadr.), setzt Stackpointer zurueck
+A2   22  RST0   Sprung zu Adr. 0         (Fuer Nachladen von 
+A3   23  RST8   Sprung zu Adr. 8          weiteren Tastatur-
+A4   24  RST10  Sprung zu Adr. 10         funktionen, z. B.
+A5   25  RST18  Sprung zu Adr. 18         Druckerinit o. ae.) 
+
+BEACHTE Wenn diese Funktionen in der Normalebene stehen, kann
+die Shiftebene dieser Tasten nicht direkt genutzt werden (ausser:
+Joystick u. ae.). Schreibt man eine Funktion, z. B. Reloc, in
+die Shiftebene, so kann die Normalebene mit genutzt werden, in
+dem Fall z. B. durch ESC (1BH). Man sollte dazu nur Codes < 40H
+verwenden (s. SLock), da dann die Funktion nur ueber Shift (nicht
+SLock) erreichbar und somit versehentliches Betaetigen ausge-
+schlossen ist.
+
+Stringfeld Ab der Adresse E000H kann ein Stringfeld aufgebaut
+werden, dessen Strings zwischen 80, 81, 82, ..., 8F, FF einge-
+tragen werden, zwischen denen beliebig viele Zeichen < 80H ste-
+hen koennen. Die maximale Laenge des gesamten Feldes ist mit
+0C00H begrenzt, der hoeherwertige Teil (HWT) der Anfangsadresse
+kann selbst festgelegt werden (s. 5.). Die Strings werden ueber
+CTRL und 0 1 2  ...  9  * + , - . /  aufgerufen. Der Tastendruck
+muss dabei solange erfolgen, bis alle Zeichen des Strings auf dem
+Bildschirm sind; wiederholtes Betaetigen derselben Stringfunk-
+tion nur nach Loslassen von CTRL.
+
+Taktumschaltung: Da in letzter Zeit die Schaltung ueber Adr. 4
+propagiert wurde, soll hier eine Aenderungsmoeglichkeit angegeben
+werden fuer Takt- und Bildumschaltung auf dieser Adresse; dazu
+muss das Ruecklesen nicht unbedingt realisiert sein (wird staendig
+0 eingelesen, so veraendert sich nur die Bedienung etwas). Dazu
+sind folgende Bytes zu aendern:
+
+Adr     ALT (1C/1D/1E)              NEU (04, Bit 6,7)
+FCEC    F6 1C 4F ED 79              0F 0F 4F DB 04
+FCF1    00 00 00 C9                 A9 D3 04 C9
+
+4_Sonstige_Funktionen
+
+Alarm       Bei RST 38H (FF) Signal zum Aufmerken bei Absturz
+
+Drucker     Ein physischer Druckertreiber ist nicht enthalten
+wegen der moeglichen Vielfalt, kann aber auf der Adresse 35H mit
+JMP Drk eingetragen werden (initialisiert mit JMP BEEP). 
+Der logische Druckertreiber ist vorhanden, er gibt,
+wenn nach 64 Zeichen kein 0D oder 1E kommt, automatisch 1EH aus. 
+Nach 60 Zeilen erfolgt ein Druckstop, nach Druecken einer Taste 
+wird der logische Druckertreiber zurueckgesetzt. Die Zeichen- und
+Zeilenzahl kann im RAM geaendert werden (s. 5.). Die Initialisie-
+rung der Druckertreiber sollte bei (Treiber-) Programmstart oder
+durch eine Erweiterung der Tastaturfunktionen ueber RST 0,8,10,18
+erfolgen.
+
+Headersave  Der Headersave wird ueber die Monitorkommandos L
+bzw. S aufgerufen; die alten Routinen koennen ueber l bzw. s be-
+nutzt werden, wobei die Save-Routine ueber Headersave-UP's nach-
+gebildet wurde, um damit Platz fuer die ROM-Floppy-Routine zu
+gewinnen.
+  
+NMI     Systemhilfsroutine, kann ueber NMI-Taste (sollte unbe-
+dingt entprellt sein!) oder Call 066 aufgerufen werden. 
+Dabei wird ausgefuehrt:
+
+     Registerretten
+     Umschalten auf jeweils anderen Bildspeicher (wenn vorh.)
+     Retten Cursorposition
+     Anzeige: alle Register
+              Tastaturzellen
+              Druckertreiber- und Stringfeldadresse
+              Statusbits des Tastaturzeigers
+              Stack ab aktuellem Stackpointer
+     Eingabe a) zurueck zum Monitor durch Warmstart von Tastatur 
+             b) Anzeige Hexdump ab eingegebener Adresse
+             c) weiter in laufendem Programm ohne irgendwelche
+                Veraenderung mit >Enter<
+
+Speicherorganisation In der Zelle 27H ("Mem") steht die aktu-
+elle Out-Adresse entsprechend folgender Speicherkonfiguration:
+
+     RAM  von   bis    BWS Nr. von   bis      EPROM  von   bis  
+14H  59K  0000H EBFFH  1K  1/2 EC00H EFFFH    4K     F000H FFFFH 
+15H  32K  0000H 7FFFH  1K  1   EC00H EFFFH    31K    8000H EBFFH
+                       0   2                  32K    8000H FFFFH
+16H  63K  0000H FFFFH  1K  1/2 EC00H EFFFH
+
+Abhaengig von dieser Zelle wird u. a. nach der Programmsuchroutine 
+in den aktuellen Status zurueckgeschaltet. Existiert keine Schal-
+tung fuer die ROM-Floppy,  so hat dies keinen Einfluss auf die 
+Funktionsfaehigkeit des Monitors!
+
+Programmsuchprogramm (PRSP) Sucht zuerst im EPROM von C000H
+bis EC00H und dann von 100H bis 0EC00H Zeichenketten mit der
+Folge ED,FF,name,00,programm ... Es wird durch Eingabe eines
+Punktes oder .name aufgerufen, was zur Auflistung der vorhande-
+nen Programme bzw. zum Programmstart fuehrt. Bei Verwendung einer
+ROM-Floppy (Einblendung von 16K-Seiten auf 8000H bis BFFFH bei
+Speicherkonfiguration 15H) kann auf Adresse F3D8H ein Unterpro-
+gramm zum Umladen von der Floppy in den Hauptspeicher aufgerufen
+werden (man sollte dann von C000H bis EBFFH eine Art Inhalts-
+verzeichnis der ROM-Floppy anlegen). Die Namen der Programme
+muss immer 7 Bytes lang sein (dadurch erscheinen genau 4 Namen auf
+einer Bildschirmzeile beim Auflisten), bei kuerzeren Namen muessen
+die restlichen Bytes aufgefuellt werden (nicht mit Leerzeichen!) 
+Der Eintrag sieht dann folgendermassen aus:
+
+Bytes          Zweck                               Beispiel
+
+ED,FF,name,00  Namenskette 10 Bytes             ED,FF,HEADisk,00,
+...            anschl. Programm und/oder:
+CD,D6,F3,      Call F3D6H                           CD,D6,F3,
+kanal,         date wird an kanal ausgegeben,       08,
+date,          z. B. LD A,4/ OUT 8                  04,
+adrl,adrh,     Anfangsadresse im 16K-Bereich        00,81
+lngl,lngh,     Laenge des Programms                  00,8
+adrl,adrh,     Anfangsadresse im Hauptspeicher      00,D8
+sadrl,sadrh    Startadresse im Hauptspeicher        1B,D0
+ 
+Alle Programme werden aus EPROM in den RAM geladen, es wird auf
+die aktuelle  Speicherkonfiguration zurueckgeschaltet und dann 
+erst gestartet. Durch die Ausgabe eines Bytes auf verschiedene
+Adressen koennen beliebig verschiedene EPROM-Seiten zu je 16K
+in den Bereich von 8000 bis BFFF eingeblendet werden. Zu deren
+Adressierung kann der Tastaturspaltentreiber verwendet werden,
+bei groesseren EPROM als 16K kann man mittels zwei Flip-Flop noch
+die Adressen 8,9,A und B unterscheiden, wobei dann Adr. 0 und
+Adr. 1 jeweils Adr. 14 und Adr. 15 der 32/64-K-EPROM ansteuern.
+
+Joystick Im Monitor ist der Aufruf des Joystick an Port A ueber
+Sprungverteiler moeglich (entsprechend practic, 1/88). Es wird
+ein Programm JOYST mitgeliefert, das man von C000H bis C030H in
+den EPROM brennen kann, und das das Grafikzeichnen mit einem 
+rechten und linken Joystick ermoeglicht durch Tastenbetaetigung
+auf der Tastatur (s.u.). Will man den externen Joystick nicht
+nutzen, dafuer aber die beiden auf der Tastatur, so kann man ab
+der Adresse, auf die der Sprung auf 0FFB8H (Sprungverteiler)
+zeigt, vor dem EPROM-brennen folgende Bytes eintragen:
+
+D3,15       OUT 15H
+CD,00,C0    CALL 0C000H
+E7,13       RST 20, DB 13       Speicherrueckschaltung
+C9          RET
+
+Unabhaengig davon, welcher Joystick ueber Sprungverteiler genutzt 
+wird, das Programm JOYstck ermoeglicht es, den Cursor auf dem 
+Bildschirm mit 10 Tasten oder an der Tastatur (evtl. parallel-
+geschaltet) vorhandenem Joystick in allen Richtungen zu bewegen,
+im Cursor alle ASCII- und Grafikzeichen vorwaerts und rueckwaerts 
+durchlaufen zu lassen und diese vertikal und horizontal zu 
+zeichnen.
+
+Die zwei Joysticks koennen durch D0 (Aktion), C1, C2, C4, C8
+(links, rechts, runter, hoch) fuer rechten und F0, E1, E2, E4,
+E8 fuer linken Joystick in die Shiftebene der Tastaturmatrix
+eingetragen werden (z. B. oberhalb von Funktionstasten, die kei-
+nen direkten Zugriff auf die Shiftebene zulassen). Durch die Ak-
+tionstaste des rechten Joystick kann man in den Eingabemodus kom-
+men: mit Enter weiter im Programm, mit Break Abbruch (Bild
+auf 7000H). Setzt man vor Start mit .JOYstck SLock, so wird dabei
+ein Bild von 7400H in den BWS geladen. 
+
+Bei dem Joystck-Paket sind folgende Programme mit dabei, die
+man im EPROM haben sollte: RAM laedt den Monitor in 64K-RAM-
+Bereich um, ROM zurueck mit Neustart. Mit STRING$ kann man
+sich ein Stringfeld auf beliebiger Adresse xx00H einrichten
+(ESC naechster Code / ^C Ende). 
+
+
+5_Belegung_der_RAM-Zellen
+
+Adr.       Belegung                        ÄInitialisierungÜ 
+(hex) name alt      neu
+ 
+04    Lez  letztes  Zeichen von Tastatur
+27    Mem  Hex/Alph Speicherbereichs-I/O-Byte
+30    Zlc  RST 30H  Zeilenzaehler
+31                  Zaehladresse fuer Stringausgabe
+33    Zeil Save-    Zeilenzahl                            Ä60Ü
+34    Drc  Vorton   Zeichenzaehler
+35         TC-Tab   Sprung zu Drucktreiber            ÄReturnÜ
+3B    Zeig "        Zeiger Bit 0 = 1 -> Graphik
+                           Bit 1 = 1 -> ShiftLock
+                           Bit 2 = 1 -> intern: CTRLk
+                           Bit 3 = 0 -> Tastenclick ein
+                           Bit 4 = 1 -> Druckertreiber ein 
+                           Bit 5 = 1 -> 2. BWS / = 0 -> 1. BWS
+                           Bit 6 = 1 -> Stringfeld ein
+                           Bit 7 = 0    intern: 2. Taste 
+3C    Rpc  "        Repeatcounter
+3D    Upz  "        Letztes Funktions-Unterprogramm
+3E    Tab  "        HWT Tastaturmatrix-Adresse            ÄFFÜ
+3F    Zlz  "        Zeichen/Zeile                         Ä64Ü
+40    S$   "        HWT Stringfeldadresse                 ÄEBÜ
+41...46    "        Namenseintrag fuer Save (auch Datum o. ae.),
+                    wird bei Save ueber Sprungverteiler nach
+                    Adr. E6 bis EB geladen  
+
+6_Belegung_der_I/O-Adressen
+
+Adr.                Belegung
+
+04                  Schaltadresse nach IG HC Dresden, Bit 6 und
+                    7 koennen bedient werden   
+08                  Tastaturspaltentreiber, Spalten 0..9 fuer Ta-
+                    statur und fuer Selektierung EPROMs auf ROM-
+                    Floppy 
+10/11               Einschalten BWS1/BWS2 durch OUT 11/OUT 12
+14/15/16            Speicherbereichsumschaltung
+1C/1D/1E            Taktumschaltung 2/1/4 Mhz (wenn nicht ueber
+                    Adresse 4)
+            
+
+Ich hoffe, dass der Monitor vielen Anspruechen gerecht wird und
+die Arbeit am Z 1013 erleichtert sowie Denkanstoesse zu weiterem
+Ausbau als komfortablem Rechner vermittelt.
+
+Fuer Anregungen, Hinweise auf Fehler 
+u. ae. bin ich jederzeit dankbar.
+
+
+                                  Falko Troj·ÊfOþÊfO

@@ -1,0 +1,236 @@
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 1 - 8/16/2024 9:43:44
+
+
+    1/       0 :                        ; File Name   :	D:\hobby3\z1013_hb_programme\musikmodul.bin
+    2/       0 :                        ; Format      :	Binary file
+    3/       0 :                        ; Base Address:	0000h Range: 0100h - 0260h Loaded length: 0160h
+    4/       0 :                        
+    5/       0 :                        
+    6/       0 :                        		cpu	z80
+    7/       0 :                        		
+    8/     100 :                        		org 100h
+    9/     100 :                        ; 1Mhz
+   10/     100 : AF                     start1:		xor	a		; 0
+   11/     101 : 32 6C 01               musik0:		ld	(sysclk), a
+   12/     104 : 18 04                  		jr	musik1
+   13/     106 :                        ; 2MHz
+   14/     106 : 3E 01                  start2:		ld	a, 1
+   15/     108 : 18 F7                  		jr	musik0
+   16/     10A :                        ;
+   17/     10A : 21 90 01               musik1:		ld	hl, melodie
+   18/     10D : 7E                     musik2:		ld	a, (hl)		; nächster Ton
+   19/     10E : B7                     		or	a
+   20/     10F : CA 38 00               		jp	z, 0038h	; Pgm.Ende bei 00
+   21/     112 : 4E                     		ld	c, (hl)
+   22/     113 : 23                     		inc	hl
+   23/     114 : E5                     		push	hl
+   24/     115 : 7E                     		ld	a, (hl)
+   25/     116 : 5E                     		ld	e, (hl)
+   26/     117 : 16 00                  		ld	d, 0
+   27/     119 : FE FF                  		cp	0FFh
+   28/     11B : 28 07                  		jr	z, musik4
+   29/     11D : CD 3F 01               		call	ton
+   30/     120 : E1                     musik3:		pop	hl
+   31/     121 : 23                     		inc	hl
+   32/     122 : 18 E9                  		jr	musik2
+   33/     124 : 06 80                  musik4:		ld	b, 80h
+   34/     126 : 10 FE                  		djnz	$
+   35/     128 : 06 80                  		ld	b, 80h
+   36/     12A : 10 FE                  		djnz	$
+   37/     12C : 3A 6C 01               		ld	a, (sysclk)
+   38/     12F : B7                     		or	a
+   39/     130 : 28 08                  		jr	z, musik9
+   40/     132 : 06 80                  		ld	b, 80h
+   41/     134 : 10 FE                  		djnz	$
+   42/     136 : 06 80                  		ld	b, 80h
+   43/     138 : 10 FE                  		djnz	$
+   44/     13A : 0D                     musik9:		dec	c
+   45/     13B : 20 E7                  		jr	nz, musik4
+   46/     13D : 18 E1                  		jr	musik3
+   47/     13F :                        
+   48/     13F :                        ; Ausgabe Ton
+   49/     13F : 21 70 01               ton:		ld	hl, hilftab
+   50/     142 : 19                     		add	hl, de
+   51/     143 : 56                     		ld	d, (hl)
+   52/     144 : 23                     		inc	hl
+   53/     145 : 7E                     		ld	a, (hl)
+   54/     146 : 81                     		add	a, c
+   55/     147 : 4F                     		ld	c, a
+   56/     148 : CB FF                  ton1:		set	7, a
+   57/     14A : D3 02                  		out	(2), a
+   58/     14C : 42                     		ld	b, d
+   59/     14D : 10 FE                  		djnz	$
+   60/     14F : 3A 6C 01               		ld	a, (sysclk)
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 2 - 8/16/2024 9:43:44
+
+
+   61/     152 : B7                     		or	a
+   62/     153 : 28 03                  		jr	z, ton3
+   63/     155 : 42                     		ld	b, d
+   64/     156 : 10 FE                  		djnz	$
+   65/     158 : CB BF                  ton3:		res	7, a
+   66/     15A : D3 02                  		out	(2), a
+   67/     15C : 42                     		ld	b, d
+   68/     15D : 10 FE                  		djnz	$
+   69/     15F : 3A 6C 01               		ld	a, (sysclk)
+   70/     162 : B7                     		or	a
+   71/     163 : 28 03                  		jr	z, ton6
+   72/     165 : 42                     		ld	b, d
+   73/     166 : 10 FE                  		djnz	$
+   74/     168 : 0D                     ton6:		dec	c
+   75/     169 : 20 DD                  		jr	nz, ton1
+   76/     16B : C9                     		ret
+   77/     16C :                        
+   78/     16C :                        ;
+   79/     16C : 00                     sysclk:		db 0			; 0=1MHz, 1=2MHz
+   80/     16D : 0A                     		db  0Ah
+   81/     16E : 00                     		db    0
+   82/     16F : 00                     		db    0
+   83/     170 :                        
+   84/     170 :                        
+   85/     170 :                        ;Hilfstabelle (Tonhöhe+Anz.Schwingungen)
+   86/     170 : A0 00                  hilftab:	db 0A0h,   0		; C
+   87/     172 : 98 07                  		db  98h,   7            ; CIS
+   88/     174 : 90 0F                  		db  90h, 0Fh            ; D
+   89/     176 : 87 17                  		db  87h, 17h            ; DIS
+   90/     178 : 80 1F                  		db  80h, 1Fh            ; E
+   91/     17A : 78 27                  		db  78h, 27h            ; F
+   92/     17C : 70 2F                  		db  70h, 2Fh            ; FIS
+   93/     17E : 6A 34                  		db  6Ah, 34h            ; G
+   94/     180 : 65 3A                  		db  65h, 3Ah            ; GIS
+   95/     182 : 60 3F                  		db  60h, 3Fh            ; A
+   96/     184 : 5B 43                  		db  5Bh, 43h            ; AIS
+   97/     186 : 56 49                  		db  56h, 49h            ; H
+   98/     188 : 4F 50                  		db  4Fh, 50h            ; C'
+   99/     18A :                        ;
+  100/     18A : 44 00                  		db  44h,   0            ; ??
+  101/     18C : 00 00                  		db    0,   0
+  102/     18E : 00 00                  		db    0,   0
+  103/     190 :                        
+  104/     190 :                        ;Melodie	(Kein schoener Land)
+  105/     190 :                        ;jeweils Tonlänge - Tonhöhe - Pausenlänge - Pausenzeichen (FFH)
+  106/     190 :                        ; Tonlänge: Länge der Note 1 -> 60,  1/2 -> 30,  1/4 -> 18,  1/8 ->  0B, 1/16 -> 06
+  107/     190 :                        ; Die Bildung der Pausenlänge ist analog.
+  108/     190 :                        ; Tonhöhe	C - 00, CIS - 02, D - 04, DIS - 06, E - 08, F - 0A
+  109/     190 :                        ;		FIS - 0C, G - 0E, GIS - 10, A - 12, AIS - 14, H - 16, C' - 18
+  110/     190 :                        ; Melodieende durch ein Nullbyte (00H)
+  111/     190 :                        
+  112/     190 :                        
+  113/     190 :                        melodie:	
+  114/     190 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  115/     194 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  116/     198 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  117/     19C : 60 0A 18 FF            		db  60h, 0Ah,  18h, 0FFh 
+  118/     1A0 : 60 12 18 FF            		db  60h, 12h,  18h, 0FFh 
+  119/     1A4 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  120/     1A8 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 3 - 8/16/2024 9:43:44
+
+
+  121/     1AC : 60 0E B0 FF            		db  60h, 0Eh, 0B0h, 0FFh 
+  122/     1B0 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  123/     1B4 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  124/     1B8 : 30 00 18 FF            		db  30h,   0,  18h, 0FFh 
+  125/     1BC : 60 0A 18 FF            		db  60h, 0Ah,  18h, 0FFh 
+  126/     1C0 : 60 12 18 FF            		db  60h, 12h,  18h, 0FFh 
+  127/     1C4 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  128/     1C8 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  129/     1CC : 60 0E B0 FF            		db  60h, 0Eh, 0B0h, 0FFh 
+  130/     1D0 : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  131/     1D4 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  132/     1D8 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  133/     1DC : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  134/     1E0 : 30 18 0B FF            		db  30h, 18h,  0Bh, 0FFh 
+  135/     1E4 : 30 14 0B FF            		db  30h, 14h,  0Bh, 0FFh 
+  136/     1E8 : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  137/     1EC : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  138/     1F0 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  139/     1F4 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  140/     1F8 : 30 14 0B FF            		db  30h, 14h,  0Bh, 0FFh 
+  141/     1FC : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  142/     200 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  143/     204 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  144/     208 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  145/     20C : 60 12 B0 FF            		db  60h, 12h, 0B0h, 0FFh 
+  146/     210 : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  147/     214 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  148/     218 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  149/     21C : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  150/     220 : 30 18 0B FF            		db  30h, 18h,  0Bh, 0FFh 
+  151/     224 : 30 14 0B FF            		db  30h, 14h,  0Bh, 0FFh 
+  152/     228 : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  153/     22C : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  154/     230 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  155/     234 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  156/     238 : 30 14 0B FF            		db  30h, 14h,  0Bh, 0FFh 
+  157/     23C : 30 12 0B FF            		db  30h, 12h,  0Bh, 0FFh 
+  158/     240 : 30 0E 0B FF            		db  30h, 0Eh,  0Bh, 0FFh 
+  159/     244 : 30 0A 0B FF            		db  30h, 0Ah,  0Bh, 0FFh 
+  160/     248 : 30 08 0B FF            		db  30h,   8,  0Bh, 0FFh 
+  161/     24C : 60 0A B0 FF            		db  60h, 0Ah, 0B0h, 0FFh 
+  162/     250 : 00                     		db    0				; Melodieende
+  163/     251 :                        ; ENDE	
+  164/     251 : 00                     		db    0
+  165/     252 : 00                     		db    0
+  166/     253 : 00                     		db    0
+  167/     254 : 00                     		db    0
+  168/     255 : 00                     		db    0
+  169/     256 : 30                     		db  30h	; 0
+  170/     257 : 00                     		db    0
+  171/     258 : 00                     		db    0
+  172/     259 : 00                     		db    0
+  173/     25A : 00                     		db    0
+  174/     25B : 00                     		db    0
+  175/     25C : 00                     		db    0
+  176/     25D : 00                     		db    0
+  177/     25E : 00                     		db    0
+  178/     25F : 00                     		db    0
+  179/     260 :                        
+  180/     260 :                        		end
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 4 - 8/16/2024 9:43:44
+
+
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 5 - 8/16/2024 9:43:44
+
+
+  Symbol Table (* = unused):
+  --------------------------
+
+*ARCHITECTURE :                                        "i386-unknown-win32" - |
+*CASESENSITIVE :                  0 - | *CONSTPI :        3.141592653589793 - |
+*DATE :                 "8/16/2024" - | *FALSE :                          0 - |
+*FULLPMMU :                       1 - | *HAS64 :                          0 - |
+*HASFPU :                         0 - | *HASPMMU :                        0 - |
+ HILFTAB :                      170 C | *INSUPMODE :                      0 - |
+*LISTON :                         1 - | *MACEXP :                         7 - |
+ MELODIE :                      190 C | *MOMCPU :                        80 - |
+*MOMCPUNAME :                 "Z80" - |  MUSIK0 :                       101 C |
+ MUSIK1 :                       10A C |  MUSIK2 :                       10D C |
+ MUSIK3 :                       120 C |  MUSIK4 :                       124 C |
+ MUSIK9 :                       13A C | *NESTMAX :                      100 - |
+*PADDING :                        1 - | *RELAXED :                        0 - |
+*START1 :                       100 C | *START2 :                       106 C |
+ SYSCLK :                       16C C | *TIME :                   "9:43:44" - |
+ TON :                          13F C |  TON1 :                         148 C |
+ TON3 :                         158 C |  TON6 :                         168 C |
+*TRUE :                           1 - | *VERSION :                     142F - |
+
+     35 symbols
+     22 unused symbols
+
+ AS V1.42 Beta [Bld 249] - Source File musikmodul-as.asm - Page 6 - 8/16/2024 9:43:44
+
+
+  Code Pages:
+  ----------
+
+STANDARD (0 changed characters)
+
+1 code page
+
+0.00 seconds assembly time
+
+    181 lines source file
+      2 passes
+      0 errors
+      0 warnings
